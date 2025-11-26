@@ -1,0 +1,110 @@
+
+> I’m having two persistent issues with my DentalLeadGenius app and demo flow. Please open my Repl and fix them end-to-end.
+
+Repl / App
+– Name: DentalLeadGenius (Dental lead generation SaaS)
+– Public URL: https://dental-lead-genius-1-shoibaali10.replit.app/
+
+
+---
+
+1) “Service Unavailable” / blank black screen
+
+Sometimes, when I open the public URL on my phone, I only see a black screen with a tiny “Service Unavailable” message in the top-left corner.
+
+What I need you to do
+
+1. Check the deployed logs and server start-up logs to see why the production deployment is returning Service Unavailable.
+
+
+2. Fix any crash, port, or environment issues so that the root URL (/) always loads the main marketing page instead of a black screen.
+
+
+3. Make sure the app is built and deployed correctly, and that any required migrations or build steps run before starting the server.
+
+
+4. After fixing it, test the deployed URL from the browser inside Replit (mobile view if possible) and confirm that:
+
+the page loads successfully,
+
+there is no Service Unavailable message,
+
+refreshing multiple times still works.
+
+
+
+
+
+---
+
+2) Demo / Start Free Trial → 404 router error
+
+On the homepage, there are buttons like “Start Free Trial” / “Free Trial” / demo links.
+
+Right now:
+
+The first main link sometimes works.
+
+The second Free Trial / demo link still sends users to a URL that returns this error: “404 Page Not Found – Did you forget to add the page to the router?”
+
+
+I want these buttons to open the interactive demo page (the one that shows “Explore DentalLeadGenius” with the tabs: Overview, Leads, Outreach, AI Chatbot, Multi-Clinic) – not a 404 page.
+
+What I need you to do
+
+1. Find the route/component for that interactive demo page (for example /demo, /live-demo, or another path).
+
+
+2. Check the React/Next router configuration and ensure that:
+
+the public demo route is registered correctly,
+
+it works in production build, not just dev.
+
+
+
+3. Update all demo / Free Trial / Start Free Trial buttons on the site so they navigate to that correct demo route.
+
+
+4. Re-deploy the app, then click every demo / free-trial link yourself on the deployed site and confirm:
+
+no link produces a 404,
+
+every link opens the same working interactive demo page.
+
+
+
+
+
+---
+
+3) Demo form behaviour
+
+On the demo page I want the following behaviour:
+
+1. The user can enter any email address (it does NOT have to be a clinic domain email).
+
+
+2. When the user submits the demo request form:
+
+They should be immediately redirected to the interactive demo inside the browser (no waiting for manual scheduling).
+
+An email with the demo link can still be sent in the background, but please don’t block the redirect on that.
+
+
+
+3. If there is any email-domain validation that only allows “clinic” emails, please remove or relax it so that any normal email (Gmail, Outlook, etc.) is accepted.
+
+
+
+Please show me in your summary:
+
+which route is now the public demo URL,
+
+where you wired the buttons,
+
+and how the demo form → redirect → email flow now works.
+
+
+Thank you. Please do not change the marketing copy or chatbot content; just fix stability, routing, and the demo access flow.
+
