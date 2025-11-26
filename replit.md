@@ -36,6 +36,11 @@ DentalLeadGenius is an AI-powered lead generation platform designed for dental c
 - Form submission now redirects immediately to demo (same tab, no popup)
 - Fixed "Start Free Trial" buttons: Changed from Wouter `<Link>` to native `<a>` tags for `/api/login` URLs to prevent SPA 404 errors
 
+### Important Routing Rules
+- **Server routes** (like `/api/login`): Must use native `<a>` tags, NOT Wouter `<Link>`
+- **Client routes** (like `/demo`): Can use Wouter `<Link>`
+- **Why**: Wouter intercepts clicks for client-side routing. Server routes need full page navigation.
+
 ## Instant Demo Flow
 
 ### How It Works
