@@ -1,0 +1,254 @@
+import { MessageSquare, Users, Building2, BarChart3, Phone, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { ChatbotWidget } from "@/components/chatbot-widget";
+import { DemoBookingModal } from "@/components/demo-booking-modal";
+import { useState } from "react";
+import { SiWhatsapp } from "react-icons/si";
+import heroImage from "@assets/generated_images/modern_dental_clinic_hero_image.png";
+
+export default function Landing() {
+  const [showDemoModal, setShowDemoModal] = useState(false);
+
+  const ADMIN_WHATSAPP = "1234567890"; // Replace with actual admin WhatsApp
+  const ADMIN_PHONE = "1234567890"; // Replace with actual admin phone
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Hero Section */}
+      <section className="relative min-h-[80vh] flex items-center">
+        <div className="absolute inset-0 z-0">
+          <img
+            src={heroImage}
+            alt="Modern dental clinic"
+            className="w-full h-full object-cover opacity-20"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-background/50" />
+        </div>
+
+        <div className="container mx-auto px-6 py-20 relative z-10">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="space-y-8">
+              <h1
+                className="text-5xl lg:text-7xl font-bold leading-tight"
+                data-testid="text-hero-headline"
+              >
+                Generate{" "}
+                <span className="text-primary">10x More</span> Quality Dental Leads
+              </h1>
+              <p className="text-xl text-muted-foreground max-w-2xl">
+                AI-powered lead generation platform that automates outreach, books more
+                demos, and helps dental clinics grow their practice with intelligent
+                chatbots and multi-channel campaigns.
+              </p>
+
+              {/* Contact Buttons */}
+              <div className="flex flex-wrap gap-4">
+                <Button
+                  size="lg"
+                  className="gap-2 px-6"
+                  onClick={() => setShowDemoModal(true)}
+                  data-testid="button-book-demo-hero"
+                >
+                  <Calendar className="h-5 w-5" />
+                  Book a Demo
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="gap-2 px-6"
+                  asChild
+                  data-testid="button-whatsapp"
+                >
+                  <a
+                    href={`https://wa.me/${ADMIN_WHATSAPP}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <SiWhatsapp className="h-5 w-5" />
+                    WhatsApp
+                  </a>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="gap-2 px-6"
+                  asChild
+                  data-testid="button-sms"
+                >
+                  <a href={`sms:${ADMIN_PHONE}`}>
+                    <Phone className="h-5 w-5" />
+                    Send SMS
+                  </a>
+                </Button>
+              </div>
+            </div>
+
+            <div className="relative lg:block hidden">
+              <div className="absolute -inset-4 bg-primary/10 rounded-2xl blur-3xl" />
+              <img
+                src={heroImage}
+                alt="Dental clinic interface"
+                className="relative rounded-2xl shadow-2xl"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-24 bg-muted/30">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-4" data-testid="text-features-headline">
+              Everything You Need to Scale Your Dental Practice
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Powerful tools designed specifically for dental clinic lead generation
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card className="hover-elevate" data-testid="card-feature-chatbot">
+              <CardContent className="p-6 space-y-4">
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <MessageSquare className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold">AI Sales Chatbot</h3>
+                <p className="text-muted-foreground">
+                  Human-like conversations that persuade clinic owners, answer questions,
+                  and book demos automatically 24/7.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate" data-testid="card-feature-leads">
+              <CardContent className="p-6 space-y-4">
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold">Lead Management</h3>
+                <p className="text-muted-foreground">
+                  Import leads via CSV, track status, automate follow-ups, and manage
+                  outreach campaigns with daily send limits.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate" data-testid="card-feature-multi-tenant">
+              <CardContent className="p-6 space-y-4">
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Building2 className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold">Multi-Clinic Platform</h3>
+                <p className="text-muted-foreground">
+                  Each clinic gets branded subpages, patient chatbots, and appointment
+                  booking - all managed from one dashboard.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Social Proof Section */}
+      <section className="py-24">
+        <div className="container mx-auto px-6">
+          <div className="grid lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              <h2 className="text-3xl font-bold mb-8">Trusted by Dental Professionals</h2>
+              <div className="space-y-6">
+                <Card>
+                  <CardContent className="p-6">
+                    <p className="text-lg mb-4">
+                      "DentalLeadGenius transformed how we find new patients. The AI
+                      chatbot books qualified demos while we focus on patient care. Game
+                      changer!"
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/20" />
+                      <div>
+                        <p className="font-semibold">Dr. Sarah Chen</p>
+                        <p className="text-sm text-muted-foreground">
+                          Bright Smile Dental, CA
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-6">
+                    <p className="text-lg mb-4">
+                      "We went from 5 leads per month to 50+ qualified conversations. The
+                      ROI is incredible and the team loves the automated follow-ups."
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/20" />
+                      <div>
+                        <p className="font-semibold">Dr. Michael Rodriguez</p>
+                        <p className="text-sm text-muted-foreground">
+                          Family Dental Care, TX
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <BarChart3 className="h-8 w-8 text-primary mx-auto mb-2" />
+                  <p className="text-4xl font-bold text-primary">10x</p>
+                  <p className="text-sm text-muted-foreground">More Qualified Leads</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <Users className="h-8 w-8 text-primary mx-auto mb-2" />
+                  <p className="text-4xl font-bold text-primary">500+</p>
+                  <p className="text-sm text-muted-foreground">Dental Clinics</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <MessageSquare className="h-8 w-8 text-primary mx-auto mb-2" />
+                  <p className="text-4xl font-bold text-primary">24/7</p>
+                  <p className="text-sm text-muted-foreground">AI Assistance</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-24 bg-primary/5">
+        <div className="container mx-auto px-6 text-center">
+          <h2 className="text-4xl font-bold mb-6">
+            Ready to Transform Your Lead Generation?
+          </h2>
+          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Join hundreds of dental clinics already growing with DentalLeadGenius
+          </p>
+          <Button
+            size="lg"
+            className="px-8"
+            onClick={() => setShowDemoModal(true)}
+            data-testid="button-book-demo-cta"
+          >
+            <Calendar className="h-5 w-5 mr-2" />
+            Schedule Your Free Demo
+          </Button>
+        </div>
+      </section>
+
+      {/* Chatbot Widget - Auto-opens after 2.5 seconds */}
+      <ChatbotWidget type="sales" autoOpen autoOpenDelay={2500} />
+
+      {/* Demo Booking Modal */}
+      <DemoBookingModal open={showDemoModal} onOpenChange={setShowDemoModal} />
+    </div>
+  );
+}
