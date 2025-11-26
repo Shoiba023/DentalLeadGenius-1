@@ -32,6 +32,8 @@ DentalLeadGenius is an AI-powered lead generation platform designed for dental c
 - Fixed 404 error when clicking demo link from email
 - `/demo` route now works for both authenticated and unauthenticated users
 - Demo page displays without admin sidebar for all users
+- Route matching handles all URL variations: `/demo`, `/demo/`, `/demo?params`
+- Form submission now redirects immediately to demo (same tab, no popup)
 
 ## Instant Demo Flow
 
