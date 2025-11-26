@@ -211,6 +211,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Patient booking routes
+  app.post("/api/patient-bookings", async (req, res) => {
+    try {
+      const { insertPatientBookingSchema } = await import("@shared/schema");
+      const bookingData = insertPatientBookingSchema.parse(req.body);
+      const booking = await storage.createPatientBooking(bookingData);
+      res.json(booking);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid booking data", errors: error.errors });
+      }
+      console.error("Error creating patient booking:", error);
+      res.status(500).json({ message: "Failed to create patient booking" });
+    }
+  });
+
+  app.get("/api/patient-bookings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
+      const bookings = await storage.getPatientBookingsForUser(userId);
+      res.json(bookings);
+    } catch (error) {
+      console.error("Error fetching patient bookings:", error);
+      res.status(500).json({ message: "Failed to fetch patient bookings" });
+    }
+  });
+
+  app.get("/api/patient-bookings/clinic/:clinicId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
+      const clinic = await storage.getClinicById(req.params.clinicId);
+      if (!clinic || clinic.ownerId !== userId) {
+        return res.status(403).json({ message: "Access denied to this clinic" });
+      }
+      
+      const bookings = await storage.getPatientBookingsByClinic(req.params.clinicId);
+      res.json(bookings);
+    } catch (error) {
+      console.error("Error fetching clinic patient bookings:", error);
+      res.status(500).json({ message: "Failed to fetch patient bookings" });
+    }
+  });
+
+  app.patch("/api/patient-bookings/:id/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
+      const { status } = req.body;
+      const validStatuses = ["pending", "confirmed", "cancelled", "completed"];
+      
+      if (!status || !validStatuses.includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Must be one of: pending, confirmed, cancelled, completed" });
+      }
+      
+      const bookings = await storage.getPatientBookingsForUser(userId);
+      const booking = bookings.find(b => b.id === req.params.id);
+      
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found or access denied" });
+      }
+      
+      await storage.updatePatientBookingStatus(req.params.id, status);
+      res.json({ message: "Status updated successfully" });
+    } catch (error) {
+      console.error("Error updating patient booking status:", error);
+      res.status(500).json({ message: "Failed to update status" });
+    }
+  });
+
   // Chatbot routes
   app.post("/api/chatbot/send", async (req, res) => {
     try {

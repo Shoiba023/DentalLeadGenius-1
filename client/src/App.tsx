@@ -13,6 +13,7 @@ import AdminAnalytics from "@/pages/admin-analytics";
 import AdminLeads from "@/pages/admin-leads";
 import AdminOutreach from "@/pages/admin-outreach";
 import AdminClinics from "@/pages/admin-clinics";
+import AdminPatientBookings from "@/pages/admin-patient-bookings";
 import ClinicPage from "@/pages/clinic-page";
 
 function Router() {
@@ -67,6 +68,7 @@ function Router() {
               <Route path="/admin/leads" component={AdminLeads} />
               <Route path="/admin/outreach" component={AdminOutreach} />
               <Route path="/admin/clinics" component={AdminClinics} />
+              <Route path="/admin/patient-bookings" component={AdminPatientBookings} />
               <Route path="/clinic/:slug" component={ClinicPage} />
               <Route component={NotFound} />
             </Switch>

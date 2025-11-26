@@ -63,6 +63,13 @@ export interface IStorage {
   getAllCampaigns(): Promise<OutreachCampaign[]>;
   createCampaign(campaign: InsertOutreachCampaign): Promise<OutreachCampaign>;
 
+  // Patient booking operations
+  createPatientBooking(booking: InsertPatientBooking): Promise<PatientBooking>;
+  getPatientBookingsByClinic(clinicId: string): Promise<PatientBooking[]>;
+  getAllPatientBookings(): Promise<PatientBooking[]>;
+  getPatientBookingsForUser(userId: string): Promise<PatientBooking[]>;
+  updatePatientBookingStatus(id: string, status: string): Promise<void>;
+
   // Analytics
   getAnalytics(): Promise<{
     leadsImported: number;
@@ -194,6 +201,50 @@ export class DatabaseStorage implements IStorage {
   async createCampaign(campaign: InsertOutreachCampaign): Promise<OutreachCampaign> {
     const [newCampaign] = await db.insert(outreachCampaigns).values(campaign).returning();
     return newCampaign;
+  }
+
+  // Patient booking operations
+  async createPatientBooking(booking: InsertPatientBooking): Promise<PatientBooking> {
+    const [newBooking] = await db.insert(patientBookings).values(booking).returning();
+    return newBooking;
+  }
+
+  async getPatientBookingsByClinic(clinicId: string): Promise<PatientBooking[]> {
+    return await db
+      .select()
+      .from(patientBookings)
+      .where(eq(patientBookings.clinicId, clinicId))
+      .orderBy(desc(patientBookings.createdAt));
+  }
+
+  async getAllPatientBookings(): Promise<PatientBooking[]> {
+    return await db.select().from(patientBookings).orderBy(desc(patientBookings.createdAt));
+  }
+
+  async getPatientBookingsForUser(userId: string): Promise<PatientBooking[]> {
+    const userClinics = await db
+      .select()
+      .from(clinics)
+      .where(eq(clinics.ownerId, userId));
+    
+    const clinicIds = userClinics.map(c => c.id);
+    
+    if (clinicIds.length === 0) {
+      return [];
+    }
+    
+    return await db
+      .select()
+      .from(patientBookings)
+      .where(sql`${patientBookings.clinicId} IN (${sql.join(clinicIds.map(id => sql`${id}`), sql`, `)})`)
+      .orderBy(desc(patientBookings.createdAt));
+  }
+
+  async updatePatientBookingStatus(id: string, status: string): Promise<void> {
+    await db
+      .update(patientBookings)
+      .set({ status })
+      .where(eq(patientBookings.id, id));
   }
 
   // Analytics
