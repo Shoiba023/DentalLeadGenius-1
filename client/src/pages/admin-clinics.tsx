@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -16,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Building2, ExternalLink, Copy, Upload, ImageIcon } from "lucide-react";
+import { Loader2, Plus, Building2, ExternalLink, Copy, Upload, LayoutDashboard } from "lucide-react";
 
 interface Clinic {
   id: string;
@@ -307,6 +308,16 @@ export default function AdminClinics() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-2">
+                <Link href={`/admin/clinics/${clinic.id}`}>
+                  <Button
+                    size="sm"
+                    className="w-full gap-1 mb-2"
+                    data-testid={`button-dashboard-${clinic.id}`}
+                  >
+                    <LayoutDashboard className="h-3 w-3" />
+                    Open Dashboard
+                  </Button>
+                </Link>
                 <div className="flex gap-2">
                   <input
                     ref={(el) => { fileInputRefs.current[clinic.id] = el; }}

@@ -91,6 +91,16 @@ export interface IStorage {
     patientBookingsFromChat: number;
     averageMessagesPerConversation: number;
   }>;
+  
+  // Clinic-specific operations
+  getChatbotThreadsByClinic(clinicId: string): Promise<(ChatbotThread & { messageCount: number })[]>;
+  getClinicAnalytics(clinicId: string): Promise<{
+    totalBookings: number;
+    pendingBookings: number;
+    confirmedBookings: number;
+    totalConversations: number;
+    totalMessages: number;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -346,6 +356,81 @@ export class DatabaseStorage implements IStorage {
       aiMessages: Number(aiMsgs?.count || 0),
       patientBookingsFromChat: Number(patientBookingsCount?.count || 0),
       averageMessagesPerConversation: avgMessages,
+    };
+  }
+  
+  // Clinic-specific operations
+  async getChatbotThreadsByClinic(clinicId: string): Promise<(ChatbotThread & { messageCount: number })[]> {
+    const threads = await db
+      .select()
+      .from(chatbotThreads)
+      .where(eq(chatbotThreads.clinicId, clinicId))
+      .orderBy(desc(chatbotThreads.createdAt));
+    
+    const threadsWithCount = await Promise.all(
+      threads.map(async (thread) => {
+        const [msgCount] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(chatbotMessages)
+          .where(eq(chatbotMessages.threadId, thread.id));
+        return {
+          ...thread,
+          messageCount: Number(msgCount?.count || 0),
+        };
+      })
+    );
+    
+    return threadsWithCount;
+  }
+  
+  async getClinicAnalytics(clinicId: string) {
+    const [totalBookingsCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(patientBookings)
+      .where(eq(patientBookings.clinicId, clinicId));
+    
+    const [pendingCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(patientBookings)
+      .where(and(
+        eq(patientBookings.clinicId, clinicId),
+        eq(patientBookings.status, "pending")
+      ));
+    
+    const [confirmedCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(patientBookings)
+      .where(and(
+        eq(patientBookings.clinicId, clinicId),
+        eq(patientBookings.status, "confirmed")
+      ));
+    
+    const [conversationsCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(chatbotThreads)
+      .where(eq(chatbotThreads.clinicId, clinicId));
+    
+    // Count messages for this clinic's threads
+    const clinicThreads = await db
+      .select({ id: chatbotThreads.id })
+      .from(chatbotThreads)
+      .where(eq(chatbotThreads.clinicId, clinicId));
+    
+    let totalMessages = 0;
+    for (const thread of clinicThreads) {
+      const [msgCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(chatbotMessages)
+        .where(eq(chatbotMessages.threadId, thread.id));
+      totalMessages += Number(msgCount?.count || 0);
+    }
+    
+    return {
+      totalBookings: Number(totalBookingsCount?.count || 0),
+      pendingBookings: Number(pendingCount?.count || 0),
+      confirmedBookings: Number(confirmedCount?.count || 0),
+      totalConversations: Number(conversationsCount?.count || 0),
+      totalMessages,
     };
   }
 }

@@ -113,9 +113,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/clinics", isAuthenticated, async (req, res) => {
+  app.post("/api/clinics", isAuthenticated, async (req: any, res) => {
     try {
-      const clinicData = insertClinicSchema.parse(req.body);
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const clinicData = insertClinicSchema.parse({
+        ...req.body,
+        ownerId: userId,
+      });
       const clinic = await storage.createClinic(clinicData);
       res.json(clinic);
     } catch (error) {
@@ -420,6 +428,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching chatbot analytics:", error);
       res.status(500).json({ message: "Failed to fetch chatbot analytics" });
+    }
+  });
+  
+  // Get specific clinic by ID (authenticated - returns full clinic data for owner)
+  app.get("/api/clinics/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const clinic = await storage.getClinicById(req.params.id);
+      if (!clinic) {
+        return res.status(404).json({ message: "Clinic not found" });
+      }
+      
+      // Check ownership
+      if (clinic.ownerId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      res.json(clinic);
+    } catch (error) {
+      console.error("Error fetching clinic:", error);
+      res.status(500).json({ message: "Failed to fetch clinic" });
+    }
+  });
+  
+  // Get clinic-specific analytics
+  app.get("/api/analytics/clinic/:clinicId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const clinic = await storage.getClinicById(req.params.clinicId);
+      if (!clinic || clinic.ownerId !== userId) {
+        return res.status(403).json({ message: "Access denied to this clinic" });
+      }
+      
+      const analytics = await storage.getClinicAnalytics(req.params.clinicId);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching clinic analytics:", error);
+      res.status(500).json({ message: "Failed to fetch clinic analytics" });
+    }
+  });
+  
+  // Get chatbot threads for a specific clinic
+  app.get("/api/chatbot/threads/clinic/:clinicId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const clinic = await storage.getClinicById(req.params.clinicId);
+      if (!clinic || clinic.ownerId !== userId) {
+        return res.status(403).json({ message: "Access denied to this clinic" });
+      }
+      
+      const threads = await storage.getChatbotThreadsByClinic(req.params.clinicId);
+      res.json(threads);
+    } catch (error) {
+      console.error("Error fetching clinic chat threads:", error);
+      res.status(500).json({ message: "Failed to fetch chat threads" });
     }
   });
 
