@@ -34,6 +34,7 @@ DentalLeadGenius is an AI-powered lead generation platform designed for dental c
 - Demo page displays without admin sidebar for all users
 - Route matching handles all URL variations: `/demo`, `/demo/`, `/demo?params`
 - Form submission now redirects immediately to demo (same tab, no popup)
+- Fixed "Start Free Trial" buttons: Changed from Wouter `<Link>` to native `<a>` tags for `/api/login` URLs to prevent SPA 404 errors
 
 ## Instant Demo Flow
 
@@ -49,6 +50,18 @@ DentalLeadGenius is an AI-powered lead generation platform designed for dental c
 - **Public demo page**: `/demo` - Interactive demo with tabs (Overview, Leads, Outreach, AI Chatbot, Multi-Clinic)
 - **Demo link in emails**: Points to `/demo` path
 - **Clinic pages**: `/clinic/:slug` - Patient-facing pages with chatbot
+- **Login/Auth**: `/api/login` - Server-side route (NOT a SPA route)
+
+### Demo Buttons Reference
+All these buttons should work without 404 errors:
+- **Landing page navbar**: "Demo" link, "View Demo" button → `/demo`
+- **Landing page hero**: "Get Instant Access" → Opens modal → Redirects to `/demo`
+- **Landing page CTA**: "Get Instant Access" → Opens modal
+- **Demo page header**: "Login to Dashboard" → `/api/login` (native `<a>` tag)
+- **Demo page hero**: "Start Free Trial" → `/api/login` (native `<a>` tag)
+- **Demo page bottom**: "Start Free Trial" → `/api/login` (native `<a>` tag)
+
+**Important**: Buttons linking to `/api/login` MUST use native `<a>` tags (not Wouter `<Link>`), because `/api/login` is a server route for authentication, not a SPA page.
 
 ### Where Demo Link is Configured
 - **Email generation**: `server/routes.ts` - POST `/api/bookings` endpoint (lines 198-237)
