@@ -1,0 +1,81 @@
+Update the chat widget behavior to fix the auto-closing issue.
+
+Current problem:
+Right now the chatbot widget is minimizing/closing by itself while the user is still reading the messages. This is bad UX because the clinic owner or visitor cannot finish reading the conversation before it auto-hides.
+
+Required behavior:
+
+1. Initial auto-open + auto-minimize (one time only):
+
+When the page loads, the chat widget should auto-open after 10 seconds to grab attention.
+
+After showing the open chat for a short time (e.g. 5–10 seconds), it may auto-minimize only once, before the user interacts with it.
+
+This “auto-minimize” should never run again after the user has interacted.
+
+
+
+2. User-controlled after interaction:
+
+As soon as the user clicks the chat header, message area, or types a message, set a flag like hasUserInteracted = true.
+
+After hasUserInteracted is true, the chat widget must never auto-close or auto-minimize based on timers or scrolling.
+
+The chat should stay fully open while the user is reading or typing.
+
+
+
+3. Close only by user action:
+
+The widget should only minimize/close when the user explicitly taps/clicks:
+
+a close “X” icon, or
+
+a minimize button / header toggle.
+
+
+Do not auto-close when:
+
+new messages arrive,
+
+the user scrolls the page, or
+
+any background timer fires.
+
+
+
+
+4. Implementation details:
+
+In the React component that renders the chat widget, introduce two pieces of state, for example:
+
+isOpen (boolean) – whether the chat window is open or minimized.
+
+hasUserInteracted (boolean) – whether the user has interacted with the chat at least once.
+
+
+The auto-open + auto-minimize timer should run only if hasUserInteracted is false.
+
+Once the user interacts, set hasUserInteracted = true and cancel/ignore any auto-minimize timers.
+
+Make sure the open/closed state is not reset just because a new message is added to the conversation.
+
+
+
+5. Testing:
+
+Test on mobile and desktop:
+
+Open the page → wait 10 seconds → chat opens → after a few seconds it minimizes automatically.
+
+Tap the widget to open it → read messages for 30+ seconds without touching anything → it must stay open.
+
+Scroll the page while chat is open → it must stay open.
+
+Only when the user manually taps the close/minimize control should it collapse.
+
+
+
+
+
+Update any CSS if needed so the minimized bubble stays small and non-intrusive while the open chat window is easy to read.

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageCircle, X, ChevronDown, Send, Loader2 } from "lucide-react";
+import { ChevronDown, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,7 +23,7 @@ interface ChatbotWidgetProps {
 
 const STORAGE_KEY = "chatbot_manually_closed";
 const AUTO_OPEN_DELAY = 10000;
-const AUTO_MINIMIZE_DELAY = 10000;
+const AUTO_MINIMIZE_DELAY = 8000;
 
 export function ChatbotWidget({
   type,
@@ -33,6 +33,7 @@ export function ChatbotWidget({
 }: ChatbotWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [message, setMessage] = useState("");
   const [threadId, setThreadId] = useState<string | null>(null);
   const [showGreeting, setShowGreeting] = useState(false);
@@ -56,6 +57,20 @@ export function ChatbotWidget({
     }
   }, []);
 
+  const cancelAutoMinimizeTimer = useCallback(() => {
+    if (autoMinimizeTimerRef.current) {
+      clearTimeout(autoMinimizeTimerRef.current);
+      autoMinimizeTimerRef.current = null;
+    }
+  }, []);
+
+  const markUserInteracted = useCallback(() => {
+    if (!hasUserInteracted) {
+      setHasUserInteracted(true);
+      cancelAutoMinimizeTimer();
+    }
+  }, [hasUserInteracted, cancelAutoMinimizeTimer]);
+
   // Auto-open after 10 seconds (only once, and only if not manually closed)
   useEffect(() => {
     if (!hasAutoOpened && !wasManuallyClosedThisSession()) {
@@ -73,20 +88,20 @@ export function ChatbotWidget({
     };
   }, [hasAutoOpened, wasManuallyClosedThisSession]);
 
-  // Auto-minimize after 10 seconds of being open (only after auto-open)
+  // Auto-minimize after a few seconds (only once, only if user hasn't interacted)
   useEffect(() => {
-    if (isOpen && hasAutoOpened && !wasManuallyClosedThisSession()) {
+    if (isOpen && hasAutoOpened && !hasUserInteracted && !wasManuallyClosedThisSession()) {
       autoMinimizeTimerRef.current = setTimeout(() => {
-        setIsOpen(false);
+        if (!hasUserInteracted) {
+          setIsOpen(false);
+        }
       }, AUTO_MINIMIZE_DELAY);
     }
 
     return () => {
-      if (autoMinimizeTimerRef.current) {
-        clearTimeout(autoMinimizeTimerRef.current);
-      }
+      cancelAutoMinimizeTimer();
     };
-  }, [isOpen, hasAutoOpened, wasManuallyClosedThisSession]);
+  }, [isOpen, hasAutoOpened, hasUserInteracted, wasManuallyClosedThisSession, cancelAutoMinimizeTimer]);
 
   // Fetch messages for the thread
   const { data: messages = [], isLoading } = useQuery<Message[]>({
@@ -138,6 +153,7 @@ export function ChatbotWidget({
 
   const handleSend = () => {
     if (!message.trim()) return;
+    markUserInteracted();
     sendMessageMutation.mutate(message);
     setMessage("");
   };
@@ -149,7 +165,17 @@ export function ChatbotWidget({
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    markUserInteracted();
+    setMessage(e.target.value);
+  };
+
+  const handleInputFocus = () => {
+    markUserInteracted();
+  };
+
   const handleOpen = () => {
+    markUserInteracted();
     setIsOpen(true);
     setShowGreeting(true);
   };
@@ -157,9 +183,15 @@ export function ChatbotWidget({
   const handleClose = () => {
     setIsOpen(false);
     setManuallyClosed();
-    if (autoMinimizeTimerRef.current) {
-      clearTimeout(autoMinimizeTimerRef.current);
-    }
+    cancelAutoMinimizeTimer();
+  };
+
+  const handleChatAreaClick = () => {
+    markUserInteracted();
+  };
+
+  const handleHeaderClick = () => {
+    markUserInteracted();
   };
 
   // Minimized bubble state
@@ -195,11 +227,13 @@ export function ChatbotWidget({
         md:bottom-6 md:right-6"
       style={{ maxHeight: "calc(100vh - 100px)" }}
       data-testid="chatbot-widget"
+      onClick={handleChatAreaClick}
     >
       {/* Header */}
       <div
-        className="p-3 sm:p-4 rounded-t-2xl flex items-center justify-between text-white flex-shrink-0"
+        className="p-3 sm:p-4 rounded-t-2xl flex items-center justify-between text-white flex-shrink-0 cursor-pointer"
         style={{ background: `linear-gradient(135deg, ${brandColor}, ${brandColor}dd)` }}
+        onClick={handleHeaderClick}
       >
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9 sm:h-10 sm:w-10 border-2 border-white/30">
@@ -219,7 +253,10 @@ export function ChatbotWidget({
         <button
           type="button"
           className="flex items-center justify-center h-10 w-10 rounded-full text-white hover:bg-white/20 active:bg-white/30 transition-colors cursor-pointer"
-          onClick={handleClose}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleClose();
+          }}
           data-testid="button-close-chatbot"
           aria-label="Minimize chat"
         >
@@ -228,7 +265,11 @@ export function ChatbotWidget({
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-3 sm:p-4 overflow-y-auto" ref={scrollRef}>
+      <ScrollArea 
+        className="flex-1 p-3 sm:p-4 overflow-y-auto" 
+        ref={scrollRef}
+        onClick={handleChatAreaClick}
+      >
         <div className="space-y-4">
           {isLoading && (
             <div className="flex justify-center py-8">
@@ -291,7 +332,8 @@ export function ChatbotWidget({
           <Input
             placeholder="Type your message..."
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={handleInputChange}
+            onFocus={handleInputFocus}
             onKeyPress={handleKeyPress}
             className="flex-1 rounded-full text-sm"
             data-testid="input-chatbot-message"
