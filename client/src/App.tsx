@@ -39,7 +39,19 @@ function Router() {
     );
   }
 
-  // Public routes (no auth required)
+  // Public routes that work for BOTH authenticated and unauthenticated users
+  // These pages should always show without the admin sidebar
+  if (location === "/demo" || location.startsWith("/clinic/")) {
+    return (
+      <Switch>
+        <Route path="/demo" component={Demo} />
+        <Route path="/clinic/:slug" component={ClinicPage} />
+        <Route component={NotFound} />
+      </Switch>
+    );
+  }
+
+  // Landing page for unauthenticated users
   if (!isAuthenticated) {
     return (
       <Switch>
@@ -51,7 +63,7 @@ function Router() {
     );
   }
 
-  // Authenticated admin routes
+  // Authenticated admin routes with sidebar
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
@@ -75,7 +87,6 @@ function Router() {
               <Route path="/admin/clinics" component={AdminClinics} />
               <Route path="/admin/clinics/:id" component={AdminClinicDashboard} />
               <Route path="/admin/patient-bookings" component={AdminPatientBookings} />
-              <Route path="/clinic/:slug" component={ClinicPage} />
               <Route component={NotFound} />
             </Switch>
           </main>

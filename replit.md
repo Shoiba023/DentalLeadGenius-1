@@ -28,6 +28,32 @@ DentalLeadGenius is an AI-powered lead generation platform designed for dental c
 - Updated chatbot prompts to emphasize instant access (no scheduling language)
 - Chatbot no longer auto-closes while user is reading messages
 
+### Demo Route Fix (November 2024)
+- Fixed 404 error when clicking demo link from email
+- `/demo` route now works for both authenticated and unauthenticated users
+- Demo page displays without admin sidebar for all users
+
+## Instant Demo Flow
+
+### How It Works
+1. **User submits form** → Landing page "Get Instant Access" button opens modal
+2. **Required fields**: Clinic name, owner name, email (any domain accepted)
+3. **Optional fields**: Phone, state, notes
+4. **Instant redirect** → Success screen appears with "Access Demo Now" button
+5. **Demo link sent** → Email logged to server console (configure Resend for actual delivery)
+6. **User clicks link** → Opens `/demo` page with interactive platform preview
+
+### Key Routes
+- **Public demo page**: `/demo` - Interactive demo with tabs (Overview, Leads, Outreach, AI Chatbot, Multi-Clinic)
+- **Demo link in emails**: Points to `/demo` path
+- **Clinic pages**: `/clinic/:slug` - Patient-facing pages with chatbot
+
+### Where Demo Link is Configured
+- **Email generation**: `server/routes.ts` - POST `/api/bookings` endpoint (lines 198-237)
+- **URL construction**: Uses `req.protocol` and `req.get('host')` for correct production URLs
+- **Demo page component**: `client/src/pages/demo.tsx`
+- **Routing**: `client/src/App.tsx` - handles `/demo` route for all users
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
