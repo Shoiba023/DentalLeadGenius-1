@@ -244,8 +244,8 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Chatbot Widget - Auto-opens after 2.5 seconds */}
-      <ChatbotWidget type="sales" autoOpen autoOpenDelay={2500} />
+      {/* Chatbot Widget - Auto-opens after 10 seconds, auto-minimizes after another 10 seconds */}
+      <ChatbotWidget type="sales" />
 
       {/* Demo Booking Modal */}
       <DemoBookingModal open={showDemoModal} onOpenChange={setShowDemoModal} />

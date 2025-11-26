@@ -1,0 +1,80 @@
+
+Prompt for Replit Agent (Chatbot size + auto-minimize):
+
+Update the DentalLeadGenius / Dental Patient AI chatbot widget behavior and styling:
+
+1. Chatbot size & position
+
+Place the chatbot in the bottom-right corner of the screen.
+
+Default expanded size (when open):
+
+Desktop: max-width around 380px, max-height around 60–65% of viewport height.
+
+Mobile: width 100% of screen, height around 55–60% of viewport height, anchored to the bottom (so user can still see page behind).
+
+
+Add enough margin from the edges so it doesn’t hide important buttons.
+
+
+
+2. Auto-open then auto-minimize
+
+On first page load:
+
+Wait 10 seconds, then auto-open the chatbot once.
+
+Show a friendly greeting message as it opens.
+
+
+After it has been open for about 10 seconds, automatically minimize it to a small chat bubble in the bottom-right corner.
+
+When minimized, only a small round/square bubble with the assistant avatar + short label like “Chat with us” should be visible, so the user can freely read the website.
+
+
+
+3. User control
+
+User can click the bubble to open the full chat window any time.
+
+In the open state, show a clear close / minimize icon (X or ˅) that minimizes back to the small bubble.
+
+Once the user manually closes/minimizes the chat, do not auto-open again on that visit (use a simple flag in localStorage or a React state).
+
+
+
+4. Do NOT block the page
+
+Make sure the chatbot never covers the whole page or prevents scrolling the main content.
+
+Dentist testimonials, text and other sections must remain readable behind/around the chat.
+
+Check both desktop and mobile preview to guarantee that the user can scroll and interact with the website while the chatbot is open or minimized.
+
+
+
+5. Code notes
+
+Centralize the widget logic in the existing ChatbotWidget (or equivalent) component.
+
+Implement the 10s timers with setTimeout (cleaned up on unmount).
+
+Make sure styles are in Tailwind or the project’s existing CSS system.
+
+After changes, run the app and verify:
+
+Auto-open after 10s
+
+Auto-minimize after 10s
+
+Bubble re-opens on click
+
+Close/minimize buttons work
+
+Layout looks good on mobile and desktop.
+
+
+
+
+
+Please implement these changes now and update any related files (components, CSS) so the chatbot behaves exactly as described.
