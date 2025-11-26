@@ -62,6 +62,31 @@ Preferred communication style: Simple, everyday language.
 - Patient chatbot conversations (clinic-specific prompts)
 - Outreach message generation
 
+### Chatbot Flow
+
+**Overview**: The chatbot system provides two types of AI-powered conversational interfaces:
+1. **Sales Chatbot** - Appears on the homepage to convert visitors into demo bookings
+2. **Patient Chatbot** - Appears on clinic pages to help patients book appointments
+
+**Technical Flow**:
+1. User opens chat widget (floating button in bottom-right corner)
+2. Widget sends initial greeting message to `/api/chatbot/send`
+3. Backend creates a new `chatbot_thread` record in database
+4. User's message is saved to `chatbot_messages` table
+5. Backend fetches conversation history and sends to OpenAI API
+6. AI response is generated using GPT-4o with specialized system prompts:
+   - Sales chatbot: Trained to highlight DentalLeadGenius features and collect demo booking info
+   - Patient chatbot: Trained to answer dental questions and collect appointment info
+7. AI response is saved to `chatbot_messages` table
+8. Response is returned to frontend and displayed in chat window
+9. Frontend periodically refetches messages via `/api/chatbot/messages/:threadId`
+
+**Key Components**:
+- Frontend: `client/src/components/chatbot-widget.tsx`
+- Backend routes: `server/routes.ts` (`/api/chatbot/send`, `/api/chatbot/messages/:threadId`)
+- AI logic: `server/openai.ts` (`generateChatResponse` function)
+- Database: `chatbot_threads` and `chatbot_messages` tables
+
 ### Data Storage Solutions
 
 **Database**: PostgreSQL accessed via Neon serverless driver with WebSocket support

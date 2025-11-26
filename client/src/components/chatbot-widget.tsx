@@ -62,13 +62,15 @@ export function ChatbotWidget({
         clinicId,
         message: content,
       });
-      return response as unknown as { threadId: string; message: string };
+      const data = await response.json();
+      return data as { threadId: string; message: string };
     },
     onSuccess: (data) => {
       if (data.threadId && !threadId) {
         setThreadId(data.threadId);
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/chatbot/messages"] });
+      // Invalidate with the specific thread to refetch messages
+      queryClient.invalidateQueries({ queryKey: ["/api/chatbot/messages", data.threadId] });
     },
   });
 
