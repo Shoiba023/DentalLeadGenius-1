@@ -166,6 +166,137 @@ export default function AdminAnalytics() {
           </Card>
         </div>
       )}
+
+      {/* Chatbot Analytics Section */}
+      <Separator className="my-8" />
+      
+      <div>
+        <h2 className="text-2xl font-bold mb-2" data-testid="text-chatbot-section-title">
+          Chatbot Performance
+        </h2>
+        <p className="text-muted-foreground mb-6">
+          Track AI chatbot conversations and engagement metrics
+        </p>
+      </div>
+
+      {chatbotLoading ? (
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <Skeleton className="h-20 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card data-testid="card-total-conversations">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Conversations</CardTitle>
+              <Bot className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold" data-testid="stat-total-conversations">
+                {chatbotAnalytics?.totalConversations || 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                AI chat sessions started
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-sales-chats">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Sales Chats</CardTitle>
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-600" data-testid="stat-sales-chats">
+                {chatbotAnalytics?.salesConversations || 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Homepage lead conversations
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-patient-chats">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Patient Chats</CardTitle>
+              <UserCheck className="h-5 w-5 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-600" data-testid="stat-patient-chats">
+                {chatbotAnalytics?.patientConversations || 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Clinic page conversations
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-total-messages">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Messages</CardTitle>
+              <MessagesSquare className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold" data-testid="stat-total-messages">
+                {chatbotAnalytics?.totalMessages || 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Avg {chatbotAnalytics?.averageMessagesPerConversation || 0} per chat
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-patient-bookings">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Patient Bookings</CardTitle>
+              <Calendar className="h-5 w-5 text-purple-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-purple-600" data-testid="stat-patient-bookings">
+                {chatbotAnalytics?.patientBookingsFromChat || 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Appointments from chatbot
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-user-messages">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">User Messages</CardTitle>
+              <MessageSquare className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold" data-testid="stat-user-messages">
+                {chatbotAnalytics?.userMessages || 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Messages from visitors
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-ai-responses">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">AI Responses</CardTitle>
+              <Bot className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold" data-testid="stat-ai-responses">
+                {chatbotAnalytics?.aiMessages || 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                AI assistant replies
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
