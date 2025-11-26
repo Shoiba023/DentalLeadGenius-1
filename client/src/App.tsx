@@ -39,9 +39,12 @@ function Router() {
     );
   }
 
+  // Helper to check if current path matches demo route (handles /demo, /demo/, /demo?params)
+  const isDemoRoute = location === "/demo" || location.startsWith("/demo/") || location.startsWith("/demo?");
+  
   // Public routes that work for BOTH authenticated and unauthenticated users
   // These pages should always show without the admin sidebar
-  if (location === "/demo" || location.startsWith("/clinic/")) {
+  if (isDemoRoute || location.startsWith("/clinic/")) {
     return (
       <Switch>
         <Route path="/demo" component={Demo} />
@@ -87,6 +90,7 @@ function Router() {
               <Route path="/admin/clinics" component={AdminClinics} />
               <Route path="/admin/clinics/:id" component={AdminClinicDashboard} />
               <Route path="/admin/patient-bookings" component={AdminPatientBookings} />
+              <Route path="/demo" component={Demo} />
               <Route component={NotFound} />
             </Switch>
           </main>

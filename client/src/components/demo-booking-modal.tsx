@@ -58,11 +58,12 @@ export function DemoBookingModal({ open, onOpenChange }: DemoBookingModalProps) 
       return await apiRequest("POST", "/api/bookings", data);
     },
     onSuccess: () => {
-      setSubmitted(true);
       toast({
         title: "Instant Access Granted!",
-        description: "Your demo link is ready - check your email or click below.",
+        description: "Redirecting you to the demo...",
       });
+      // Immediately redirect to demo page in same tab
+      window.location.href = DEMO_URL;
     },
     onError: (error: Error) => {
       toast({
