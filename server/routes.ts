@@ -194,12 +194,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Booking routes
+  // Booking routes - INSTANT DEMO DELIVERY
   app.post("/api/bookings", async (req, res) => {
     try {
       const bookingData = insertBookingSchema.parse(req.body);
       const booking = await storage.createBooking(bookingData);
-      res.json(booking);
+      
+      // Generate demo URL using request origin for correct production URLs
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+      const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:5000';
+      const baseUrl = `${protocol}://${host}`;
+      const demoUrl = `${baseUrl}/demo`;
+      
+      // Log the email that would be sent (email integration not configured)
+      console.log("=== INSTANT DEMO EMAIL ===");
+      console.log(`To: ${bookingData.email}`);
+      console.log(`Subject: Your DentalLeadGenius Demo Access is Ready!`);
+      console.log(`---`);
+      console.log(`Hi ${bookingData.ownerName},`);
+      console.log(``);
+      console.log(`Thank you for your interest in DentalLeadGenius!`);
+      console.log(``);
+      console.log(`Your instant demo access is ready. Click below to explore the platform:`);
+      console.log(`Demo Link: ${demoUrl}`);
+      console.log(``);
+      console.log(`Clinic: ${bookingData.clinicName}`);
+      console.log(`State: ${bookingData.state || 'Not specified'}`);
+      console.log(``);
+      console.log(`No scheduling needed - explore at your own pace!`);
+      console.log(``);
+      console.log(`Best regards,`);
+      console.log(`The DentalLeadGenius Team`);
+      console.log("=== END EMAIL ===");
+      
+      res.json({ ...booking, demoUrl });
     } catch (error) {
       console.error("Error creating booking:", error);
       if (error instanceof z.ZodError) {

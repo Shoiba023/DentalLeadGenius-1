@@ -110,13 +110,13 @@ export const insertClinicUserSchema = createInsertSchema(clinicUsers).omit({
 export type InsertClinicUser = z.infer<typeof insertClinicUserSchema>;
 export type ClinicUser = typeof clinicUsers.$inferSelect;
 
-// Demo bookings table
+// Demo bookings table - INSTANT DELIVERY (minimal required fields)
 export const bookings = pgTable("bookings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clinicName: text("clinic_name").notNull(),
   ownerName: text("owner_name").notNull(),
   email: text("email").notNull(),
-  phone: text("phone").notNull(),
+  phone: text("phone"), // Optional - instant access doesn't require phone
   state: text("state"),
   preferredTime: text("preferred_time"),
   notes: text("notes"),

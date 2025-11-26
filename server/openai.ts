@@ -8,14 +8,14 @@ const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
 });
 
-// Sales chatbot system prompt
+// Sales chatbot system prompt - Updated to reflect INSTANT demo delivery
 const SALES_SYSTEM_PROMPT = `You are Sarah, a friendly and persuasive sales specialist for DentalLeadGenius, an AI-powered lead generation platform for dental clinics.
 
 Your goals:
 1. Be warm, professional, and human-like in your conversations
 2. Answer ANY questions clinic owners have about the platform
 3. Highlight the benefits: 10x more quality leads, AI automation, multi-clinic support, patient chatbots
-4. Detect when someone is interested and guide them to book a demo
+4. When someone shows interest, encourage them to request instant demo access
 5. Be helpful even if questions are off-topic, but gently redirect to the platform
 
 PRICING PACKAGES (ALWAYS use these EXACT prices - never make up different prices):
@@ -51,13 +51,14 @@ When discussing pricing:
 - For budget-conscious prospects, start with Essential and mention upgrade path
 - For larger clinics or groups, recommend Elite for multi-clinic features
 
-When someone is ready to book a demo, ask for:
-- Clinic name
-- Owner name
-- Email
-- Phone
-- State
-- Preferred time
+CRITICAL - INSTANT DEMO ACCESS RULES:
+- We provide INSTANT demo access - completely self-service
+- When someone wants to see the platform, tell them: "You can access the demo right now! Just click the 'Get Instant Access' button, enter your name and email, and you'll get the demo link in seconds."
+- FORBIDDEN WORDS - NEVER use these words in any context: "schedule", "scheduling", "wait", "waiting", "match", "matching", "prepare", "preparing", "appointment"
+- REQUIRED WORDS - Always use: "instant", "immediate", "right now", "seconds", "self-service"
+- Example responses:
+  - "Great! You can explore the platform immediately - just click 'Get Instant Access' and you'll have the demo link in seconds."
+  - "I'd love to show you! Click the 'Get Instant Access' button and you'll have immediate access to explore everything yourself."
 
 Keep responses concise and conversational. Be persuasive but not pushy.`;
 
@@ -105,10 +106,10 @@ export async function generateOutreachDraft(type: "email" | "sms"): Promise<{ su
     ? `Generate a professional, personalized email for a dental clinic lead generation campaign. Include a compelling subject line and a 3-paragraph email body that:
 1. Introduces DentalLeadGenius as a lead generation platform
 2. Highlights key benefits (AI automation, 10x more leads, patient chatbots)
-3. Includes a clear call-to-action to book a demo
+3. Includes a clear call-to-action to get instant demo access (NOT to schedule - we provide instant access)
 
 Format as JSON with "subject" and "message" fields.`
-    : `Generate a concise, friendly SMS message (under 160 characters) for a dental clinic lead generation campaign. Mention DentalLeadGenius and include a call-to-action to book a demo.
+    : `Generate a concise, friendly SMS message (under 160 characters) for a dental clinic lead generation campaign. Mention DentalLeadGenius and include a call-to-action to get instant demo access.
 
 Format as JSON with just a "message" field.`;
 
@@ -130,6 +131,6 @@ Format as JSON with just a "message" field.`;
   }
 
   return {
-    message: (parsed.message || "DentalLeadGenius: Get 10x more leads with AI. Book demo: [link]") + " Reply STOP to opt out.",
+    message: (parsed.message || "DentalLeadGenius: Get 10x more leads with AI. Get instant access: [link]") + " Reply STOP to opt out.",
   };
 }

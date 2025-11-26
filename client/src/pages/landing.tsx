@@ -1,20 +1,101 @@
-import { MessageSquare, Users, Building2, BarChart3, Phone, Calendar } from "lucide-react";
+import { MessageSquare, Users, Building2, BarChart3, Phone, Calendar, Play, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChatbotWidget } from "@/components/chatbot-widget";
 import { DemoBookingModal } from "@/components/demo-booking-modal";
 import { useState } from "react";
+import { Link } from "wouter";
 import { SiWhatsapp } from "react-icons/si";
 import heroImage from "@assets/generated_images/modern_dental_clinic_hero_image.png";
 
 export default function Landing() {
   const [showDemoModal, setShowDemoModal] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const ADMIN_WHATSAPP = "1234567890"; // Replace with actual admin WhatsApp
   const ADMIN_PHONE = "1234567890"; // Replace with actual admin phone
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Navbar */}
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-6">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center gap-8">
+              <Link href="/">
+                <span className="text-xl font-bold cursor-pointer" data-testid="link-logo">
+                  DentalLeadGenius
+                </span>
+              </Link>
+              <nav className="hidden md:flex items-center gap-6">
+                <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  Features
+                </a>
+                <a href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  Testimonials
+                </a>
+                <Link href="/demo">
+                  <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                    Demo
+                  </span>
+                </Link>
+              </nav>
+            </div>
+            
+            <div className="hidden md:flex items-center gap-3">
+              <Button variant="outline" asChild data-testid="button-view-demo-nav">
+                <Link href="/demo">
+                  <Play className="h-4 w-4 mr-2" />
+                  View Demo
+                </Link>
+              </Button>
+              <Button onClick={() => setShowDemoModal(true)} data-testid="button-get-access-nav">
+                Get Instant Access
+              </Button>
+            </div>
+
+            {/* Mobile menu button */}
+            <button
+              className="md:hidden p-2"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              data-testid="button-mobile-menu"
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+          </div>
+
+          {/* Mobile menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden py-4 border-t">
+              <nav className="flex flex-col gap-4">
+                <a href="#features" className="text-sm" onClick={() => setMobileMenuOpen(false)}>
+                  Features
+                </a>
+                <a href="#testimonials" className="text-sm" onClick={() => setMobileMenuOpen(false)}>
+                  Testimonials
+                </a>
+                <Link href="/demo">
+                  <span className="text-sm cursor-pointer" onClick={() => setMobileMenuOpen(false)}>
+                    Demo
+                  </span>
+                </Link>
+                <div className="flex flex-col gap-2 pt-2">
+                  <Button variant="outline" asChild>
+                    <Link href="/demo">
+                      <Play className="h-4 w-4 mr-2" />
+                      View Demo
+                    </Link>
+                  </Button>
+                  <Button onClick={() => { setShowDemoModal(true); setMobileMenuOpen(false); }}>
+                    Get Instant Access
+                  </Button>
+                </div>
+              </nav>
+            </div>
+          )}
+        </div>
+      </header>
+
       {/* Hero Section */}
       <section className="relative min-h-[80vh] flex items-center">
         <div className="absolute inset-0 z-0">
@@ -51,7 +132,7 @@ export default function Landing() {
                   data-testid="button-book-demo-hero"
                 >
                   <Calendar className="h-5 w-5" />
-                  Book a Demo
+                  Get Instant Access
                 </Button>
                 <Button
                   size="lg"
@@ -97,7 +178,7 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section className="py-24 bg-muted/30">
+      <section id="features" className="py-24 bg-muted/30">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4" data-testid="text-features-headline">
@@ -152,7 +233,7 @@ export default function Landing() {
       </section>
 
       {/* Social Proof Section */}
-      <section className="py-24">
+      <section id="testimonials" className="py-24">
         <div className="container mx-auto px-6">
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
@@ -239,7 +320,7 @@ export default function Landing() {
             data-testid="button-book-demo-cta"
           >
             <Calendar className="h-5 w-5 mr-2" />
-            Schedule Your Free Demo
+            Get Instant Access
           </Button>
         </div>
       </section>

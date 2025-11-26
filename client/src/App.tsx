@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import Demo from "@/pages/demo";
 import AdminAnalytics from "@/pages/admin-analytics";
 import AdminLeads from "@/pages/admin-leads";
 import AdminOutreach from "@/pages/admin-outreach";
@@ -43,6 +44,7 @@ function Router() {
     return (
       <Switch>
         <Route path="/" component={Landing} />
+        <Route path="/demo" component={Demo} />
         <Route path="/clinic/:slug" component={ClinicPage} />
         <Route component={NotFound} />
       </Switch>

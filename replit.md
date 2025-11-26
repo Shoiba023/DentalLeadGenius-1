@@ -10,6 +10,23 @@ DentalLeadGenius is an AI-powered lead generation platform designed for dental c
 - **Outreach Campaigns**: Multi-channel campaigns (email, SMS, WhatsApp) with AI-generated messaging
 - **Multi-Clinic Platform**: Create and manage multiple clinic profiles with custom branding
 - **Analytics Dashboard**: Track lead metrics, conversion rates, and campaign performance
+- **Instant Demo Delivery**: No scheduling - users get immediate access to demo after form submission
+
+## Recent Changes (November 2024)
+
+### Instant Demo Delivery
+- Demo form now provides INSTANT access - no scheduling, no waiting, no manual approval
+- Users fill a minimal form (clinic name, owner name, email - phone is optional)
+- Demo link is provided immediately on form submission
+- Email delivery is logged (requires Resend integration for actual sending)
+- Accepts ANY email domain (Gmail, Yahoo, Hotmail, business emails, etc.)
+
+### UI Updates
+- Added sticky navbar to landing page with Features, Testimonials, Demo links
+- Added "View Demo" and "Get Instant Access" buttons to navbar
+- Created interactive /demo page showing platform features
+- Updated chatbot prompts to emphasize instant access (no scheduling language)
+- Chatbot no longer auto-closes while user is reading messages
 
 ## User Preferences
 
