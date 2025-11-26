@@ -411,6 +411,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch analytics" });
     }
   });
+  
+  // Chatbot Analytics route
+  app.get("/api/analytics/chatbot", isAuthenticated, async (req, res) => {
+    try {
+      const chatbotAnalytics = await storage.getChatbotAnalytics();
+      res.json(chatbotAnalytics);
+    } catch (error) {
+      console.error("Error fetching chatbot analytics:", error);
+      res.status(500).json({ message: "Failed to fetch chatbot analytics" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

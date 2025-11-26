@@ -79,6 +79,18 @@ export interface IStorage {
     won: number;
     lost: number;
   }>;
+  
+  // Chatbot Analytics
+  getChatbotAnalytics(): Promise<{
+    totalConversations: number;
+    salesConversations: number;
+    patientConversations: number;
+    totalMessages: number;
+    userMessages: number;
+    aiMessages: number;
+    patientBookingsFromChat: number;
+    averageMessagesPerConversation: number;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -284,6 +296,56 @@ export class DatabaseStorage implements IStorage {
       demosBooked: Number(demosCount?.count || 0),
       won: Number(wonCount?.count || 0),
       lost: Number(lostCount?.count || 0),
+    };
+  }
+  
+  // Chatbot Analytics
+  async getChatbotAnalytics() {
+    const [totalThreads] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(chatbotThreads);
+    
+    const [salesThreads] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(chatbotThreads)
+      .where(eq(chatbotThreads.type, "sales"));
+    
+    const [patientThreads] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(chatbotThreads)
+      .where(eq(chatbotThreads.type, "patient"));
+    
+    const [totalMsgs] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(chatbotMessages);
+    
+    const [userMsgs] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(chatbotMessages)
+      .where(eq(chatbotMessages.role, "user"));
+    
+    const [aiMsgs] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(chatbotMessages)
+      .where(eq(chatbotMessages.role, "assistant"));
+    
+    const [patientBookingsCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(patientBookings);
+    
+    const totalConversations = Number(totalThreads?.count || 0);
+    const totalMessages = Number(totalMsgs?.count || 0);
+    const avgMessages = totalConversations > 0 ? Math.round((totalMessages / totalConversations) * 10) / 10 : 0;
+    
+    return {
+      totalConversations,
+      salesConversations: Number(salesThreads?.count || 0),
+      patientConversations: Number(patientThreads?.count || 0),
+      totalMessages,
+      userMessages: Number(userMsgs?.count || 0),
+      aiMessages: Number(aiMsgs?.count || 0),
+      patientBookingsFromChat: Number(patientBookingsCount?.count || 0),
+      averageMessagesPerConversation: avgMessages,
     };
   }
 }

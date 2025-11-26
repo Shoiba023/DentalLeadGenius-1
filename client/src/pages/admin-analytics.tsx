@@ -3,8 +3,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, MessageSquare, Calendar, TrendingUp, CheckCircle2, XCircle } from "lucide-react";
+import { Users, MessageSquare, Calendar, TrendingUp, CheckCircle2, XCircle, Bot, MessagesSquare, UserCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 
 interface Analytics {
   leadsImported: number;
@@ -13,6 +14,17 @@ interface Analytics {
   demosBooked: number;
   won: number;
   lost: number;
+}
+
+interface ChatbotAnalytics {
+  totalConversations: number;
+  salesConversations: number;
+  patientConversations: number;
+  totalMessages: number;
+  userMessages: number;
+  aiMessages: number;
+  patientBookingsFromChat: number;
+  averageMessagesPerConversation: number;
 }
 
 export default function AdminAnalytics() {
@@ -34,6 +46,11 @@ export default function AdminAnalytics() {
 
   const { data: analytics, isLoading } = useQuery<Analytics>({
     queryKey: ["/api/analytics"],
+    enabled: isAuthenticated,
+  });
+  
+  const { data: chatbotAnalytics, isLoading: chatbotLoading } = useQuery<ChatbotAnalytics>({
+    queryKey: ["/api/analytics/chatbot"],
     enabled: isAuthenticated,
   });
 
