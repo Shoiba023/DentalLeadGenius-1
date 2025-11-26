@@ -9,6 +9,9 @@ import {
   chatbotMessages,
   outreachCampaigns,
   patientBookings,
+  sequences,
+  sequenceSteps,
+  sequenceEnrollments,
   type User,
   type UpsertUser,
   type Lead,
@@ -25,6 +28,12 @@ import {
   type InsertOutreachCampaign,
   type PatientBooking,
   type InsertPatientBooking,
+  type Sequence,
+  type InsertSequence,
+  type SequenceStep,
+  type InsertSequenceStep,
+  type SequenceEnrollment,
+  type InsertSequenceEnrollment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -101,6 +110,24 @@ export interface IStorage {
     totalConversations: number;
     totalMessages: number;
   }>;
+  
+  // Sequence operations
+  getAllSequences(): Promise<Sequence[]>;
+  getSequenceById(id: string): Promise<Sequence | undefined>;
+  createSequence(sequence: InsertSequence): Promise<Sequence>;
+  updateSequence(id: string, data: Partial<InsertSequence>): Promise<Sequence>;
+  deleteSequence(id: string): Promise<void>;
+  
+  // Sequence step operations
+  getSequenceSteps(sequenceId: string): Promise<SequenceStep[]>;
+  createSequenceStep(step: InsertSequenceStep): Promise<SequenceStep>;
+  updateSequenceStep(id: string, data: Partial<InsertSequenceStep>): Promise<SequenceStep>;
+  deleteSequenceStep(id: string): Promise<void>;
+  
+  // Sequence enrollment operations
+  getSequenceEnrollments(sequenceId: string): Promise<SequenceEnrollment[]>;
+  createSequenceEnrollment(enrollment: InsertSequenceEnrollment): Promise<SequenceEnrollment>;
+  updateSequenceEnrollmentStatus(id: string, status: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -432,6 +459,84 @@ export class DatabaseStorage implements IStorage {
       totalConversations: Number(conversationsCount?.count || 0),
       totalMessages,
     };
+  }
+  
+  // Sequence operations
+  async getAllSequences(): Promise<Sequence[]> {
+    return await db.select().from(sequences).orderBy(desc(sequences.createdAt));
+  }
+  
+  async getSequenceById(id: string): Promise<Sequence | undefined> {
+    const [sequence] = await db.select().from(sequences).where(eq(sequences.id, id));
+    return sequence;
+  }
+  
+  async createSequence(sequence: InsertSequence): Promise<Sequence> {
+    const [newSequence] = await db.insert(sequences).values(sequence).returning();
+    return newSequence;
+  }
+  
+  async updateSequence(id: string, data: Partial<InsertSequence>): Promise<Sequence> {
+    const [updated] = await db
+      .update(sequences)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(sequences.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async deleteSequence(id: string): Promise<void> {
+    await db.delete(sequenceSteps).where(eq(sequenceSteps.sequenceId, id));
+    await db.delete(sequenceEnrollments).where(eq(sequenceEnrollments.sequenceId, id));
+    await db.delete(sequences).where(eq(sequences.id, id));
+  }
+  
+  // Sequence step operations
+  async getSequenceSteps(sequenceId: string): Promise<SequenceStep[]> {
+    return await db
+      .select()
+      .from(sequenceSteps)
+      .where(eq(sequenceSteps.sequenceId, sequenceId))
+      .orderBy(sequenceSteps.stepOrder);
+  }
+  
+  async createSequenceStep(step: InsertSequenceStep): Promise<SequenceStep> {
+    const [newStep] = await db.insert(sequenceSteps).values(step).returning();
+    return newStep;
+  }
+  
+  async updateSequenceStep(id: string, data: Partial<InsertSequenceStep>): Promise<SequenceStep> {
+    const [updated] = await db
+      .update(sequenceSteps)
+      .set(data)
+      .where(eq(sequenceSteps.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async deleteSequenceStep(id: string): Promise<void> {
+    await db.delete(sequenceSteps).where(eq(sequenceSteps.id, id));
+  }
+  
+  // Sequence enrollment operations
+  async getSequenceEnrollments(sequenceId: string): Promise<SequenceEnrollment[]> {
+    return await db
+      .select()
+      .from(sequenceEnrollments)
+      .where(eq(sequenceEnrollments.sequenceId, sequenceId))
+      .orderBy(desc(sequenceEnrollments.enrolledAt));
+  }
+  
+  async createSequenceEnrollment(enrollment: InsertSequenceEnrollment): Promise<SequenceEnrollment> {
+    const [newEnrollment] = await db.insert(sequenceEnrollments).values(enrollment).returning();
+    return newEnrollment;
+  }
+  
+  async updateSequenceEnrollmentStatus(id: string, status: string): Promise<void> {
+    await db
+      .update(sequenceEnrollments)
+      .set({ status })
+      .where(eq(sequenceEnrollments.id, id));
   }
 }
 

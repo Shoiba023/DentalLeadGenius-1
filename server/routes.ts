@@ -5,7 +5,7 @@ import express from "express";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { generateChatResponse, generateOutreachDraft } from "./openai";
-import { insertLeadSchema, insertClinicSchema, insertBookingSchema } from "@shared/schema";
+import { insertLeadSchema, insertClinicSchema, insertBookingSchema, insertSequenceSchema, insertSequenceStepSchema, insertSequenceEnrollmentSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -495,6 +495,257 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching clinic chat threads:", error);
       res.status(500).json({ message: "Failed to fetch chat threads" });
+    }
+  });
+  
+  // ================== SEQUENCE ROUTES ==================
+  
+  // Get all sequences
+  app.get("/api/sequences", isAuthenticated, async (req, res) => {
+    try {
+      const sequences = await storage.getAllSequences();
+      res.json(sequences);
+    } catch (error) {
+      console.error("Error fetching sequences:", error);
+      res.status(500).json({ message: "Failed to fetch sequences" });
+    }
+  });
+  
+  // Get sequence by ID with steps
+  app.get("/api/sequences/:id", isAuthenticated, async (req, res) => {
+    try {
+      const sequence = await storage.getSequenceById(req.params.id);
+      if (!sequence) {
+        return res.status(404).json({ message: "Sequence not found" });
+      }
+      const steps = await storage.getSequenceSteps(req.params.id);
+      res.json({ ...sequence, steps });
+    } catch (error) {
+      console.error("Error fetching sequence:", error);
+      res.status(500).json({ message: "Failed to fetch sequence" });
+    }
+  });
+  
+  // Create a new sequence
+  app.post("/api/sequences", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const sequenceData = insertSequenceSchema.parse({
+        ...req.body,
+        ownerId: userId,
+      });
+      const sequence = await storage.createSequence(sequenceData);
+      res.json(sequence);
+    } catch (error) {
+      console.error("Error creating sequence:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid sequence data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create sequence" });
+    }
+  });
+  
+  // Update a sequence - only allow updating specific fields (not ownerId)
+  const updateSequenceSchema = z.object({
+    name: z.string().min(1).optional(),
+    description: z.string().optional(),
+    status: z.enum(["draft", "active", "paused"]).optional(),
+  });
+  
+  app.patch("/api/sequences/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Validate the update data - this excludes ownerId and other sensitive fields
+      const updateData = updateSequenceSchema.parse(req.body);
+      
+      // Verify ownership before updating
+      const existingSequence = await storage.getSequenceById(req.params.id);
+      if (!existingSequence) {
+        return res.status(404).json({ message: "Sequence not found" });
+      }
+      if (existingSequence.ownerId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const sequence = await storage.updateSequence(req.params.id, updateData);
+      res.json(sequence);
+    } catch (error) {
+      console.error("Error updating sequence:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid update data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update sequence" });
+    }
+  });
+  
+  // Delete a sequence
+  app.delete("/api/sequences/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Verify ownership before deleting
+      const existingSequence = await storage.getSequenceById(req.params.id);
+      if (!existingSequence) {
+        return res.status(404).json({ message: "Sequence not found" });
+      }
+      if (existingSequence.ownerId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      await storage.deleteSequence(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting sequence:", error);
+      res.status(500).json({ message: "Failed to delete sequence" });
+    }
+  });
+  
+  // Create a sequence step
+  app.post("/api/sequences/:id/steps", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Verify ownership of the sequence before adding a step
+      const sequence = await storage.getSequenceById(req.params.id);
+      if (!sequence) {
+        return res.status(404).json({ message: "Sequence not found" });
+      }
+      if (sequence.ownerId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const stepData = insertSequenceStepSchema.parse({
+        ...req.body,
+        sequenceId: req.params.id,
+      });
+      const step = await storage.createSequenceStep(stepData);
+      res.json(step);
+    } catch (error) {
+      console.error("Error creating sequence step:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid step data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create step" });
+    }
+  });
+  
+  // Update a sequence step - only allow updating specific fields
+  const updateSequenceStepSchema = z.object({
+    channel: z.enum(["email", "sms", "whatsapp"]).optional(),
+    subject: z.string().optional(),
+    message: z.string().optional(),
+    delayDays: z.number().int().min(0).optional(),
+    order: z.number().int().min(0).optional(),
+  });
+  
+  app.patch("/api/sequences/:sequenceId/steps/:stepId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Validate the update data
+      const updateData = updateSequenceStepSchema.parse(req.body);
+      
+      // Verify ownership of the sequence
+      const sequence = await storage.getSequenceById(req.params.sequenceId);
+      if (!sequence) {
+        return res.status(404).json({ message: "Sequence not found" });
+      }
+      if (sequence.ownerId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const step = await storage.updateSequenceStep(req.params.stepId, updateData);
+      res.json(step);
+    } catch (error) {
+      console.error("Error updating sequence step:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid update data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update step" });
+    }
+  });
+  
+  // Delete a sequence step
+  app.delete("/api/sequences/:sequenceId/steps/:stepId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Verify ownership of the sequence before deleting a step
+      const sequence = await storage.getSequenceById(req.params.sequenceId);
+      if (!sequence) {
+        return res.status(404).json({ message: "Sequence not found" });
+      }
+      if (sequence.ownerId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      await storage.deleteSequenceStep(req.params.stepId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting sequence step:", error);
+      res.status(500).json({ message: "Failed to delete step" });
+    }
+  });
+  
+  // Get sequence enrollments
+  app.get("/api/sequences/:id/enrollments", isAuthenticated, async (req, res) => {
+    try {
+      const enrollments = await storage.getSequenceEnrollments(req.params.id);
+      res.json(enrollments);
+    } catch (error) {
+      console.error("Error fetching enrollments:", error);
+      res.status(500).json({ message: "Failed to fetch enrollments" });
+    }
+  });
+  
+  // Enroll a lead in a sequence
+  app.post("/api/sequences/:id/enroll", isAuthenticated, async (req, res) => {
+    try {
+      const enrollmentData = insertSequenceEnrollmentSchema.parse({
+        sequenceId: req.params.id,
+        leadId: req.body.leadId,
+        status: "active",
+        currentStepOrder: 0,
+      });
+      const enrollment = await storage.createSequenceEnrollment(enrollmentData);
+      res.json(enrollment);
+    } catch (error) {
+      console.error("Error enrolling lead:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid enrollment data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to enroll lead" });
+    }
+  });
+  
+  // Update enrollment status
+  app.patch("/api/enrollments/:id/status", isAuthenticated, async (req, res) => {
+    try {
+      await storage.updateSequenceEnrollmentStatus(req.params.id, req.body.status);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating enrollment status:", error);
+      res.status(500).json({ message: "Failed to update status" });
     }
   });
 

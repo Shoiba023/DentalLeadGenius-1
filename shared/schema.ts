@@ -217,6 +217,68 @@ export const insertPatientBookingSchema = createInsertSchema(patientBookings).om
 export type InsertPatientBooking = z.infer<typeof insertPatientBookingSchema>;
 export type PatientBooking = typeof patientBookings.$inferSelect;
 
+// Automated follow-up sequences table
+export const sequences = pgTable("sequences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  status: text("status").default("draft").notNull(), // draft, active, paused
+  ownerId: varchar("owner_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSequenceSchema = createInsertSchema(sequences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSequence = z.infer<typeof insertSequenceSchema>;
+export type Sequence = typeof sequences.$inferSelect;
+
+// Sequence steps table (individual steps in a sequence)
+export const sequenceSteps = pgTable("sequence_steps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sequenceId: varchar("sequence_id").notNull().references(() => sequences.id),
+  stepOrder: integer("step_order").notNull(),
+  channel: text("channel").notNull(), // email, sms
+  subject: text("subject"), // for email
+  message: text("message").notNull(),
+  delayDays: integer("delay_days").default(0).notNull(), // days to wait after previous step
+  delayHours: integer("delay_hours").default(0).notNull(), // hours to wait after previous step
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSequenceStepSchema = createInsertSchema(sequenceSteps).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSequenceStep = z.infer<typeof insertSequenceStepSchema>;
+export type SequenceStep = typeof sequenceSteps.$inferSelect;
+
+// Sequence enrollments table (tracks leads enrolled in sequences)
+export const sequenceEnrollments = pgTable("sequence_enrollments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sequenceId: varchar("sequence_id").notNull().references(() => sequences.id),
+  leadId: varchar("lead_id").notNull().references(() => leads.id),
+  currentStepOrder: integer("current_step_order").default(0).notNull(),
+  status: text("status").default("active").notNull(), // active, paused, completed, cancelled
+  nextSendAt: timestamp("next_send_at"),
+  enrolledAt: timestamp("enrolled_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const insertSequenceEnrollmentSchema = createInsertSchema(sequenceEnrollments).omit({
+  id: true,
+  enrolledAt: true,
+  completedAt: true,
+});
+
+export type InsertSequenceEnrollment = z.infer<typeof insertSequenceEnrollmentSchema>;
+export type SequenceEnrollment = typeof sequenceEnrollments.$inferSelect;
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   ownedClinics: many(clinics),
@@ -264,4 +326,35 @@ export const patientBookingsRelations = relations(patientBookings, ({ one }) => 
     fields: [patientBookings.clinicId],
     references: [clinics.id],
   }),
+}));
+
+export const sequencesRelations = relations(sequences, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [sequences.ownerId],
+    references: [users.id],
+  }),
+  steps: many(sequenceSteps),
+  enrollments: many(sequenceEnrollments),
+}));
+
+export const sequenceStepsRelations = relations(sequenceSteps, ({ one }) => ({
+  sequence: one(sequences, {
+    fields: [sequenceSteps.sequenceId],
+    references: [sequences.id],
+  }),
+}));
+
+export const sequenceEnrollmentsRelations = relations(sequenceEnrollments, ({ one }) => ({
+  sequence: one(sequences, {
+    fields: [sequenceEnrollments.sequenceId],
+    references: [sequences.id],
+  }),
+  lead: one(leads, {
+    fields: [sequenceEnrollments.leadId],
+    references: [leads.id],
+  }),
+}));
+
+export const leadsRelations = relations(leads, ({ many }) => ({
+  sequenceEnrollments: many(sequenceEnrollments),
 }));

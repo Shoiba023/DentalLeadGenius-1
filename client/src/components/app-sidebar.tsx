@@ -1,4 +1,4 @@
-import { Home, Users, Send, Building2, BarChart3, LogOut, Calendar } from "lucide-react";
+import { Home, Users, Send, Building2, BarChart3, LogOut, Calendar, Clock } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -31,6 +31,11 @@ const menuItems = [
     title: "Outreach",
     url: "/admin/outreach",
     icon: Send,
+  },
+  {
+    title: "Sequences",
+    url: "/admin/sequences",
+    icon: Clock,
   },
   {
     title: "Clinics",
