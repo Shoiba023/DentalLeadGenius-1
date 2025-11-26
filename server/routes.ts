@@ -127,23 +127,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload clinic logo
-  app.post("/api/clinics/:id/logo", isAuthenticated, upload.single("logo"), async (req, res) => {
-    try {
-      const { id } = req.params;
-      
-      if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
+  // Upload clinic logo with comprehensive error handling
+  app.post("/api/clinics/:id/logo", isAuthenticated, (req, res) => {
+    upload.single("logo")(req, res, async (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ message: 'File size exceeds 5MB limit' });
+          }
+          return res.status(400).json({ message: `Upload error: ${err.message}` });
+        }
+        return res.status(400).json({ message: err.message || 'Invalid file upload' });
       }
-
-      const logoUrl = `/uploads/${req.file.filename}`;
-      const updatedClinic = await storage.updateClinic(id, { logoUrl });
       
-      res.json(updatedClinic);
-    } catch (error) {
-      console.error("Error uploading logo:", error);
-      res.status(500).json({ message: "Failed to upload logo" });
-    }
+      try {
+        const { id } = req.params;
+        
+        if (!req.file) {
+          return res.status(400).json({ message: "No file uploaded" });
+        }
+
+        const logoUrl = `/uploads/${req.file.filename}`;
+        const updatedClinic = await storage.updateClinic(id, { logoUrl });
+        
+        if (!updatedClinic) {
+          fs.unlinkSync(req.file.path);
+          return res.status(404).json({ message: "Clinic not found" });
+        }
+        
+        res.json(updatedClinic);
+      } catch (error) {
+        if (req.file) {
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch (cleanupError) {
+            console.error("Error cleaning up file:", cleanupError);
+          }
+        }
+        console.error("Error uploading logo:", error);
+        res.status(500).json({ message: "Failed to upload logo" });
+      }
+    });
   });
 
   app.get("/api/clinics/slug/:slug", async (req, res) => {
