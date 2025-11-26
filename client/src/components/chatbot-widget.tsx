@@ -216,15 +216,15 @@ export function ChatbotWidget({
             </div>
           </div>
         </div>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-8 w-8 text-white hover:bg-white/20"
+        <button
+          type="button"
+          className="flex items-center justify-center h-10 w-10 rounded-full text-white hover:bg-white/20 active:bg-white/30 transition-colors cursor-pointer"
           onClick={handleClose}
           data-testid="button-close-chatbot"
+          aria-label="Minimize chat"
         >
-          <ChevronDown className="h-5 w-5" />
-        </Button>
+          <ChevronDown className="h-6 w-6" />
+        </button>
       </div>
 
       {/* Messages */}
