@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -16,7 +16,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Building2, ExternalLink, Copy } from "lucide-react";
+import { Loader2, Plus, Building2, ExternalLink, Copy, Upload, ImageIcon } from "lucide-react";
 
 interface Clinic {
   id: string;
@@ -31,6 +31,8 @@ export default function AdminClinics() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [uploadingLogoFor, setUploadingLogoFor] = useState<string | null>(null);
+  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
@@ -76,6 +78,59 @@ export default function AdminClinics() {
       });
     },
   });
+
+  const uploadLogoMutation = useMutation({
+    mutationFn: async ({ clinicId, file }: { clinicId: string; file: File }) => {
+      const formData = new FormData();
+      formData.append("logo", file);
+      
+      const response = await fetch(`/api/clinics/${clinicId}/logo`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Upload failed");
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clinics"] });
+      toast({
+        title: "Logo Uploaded",
+        description: "Clinic logo has been uploaded successfully.",
+      });
+      setUploadingLogoFor(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upload Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      setUploadingLogoFor(null);
+    },
+  });
+
+  const handleLogoUpload = (clinicId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid File",
+        description: "Please select an image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingLogoFor(clinicId);
+    uploadLogoMutation.mutate({ clinicId, file });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -231,12 +286,20 @@ export default function AdminClinics() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
                     <CardTitle className="flex items-center gap-2 mb-2">
-                      <div
-                        className="h-8 w-8 rounded-md flex items-center justify-center text-white font-bold"
-                        style={{ backgroundColor: clinic.brandColor }}
-                      >
-                        {clinic.name[0]}
-                      </div>
+                      {clinic.logoUrl ? (
+                        <img 
+                          src={clinic.logoUrl} 
+                          alt={clinic.name}
+                          className="h-8 w-8 rounded-md object-cover"
+                        />
+                      ) : (
+                        <div
+                          className="h-8 w-8 rounded-md flex items-center justify-center text-white font-bold"
+                          style={{ backgroundColor: clinic.brandColor }}
+                        >
+                          {clinic.name[0]}
+                        </div>
+                      )}
                       {clinic.name}
                     </CardTitle>
                     <Badge variant="outline">/clinic/{clinic.slug}</Badge>
@@ -245,6 +308,28 @@ export default function AdminClinics() {
               </CardHeader>
               <CardContent className="space-y-2">
                 <div className="flex gap-2">
+                  <input
+                    ref={(el) => { fileInputRefs.current[clinic.id] = el; }}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleLogoUpload(clinic.id, e)}
+                    className="hidden"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                    onClick={() => fileInputRefs.current[clinic.id]?.click()}
+                    disabled={uploadingLogoFor === clinic.id}
+                    data-testid={`button-upload-logo-${clinic.id}`}
+                  >
+                    {uploadingLogoFor === clinic.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Upload className="h-3 w-3" />
+                    )}
+                    Logo
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"
