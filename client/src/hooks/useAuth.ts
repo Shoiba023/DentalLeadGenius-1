@@ -1,14 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 
+interface SessionResponse {
+  user: any;
+  isAuthenticated: boolean;
+}
+
 export function useAuth() {
-  const { data: user, isLoading } = useQuery({
-    queryKey: ["/api/auth/user"],
+  const { data, isLoading } = useQuery<SessionResponse>({
+    queryKey: ["/api/auth/session"],
     retry: false,
   });
 
   return {
-    user,
+    user: data?.user,
     isLoading,
-    isAuthenticated: !!user,
+    isAuthenticated: data?.isAuthenticated ?? false,
   };
 }

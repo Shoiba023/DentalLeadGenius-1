@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Loader2, Sparkles } from "lucide-react";
 
 export default function Login() {
@@ -26,7 +26,10 @@ export default function Login() {
         title: "Login successful",
         description: `Welcome back, ${data.user.firstName || data.user.email}!`,
       });
-      setLocation(data.redirectTo);
+      // Invalidate the session cache so the app knows we're now authenticated
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/session"] });
+      // Use window.location for full page navigation to ensure session cookie is properly handled
+      window.location.href = data.redirectTo;
     },
     onError: (error: Error) => {
       setError(error.message || "Invalid email or password");

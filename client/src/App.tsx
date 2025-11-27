@@ -28,8 +28,8 @@ function Router() {
 
   // Redirect to login if trying to access admin routes while not authenticated
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && location.startsWith("/admin")) {
-      window.location.href = "/api/login";
+    if (!isLoading && !isAuthenticated && location.startsWith("/admin") && !location.startsWith("/admin/dashboard")) {
+      window.location.href = "/login";
     }
   }, [isLoading, isAuthenticated, location]);
 

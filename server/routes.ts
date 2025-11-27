@@ -52,6 +52,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Serve uploaded files
   app.use("/uploads", express.static(uploadDir));
   
+  // Set up session and auth middleware FIRST (before any routes that need session)
+  await setupAuth(app);
+  
   // Email/password login endpoint
   app.post("/api/auth/login", async (req: any, res) => {
     try {
@@ -72,11 +75,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.userRole = user.role;
       req.session.isAuthenticated = true;
       
-      // Return user data without password
-      const { password: _, ...userWithoutPassword } = user;
-      res.json({ 
-        user: userWithoutPassword,
-        redirectTo: user.role === 'admin' ? '/admin/dashboard' : '/clinic/dashboard'
+      // Explicitly save session before responding
+      req.session.save((err: any) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ message: "Login failed" });
+        }
+        
+        // Return user data without password
+        const { password: _, ...userWithoutPassword } = user;
+        res.json({ 
+          user: userWithoutPassword,
+          redirectTo: user.role === 'admin' ? '/admin/dashboard' : '/clinic/dashboard'
+        });
       });
     } catch (error) {
       console.error("Login error:", error);
@@ -140,10 +151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auth middleware (Replit Auth - keep for backward compatibility)
-  await setupAuth(app);
-
-  // Auth routes
+  // Auth routes (Replit Auth - for backward compatibility)
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
