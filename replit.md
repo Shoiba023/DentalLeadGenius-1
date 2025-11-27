@@ -34,12 +34,20 @@ DentalLeadGenius is an AI-powered lead generation platform designed for dental c
 - Demo page displays without admin sidebar for all users
 - Route matching handles all URL variations: `/demo`, `/demo/`, `/demo?params`
 - Form submission now redirects immediately to demo (same tab, no popup)
-- Fixed "Start Free Trial" buttons: Changed from Wouter `<Link>` to native `<a>` tags for `/api/login` URLs to prevent SPA 404 errors
+
+### Email/Password Authentication (November 2024)
+- Replaced Replit OIDC with custom email/password authentication
+- Added bcrypt password hashing for secure credential storage
+- Created `/login` page with email/password form
+- Created `/admin/dashboard` and `/clinic/dashboard` pages
+- Role-based redirects: admin users → /admin/dashboard, clinic users → /clinic/dashboard
+- Session stored in PostgreSQL with 7-day expiration
+- Default admin credentials: admin@dentalfunnel.com / Admin123!
 
 ### Important Routing Rules
-- **Server routes** (like `/api/login`): Must use native `<a>` tags, NOT Wouter `<Link>`
-- **Client routes** (like `/demo`): Can use Wouter `<Link>`
-- **Why**: Wouter intercepts clicks for client-side routing. Server routes need full page navigation.
+- **All login buttons** now use `/login` (not `/api/login`)
+- **Client routes** (like `/demo`, `/login`): Use Wouter `<Link>` components
+- **Authentication state**: Managed via `useAuth` hook checking `/api/auth/session`
 
 ## Instant Demo Flow
 
@@ -59,14 +67,14 @@ DentalLeadGenius is an AI-powered lead generation platform designed for dental c
 
 ### Demo Buttons Reference
 All these buttons should work without 404 errors:
+- **Landing page navbar**: "Log in to Dashboard" button → `/login`
 - **Landing page navbar**: "Demo" link, "View Demo" button → `/demo`
 - **Landing page hero**: "Get Instant Access" → Opens modal → Redirects to `/demo`
 - **Landing page CTA**: "Get Instant Access" → Opens modal
-- **Demo page header**: "Login to Dashboard" → `/api/login` (native `<a>` tag)
-- **Demo page hero**: "Start Free Trial" → `/api/login` (native `<a>` tag)
-- **Demo page bottom**: "Start Free Trial" → `/api/login` (native `<a>` tag)
+- **Demo page hero**: "Start Free Trial" → `/login`
+- **Demo page bottom**: "Start Free Trial" → `/login`
 
-**Important**: Buttons linking to `/api/login` MUST use native `<a>` tags (not Wouter `<Link>`), because `/api/login` is a server route for authentication, not a SPA page.
+**Important**: All login buttons now use Wouter `<Link>` components pointing to `/login` (our custom auth page), not `/api/login` which was the old Replit OIDC route.
 
 ### Where Demo Link is Configured
 - **Email generation**: `server/routes.ts` - POST `/api/bookings` endpoint (lines 198-237)
@@ -93,7 +101,7 @@ Preferred communication style: Simple, everyday language.
 - Public routes: Landing page and clinic-specific pages
 - Authenticated admin routes: Analytics, Leads, Outreach, Clinics management
 
-**State Management**: TanStack Query (React Query) for server state with custom query client configuration. Authentication state managed through `/api/auth/user` endpoint.
+**State Management**: TanStack Query (React Query) for server state with custom query client configuration. Authentication state managed through `/api/auth/session` endpoint.
 
 **Key Design Patterns**:
 - Component composition with Radix UI primitives
@@ -118,7 +126,7 @@ Preferred communication style: Simple, everyday language.
 - `/api/chatbot/*` - Chatbot thread and message handling
 - `/api/analytics` - Dashboard metrics
 
-**Authentication**: Replit Auth integration using OpenID Connect (OIDC) with Passport.js strategy. Session data stored in PostgreSQL for persistence across server restarts.
+**Authentication**: Email/password authentication with bcrypt password hashing. Session data stored in PostgreSQL for persistence across server restarts. Role-based access (admin/clinic) with route-based redirects after login.
 
 **AI Integration**: OpenAI API (via Replit AI Integrations service) for:
 - Sales chatbot conversations (system prompt for DentalLeadGenius sales)
