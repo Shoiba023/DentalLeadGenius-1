@@ -3,9 +3,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, MessageSquare, Calendar, TrendingUp, CheckCircle2, XCircle, Bot, MessagesSquare, UserCheck } from "lucide-react";
+import { Users, MessageSquare, Calendar, TrendingUp, CheckCircle2, XCircle, Bot, MessagesSquare, UserCheck, BarChart3 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 interface Analytics {
   leadsImported: number;
@@ -162,6 +163,102 @@ export default function AdminAnalytics() {
                 {analytics?.lost || 0}
               </div>
               <p className="text-xs text-muted-foreground mt-1">Closed opportunities</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Lead Funnel Chart */}
+      {!isLoading && analytics && (
+        <div className="grid lg:grid-cols-2 gap-6 mt-8">
+          <Card data-testid="card-funnel-chart">
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Lead Funnel
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={[
+                      { stage: "Imported", count: analytics.leadsImported, fill: "#0284c7" },
+                      { stage: "Contacted", count: analytics.leadsContacted, fill: "#0891b2" },
+                      { stage: "Replied", count: analytics.replies, fill: "#2563eb" },
+                      { stage: "Demos", count: analytics.demosBooked, fill: "#0d9488" },
+                      { stage: "Won", count: analytics.won, fill: "#16a34a" },
+                    ]}
+                    layout="vertical"
+                    margin={{ top: 5, right: 30, left: 60, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis type="number" className="text-xs" />
+                    <YAxis type="category" dataKey="stage" className="text-xs" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: "hsl(var(--card))", 
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px"
+                      }}
+                    />
+                    <Bar dataKey="count" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-outcome-chart">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Lead Outcomes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: "Won", value: analytics.won || 1, fill: "#22c55e" },
+                        { name: "Lost", value: analytics.lost || 1, fill: "#ef4444" },
+                        { name: "In Progress", value: Math.max(0, (analytics.leadsImported - analytics.won - analytics.lost)) || 1, fill: "#3b82f6" },
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: "hsl(var(--card))", 
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px"
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-center gap-6 mt-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-green-500" />
+                  <span>Won</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500" />
+                  <span>Lost</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-blue-500" />
+                  <span>In Progress</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

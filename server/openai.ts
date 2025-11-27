@@ -101,17 +101,27 @@ export async function generateChatResponse(
   return response.choices[0]?.message?.content || "I apologize, but I'm having trouble responding right now. Please try again.";
 }
 
-export async function generateOutreachDraft(type: "email" | "sms"): Promise<{ subject?: string; message: string }> {
-  const prompt = type === "email"
-    ? `Generate a professional, personalized email for a dental clinic lead generation campaign. Include a compelling subject line and a 3-paragraph email body that:
+export async function generateOutreachDraft(type: "email" | "sms" | "whatsapp"): Promise<{ subject?: string; message: string }> {
+  let prompt: string;
+  
+  if (type === "email") {
+    prompt = `Generate a professional, personalized email for a dental clinic lead generation campaign. Include a compelling subject line and a 3-paragraph email body that:
 1. Introduces DentalLeadGenius as a lead generation platform
 2. Highlights key benefits (AI automation, 10x more leads, patient chatbots)
 3. Includes a clear call-to-action to get instant demo access (NOT to schedule - we provide instant access)
 
-Format as JSON with "subject" and "message" fields.`
-    : `Generate a concise, friendly SMS message (under 160 characters) for a dental clinic lead generation campaign. Mention DentalLeadGenius and include a call-to-action to get instant demo access.
+Format as JSON with "subject" and "message" fields.`;
+  } else if (type === "sms") {
+    prompt = `Generate a concise, friendly SMS message (under 160 characters) for a dental clinic lead generation campaign. Mention DentalLeadGenius and include a call-to-action to get instant demo access.
 
 Format as JSON with just a "message" field.`;
+  } else {
+    prompt = `Generate a friendly, conversational WhatsApp message (under 250 characters) for a dental clinic lead generation campaign. The tone should be more casual than email but still professional. Mention DentalLeadGenius benefits and include a call-to-action to get instant demo access. 
+
+IMPORTANT: Do NOT include any emojis, emoticons, or special unicode symbols whatsoever. Use plain text only.
+
+Format as JSON with just a "message" field.`;
+  }
 
   const response = await openai.chat.completions.create({
     model: "gpt-4o",

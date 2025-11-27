@@ -35,6 +35,17 @@ DentalLeadGenius is an AI-powered lead generation platform designed for dental c
 - Route matching handles all URL variations: `/demo`, `/demo/`, `/demo?params`
 - Form submission now redirects immediately to demo (same tab, no popup)
 
+### WhatsApp Channel Integration (November 2024)
+- Added WhatsApp as third outreach channel alongside email and SMS
+- AI-generated WhatsApp drafts use plain text (no emojis per design guidelines)
+- Sequence steps support WhatsApp channel for automated workflows
+- Schema and validation updated to accept "email", "sms", or "whatsapp" types
+
+### Analytics Dashboard Charts (November 2024)
+- Added Lead Funnel horizontal bar chart showing progression through stages
+- Added Lead Outcomes pie chart showing Won/Lost/In Progress breakdown
+- Charts use direct color values for theme compatibility
+
 ### Email/Password Authentication (November 2024)
 - Replaced Replit OIDC with custom email/password authentication
 - Added bcrypt password hashing for secure credential storage
@@ -43,6 +54,7 @@ DentalLeadGenius is an AI-powered lead generation platform designed for dental c
 - Role-based redirects: admin users → /admin/dashboard, clinic users → /clinic/dashboard
 - Session stored in PostgreSQL with 7-day expiration
 - Default admin credentials: admin@dentalfunnel.com / Admin123!
+- Session-based auth helpers (requireAuth, requireAdminRole) work alongside OIDC
 
 ### Important Routing Rules
 - **All login buttons** now use `/login` (not `/api/login`)

@@ -709,8 +709,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Outreach campaign routes
-  app.get("/api/campaigns", isAuthenticated, async (req, res) => {
+  app.get("/api/campaigns", async (req: any, res) => {
     try {
+      if (!requireAuth(req, res)) return;
+      
       const campaigns = await storage.getAllCampaigns();
       res.json(campaigns);
     } catch (error) {
@@ -719,8 +721,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns", isAuthenticated, async (req, res) => {
+  app.post("/api/campaigns", async (req: any, res) => {
     try {
+      if (!await requireAdminRole(req, res)) return;
+      
       const campaignData = req.body;
       const campaign = await storage.createCampaign(campaignData);
       res.json(campaign);
@@ -730,11 +734,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns/generate-draft", isAuthenticated, async (req, res) => {
+  app.post("/api/campaigns/generate-draft", async (req: any, res) => {
     try {
+      if (!requireAuth(req, res)) return;
+      
       const { type } = req.body;
 
-      if (!type || !["email", "sms"].includes(type)) {
+      if (!type || !["email", "sms", "whatsapp"].includes(type)) {
         return res.status(400).json({ message: "Invalid campaign type" });
       }
 
@@ -747,8 +753,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analytics route
-  app.get("/api/analytics", isAuthenticated, async (req, res) => {
+  app.get("/api/analytics", async (req: any, res) => {
     try {
+      if (!requireAuth(req, res)) return;
+      
       const analytics = await storage.getAnalytics();
       res.json(analytics);
     } catch (error) {
@@ -758,8 +766,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Chatbot Analytics route
-  app.get("/api/analytics/chatbot", isAuthenticated, async (req, res) => {
+  app.get("/api/analytics/chatbot", async (req: any, res) => {
     try {
+      if (!requireAuth(req, res)) return;
+      
       const chatbotAnalytics = await storage.getChatbotAnalytics();
       res.json(chatbotAnalytics);
     } catch (error) {

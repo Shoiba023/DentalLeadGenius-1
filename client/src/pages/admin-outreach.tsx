@@ -92,9 +92,9 @@ export default function AdminOutreach() {
       const response = await apiRequest("POST", "/api/campaigns/generate-draft", {
         type: formData.type,
       });
-      return response;
+      return await response.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: { subject?: string; message: string }) => {
       setFormData((prev) => ({
         ...prev,
         subject: data.subject || prev.subject,
@@ -130,7 +130,7 @@ export default function AdminOutreach() {
           Outreach Manager
         </h1>
         <p className="text-muted-foreground">
-          Create and manage email and SMS campaigns with AI-generated drafts
+          Create and manage email, SMS, and WhatsApp campaigns with AI-generated drafts
         </p>
       </div>
 
@@ -169,6 +169,7 @@ export default function AdminOutreach() {
                   <SelectContent>
                     <SelectItem value="email">Email</SelectItem>
                     <SelectItem value="sms">SMS</SelectItem>
+                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -286,7 +287,7 @@ export default function AdminOutreach() {
                     <div>
                       <h3 className="font-semibold text-lg">{campaign.name}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {campaign.type === "email" ? "Email Campaign" : "SMS Campaign"}
+                        {campaign.type === "email" ? "Email Campaign" : campaign.type === "sms" ? "SMS Campaign" : "WhatsApp Campaign"}
                       </p>
                     </div>
                     <Badge

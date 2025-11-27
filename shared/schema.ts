@@ -190,7 +190,7 @@ export type ChatbotMessage = typeof chatbotMessages.$inferSelect;
 export const outreachCampaigns = pgTable("outreach_campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
-  type: text("type").notNull(), // email, sms
+  type: text("type").notNull(), // email, sms, whatsapp
   subject: text("subject"),
   message: text("message").notNull(),
   status: text("status").default("draft").notNull(), // draft, active, paused, completed
@@ -260,7 +260,7 @@ export const sequenceSteps = pgTable("sequence_steps", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sequenceId: varchar("sequence_id").notNull().references(() => sequences.id),
   stepOrder: integer("step_order").notNull(),
-  channel: text("channel").notNull(), // email, sms
+  channel: text("channel").notNull(), // email, sms, whatsapp
   subject: text("subject"), // for email
   message: text("message").notNull(),
   delayDays: integer("delay_days").default(0).notNull(), // days to wait after previous step
