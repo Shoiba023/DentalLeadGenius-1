@@ -848,8 +848,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ================== SEQUENCE ROUTES ==================
   
   // Get all sequences
-  app.get("/api/sequences", isAuthenticated, async (req, res) => {
+  app.get("/api/sequences", async (req: any, res) => {
     try {
+      if (!requireAuth(req, res)) return;
       const sequences = await storage.getAllSequences();
       res.json(sequences);
     } catch (error) {
@@ -859,8 +860,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get sequence by ID with steps
-  app.get("/api/sequences/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/sequences/:id", async (req: any, res) => {
     try {
+      if (!requireAuth(req, res)) return;
       const sequence = await storage.getSequenceById(req.params.id);
       if (!sequence) {
         return res.status(404).json({ message: "Sequence not found" });
@@ -874,9 +876,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create a new sequence
-  app.post("/api/sequences", isAuthenticated, async (req: any, res) => {
+  app.post("/api/sequences", async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      if (!requireAuth(req, res)) return;
+      const userId = getUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -903,9 +906,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     status: z.enum(["draft", "active", "paused"]).optional(),
   });
   
-  app.patch("/api/sequences/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/sequences/:id", async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      if (!requireAuth(req, res)) return;
+      const userId = getUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -934,9 +938,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Delete a sequence
-  app.delete("/api/sequences/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/sequences/:id", async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      if (!requireAuth(req, res)) return;
+      const userId = getUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -959,9 +964,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create a sequence step
-  app.post("/api/sequences/:id/steps", isAuthenticated, async (req: any, res) => {
+  app.post("/api/sequences/:id/steps", async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      if (!requireAuth(req, res)) return;
+      const userId = getUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -999,9 +1005,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     order: z.number().int().min(0).optional(),
   });
   
-  app.patch("/api/sequences/:sequenceId/steps/:stepId", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/sequences/:sequenceId/steps/:stepId", async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      if (!requireAuth(req, res)) return;
+      const userId = getUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -1030,9 +1037,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Delete a sequence step
-  app.delete("/api/sequences/:sequenceId/steps/:stepId", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/sequences/:sequenceId/steps/:stepId", async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      if (!requireAuth(req, res)) return;
+      const userId = getUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -1055,8 +1063,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get sequence enrollments
-  app.get("/api/sequences/:id/enrollments", isAuthenticated, async (req, res) => {
+  app.get("/api/sequences/:id/enrollments", async (req: any, res) => {
     try {
+      if (!requireAuth(req, res)) return;
       const enrollments = await storage.getSequenceEnrollments(req.params.id);
       res.json(enrollments);
     } catch (error) {
@@ -1066,8 +1075,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Enroll a lead in a sequence
-  app.post("/api/sequences/:id/enroll", isAuthenticated, async (req, res) => {
+  app.post("/api/sequences/:id/enroll", async (req: any, res) => {
     try {
+      if (!requireAuth(req, res)) return;
       const enrollmentData = insertSequenceEnrollmentSchema.parse({
         sequenceId: req.params.id,
         leadId: req.body.leadId,
@@ -1086,8 +1096,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update enrollment status
-  app.patch("/api/enrollments/:id/status", isAuthenticated, async (req, res) => {
+  app.patch("/api/enrollments/:id/status", async (req: any, res) => {
     try {
+      if (!requireAuth(req, res)) return;
       await storage.updateSequenceEnrollmentStatus(req.params.id, req.body.status);
       res.json({ success: true });
     } catch (error) {
