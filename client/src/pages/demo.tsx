@@ -37,7 +37,7 @@ export default function Demo() {
               Live Demo
             </Badge>
             <Button asChild data-testid="button-login-demo">
-              <a href="/api/login">Login to Dashboard</a>
+              <Link href="/login">Login to Dashboard</Link>
             </Button>
           </div>
         </div>
@@ -56,10 +56,10 @@ export default function Demo() {
           </p>
           <div className="flex justify-center gap-4">
             <Button size="lg" asChild data-testid="button-start-trial">
-              <a href="/api/login">
+              <Link href="/login">
                 <Play className="h-4 w-4 mr-2" />
                 Start Free Trial
-              </a>
+              </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
               <a href="/#features">View Features</a>
@@ -530,10 +530,10 @@ export default function Demo() {
             Join hundreds of dental clinics already growing with DentalLeadGenius
           </p>
           <Button size="lg" asChild data-testid="button-start-free-trial">
-            <a href="/api/login">
+            <Link href="/login">
               Start Free Trial
               <ArrowRight className="h-4 w-4 ml-2" />
-            </a>
+            </Link>
           </Button>
         </div>
       </section>

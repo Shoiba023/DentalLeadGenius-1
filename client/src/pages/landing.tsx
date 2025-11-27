@@ -43,6 +43,9 @@ export default function Landing() {
             </div>
             
             <div className="hidden md:flex items-center gap-3">
+              <Button variant="ghost" asChild data-testid="button-login-nav">
+                <Link href="/login">Log in to Dashboard</Link>
+              </Button>
               <Button variant="outline" asChild data-testid="button-view-demo-nav">
                 <Link href="/demo">
                   <Play className="h-4 w-4 mr-2" />
@@ -80,6 +83,9 @@ export default function Landing() {
                   </span>
                 </Link>
                 <div className="flex flex-col gap-2 pt-2">
+                  <Button variant="ghost" asChild>
+                    <Link href="/login">Log in to Dashboard</Link>
+                  </Button>
                   <Button variant="outline" asChild>
                     <Link href="/demo">
                       <Play className="h-4 w-4 mr-2" />

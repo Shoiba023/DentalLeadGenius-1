@@ -2,10 +2,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import express from "express";
+import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { generateChatResponse, generateOutreachDraft } from "./openai";
-import { insertLeadSchema, insertClinicSchema, insertBookingSchema, insertSequenceSchema, insertSequenceStepSchema, insertSequenceEnrollmentSchema } from "@shared/schema";
+import { insertLeadSchema, insertClinicSchema, insertBookingSchema, insertSequenceSchema, insertSequenceStepSchema, insertSequenceEnrollmentSchema, loginSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -51,7 +52,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Serve uploaded files
   app.use("/uploads", express.static(uploadDir));
   
-  // Auth middleware
+  // Email/password login endpoint
+  app.post("/api/auth/login", async (req: any, res) => {
+    try {
+      const { email, password } = loginSchema.parse(req.body);
+      
+      const user = await storage.getUserByEmail(email);
+      if (!user || !user.password) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
+      // Set up session
+      req.session.userId = user.id;
+      req.session.userRole = user.role;
+      req.session.isAuthenticated = true;
+      
+      // Return user data without password
+      const { password: _, ...userWithoutPassword } = user;
+      res.json({ 
+        user: userWithoutPassword,
+        redirectTo: user.role === 'admin' ? '/admin/dashboard' : '/clinic/dashboard'
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid email or password format" });
+      }
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // Email/password logout endpoint
+  app.post("/api/auth/logout", (req: any, res) => {
+    req.session.destroy((err: any) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  // Get current session user (for email/password auth)
+  app.get("/api/auth/session", (req: any, res) => {
+    if (req.session?.isAuthenticated && req.session?.userId) {
+      storage.getUser(req.session.userId)
+        .then(user => {
+          if (user) {
+            const { password: _, ...userWithoutPassword } = user;
+            res.json({ user: userWithoutPassword, isAuthenticated: true });
+          } else {
+            res.json({ user: null, isAuthenticated: false });
+          }
+        })
+        .catch(() => res.json({ user: null, isAuthenticated: false }));
+    } else {
+      res.json({ user: null, isAuthenticated: false });
+    }
+  });
+
+  // Seed admin user endpoint (call once to set up admin)
+  app.post("/api/auth/seed-admin", async (req, res) => {
+    try {
+      const existingAdmin = await storage.getUserByEmail("admin@dentalfunnel.com");
+      if (existingAdmin) {
+        return res.json({ message: "Admin user already exists" });
+      }
+      
+      const hashedPassword = await bcrypt.hash("Admin123!", 10);
+      const admin = await storage.createUserWithPassword(
+        "admin@dentalfunnel.com",
+        hashedPassword,
+        "admin",
+        "Admin",
+        "User"
+      );
+      
+      res.json({ message: "Admin user created successfully", email: admin.email });
+    } catch (error) {
+      console.error("Seed admin error:", error);
+      res.status(500).json({ message: "Failed to create admin user" });
+    }
+  });
+
+  // Auth middleware (Replit Auth - keep for backward compatibility)
   await setupAuth(app);
 
   // Auth routes
