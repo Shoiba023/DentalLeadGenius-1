@@ -51,6 +51,16 @@ export const loginSchema = z.object({
   password: z.string().min(6),
 });
 
+export const createUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  role: z.enum(["admin", "clinic"]).default("clinic"),
+  clinicId: z.string().optional(),
+});
+
+export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type LoginCredentials = z.infer<typeof loginSchema>;
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;

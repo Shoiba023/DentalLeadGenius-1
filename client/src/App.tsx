@@ -20,6 +20,7 @@ import AdminClinics from "@/pages/admin-clinics";
 import AdminClinicDashboard from "@/pages/admin-clinic-dashboard";
 import AdminPatientBookings from "@/pages/admin-patient-bookings";
 import AdminSequences from "@/pages/admin-sequences";
+import AdminUsers from "@/pages/admin-users";
 import ClinicPage from "@/pages/clinic-page";
 
 function Router() {
@@ -101,6 +102,7 @@ function Router() {
               <Route path="/admin/clinics" component={AdminClinics} />
               <Route path="/admin/clinics/:id" component={AdminClinicDashboard} />
               <Route path="/admin/patient-bookings" component={AdminPatientBookings} />
+              <Route path="/admin/users" component={AdminUsers} />
               <Route path="/demo" component={Demo} />
               <Route component={NotFound} />
             </Switch>

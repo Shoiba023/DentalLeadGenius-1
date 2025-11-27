@@ -43,8 +43,10 @@ export interface IStorage {
   // User operations (IMPORTANT: mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
   createUserWithPassword(email: string, hashedPassword: string, role: string, firstName?: string, lastName?: string): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
+  addUserToClinic(userId: string, clinicId: string, role: string): Promise<void>;
 
   // Lead operations
   getAllLeads(): Promise<Lead[]>;
@@ -52,6 +54,7 @@ export interface IStorage {
   importLeads(leads: InsertLead[]): Promise<void>;
   getLeadById(id: string): Promise<Lead | undefined>;
   updateLeadStatus(id: string, status: string): Promise<void>;
+  updateLead(id: string, updates: Partial<InsertLead>): Promise<Lead | undefined>;
 
   // Clinic operations
   getAllClinics(): Promise<Clinic[]>;
@@ -200,6 +203,18 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async addUserToClinic(userId: string, clinicId: string, role: string): Promise<void> {
+    await db.insert(clinicUsers).values({
+      userId,
+      clinicId,
+      role,
+    });
+  }
+
   // Lead operations
   async getAllLeads(): Promise<Lead[]> {
     return await db.select().from(leads).orderBy(desc(leads.createdAt));
@@ -225,6 +240,15 @@ export class DatabaseStorage implements IStorage {
       .update(leads)
       .set({ status, updatedAt: new Date() })
       .where(eq(leads.id, id));
+  }
+
+  async updateLead(id: string, updates: Partial<InsertLead>): Promise<Lead | undefined> {
+    const [updatedLead] = await db
+      .update(leads)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(leads.id, id))
+      .returning();
+    return updatedLead;
   }
 
   // Clinic operations

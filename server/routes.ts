@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { generateChatResponse, generateOutreachDraft } from "./openai";
-import { insertLeadSchema, insertClinicSchema, insertBookingSchema, insertSequenceSchema, insertSequenceStepSchema, insertSequenceEnrollmentSchema, loginSchema } from "@shared/schema";
+import { insertLeadSchema, insertClinicSchema, insertBookingSchema, insertSequenceSchema, insertSequenceStepSchema, insertSequenceEnrollmentSchema, loginSchema, createUserSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -86,7 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { password: _, ...userWithoutPassword } = user;
         res.json({ 
           user: userWithoutPassword,
-          redirectTo: user.role === 'admin' ? '/admin/dashboard' : '/clinic/dashboard'
+          redirectTo: user.role === 'admin' ? '/admin' : '/clinic/dashboard'
         });
       });
     } catch (error) {
@@ -151,6 +151,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create new user (admin only)
+  app.post("/api/users", async (req: any, res) => {
+    try {
+      // Check if requester is authenticated and is admin
+      if (!req.session?.isAuthenticated || !req.session?.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const adminUser = await storage.getUser(req.session.userId);
+      if (!adminUser || adminUser.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can create users" });
+      }
+      
+      // Validate request body
+      const { email, password, firstName, lastName, role, clinicId } = createUserSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User with this email already exists" });
+      }
+      
+      // Hash password and create user
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const newUser = await storage.createUserWithPassword(
+        email,
+        hashedPassword,
+        role || 'clinic',
+        firstName,
+        lastName
+      );
+      
+      // If clinicId provided, link user to clinic
+      if (clinicId) {
+        await storage.addUserToClinic(newUser.id, clinicId, 'member');
+      }
+      
+      const { password: _, ...userWithoutPassword } = newUser;
+      res.json({ user: userWithoutPassword, message: "User created successfully" });
+    } catch (error) {
+      console.error("Create user error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid user data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  // Get all users (admin only)
+  app.get("/api/users", async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || !req.session?.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const adminUser = await storage.getUser(req.session.userId);
+      if (!adminUser || adminUser.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can view users" });
+      }
+      
+      const allUsers = await storage.getAllUsers();
+      const usersWithoutPasswords = allUsers.map(u => {
+        const { password: _, ...rest } = u;
+        return rest;
+      });
+      res.json(usersWithoutPasswords);
+    } catch (error) {
+      console.error("Get users error:", error);
+      res.status(500).json({ message: "Failed to get users" });
+    }
+  });
+
   // Auth routes (Replit Auth - for backward compatibility)
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
@@ -163,9 +235,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper to check if user is authenticated (either OIDC or session-based)
+  // Returns the user ID if authenticated, null otherwise
+  const requireAuth = (req: any, res: any): boolean => {
+    // Check session-based auth first
+    if (req.session?.isAuthenticated && req.session?.userId) {
+      return true;
+    }
+    // Fall back to OIDC auth
+    if (req.isAuthenticated && req.isAuthenticated() && req.user?.claims?.sub) {
+      return true;
+    }
+    res.status(401).json({ message: "Unauthorized" });
+    return false;
+  };
+  
+  // Helper to get user ID from session or OIDC
+  const getUserId = (req: any): string | null => {
+    if (req.session?.userId) {
+      return req.session.userId;
+    }
+    if (req.user?.claims?.sub) {
+      return req.user.claims.sub;
+    }
+    return null;
+  };
+  
+  // Helper to check if user has admin role
+  const requireAdminRole = async (req: any, res: any): Promise<boolean> => {
+    if (!requireAuth(req, res)) return false;
+    
+    const userId = getUserId(req);
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return false;
+    }
+    
+    const user = await storage.getUser(userId);
+    if (!user || user.role !== 'admin') {
+      res.status(403).json({ message: "Forbidden: Admin access required" });
+      return false;
+    }
+    
+    return true;
+  };
+
   // Lead routes
-  app.get("/api/leads", isAuthenticated, async (req, res) => {
+  app.get("/api/leads", async (req: any, res) => {
     try {
+      if (!requireAuth(req, res)) return;
+      
       const leads = await storage.getAllLeads();
       res.json(leads);
     } catch (error) {
@@ -174,8 +293,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/leads/import", isAuthenticated, async (req, res) => {
+  app.post("/api/leads/import", async (req: any, res) => {
     try {
+      if (!await requireAdminRole(req, res)) return;
+      
       const { leads } = req.body;
 
       if (!Array.isArray(leads) || leads.length === 0) {
@@ -201,6 +322,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error importing leads:", error);
       res.status(500).json({ message: "Failed to import leads" });
+    }
+  });
+
+  // Update lead status
+  app.patch("/api/leads/:id/status", async (req: any, res) => {
+    try {
+      if (!await requireAdminRole(req, res)) return;
+      
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      const validStatuses = ["new", "contacted", "replied", "demo_booked", "won", "lost"];
+      if (!status || !validStatuses.includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Must be one of: new, contacted, replied, demo_booked, won, lost" });
+      }
+      
+      await storage.updateLeadStatus(id, status);
+      res.json({ message: "Lead status updated", id, status });
+    } catch (error) {
+      console.error("Error updating lead status:", error);
+      res.status(500).json({ message: "Failed to update lead status" });
+    }
+  });
+
+  // Get single lead
+  app.get("/api/leads/:id", async (req: any, res) => {
+    try {
+      if (!requireAuth(req, res)) return;
+      
+      const { id } = req.params;
+      const lead = await storage.getLeadById(id);
+      
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      res.json(lead);
+    } catch (error) {
+      console.error("Error fetching lead:", error);
+      res.status(500).json({ message: "Failed to fetch lead" });
+    }
+  });
+
+  // Allowed fields for lead updates
+  const allowedLeadUpdateFields = ['name', 'email', 'phone', 'city', 'state', 'country', 'notes', 'status'];
+
+  // Update lead
+  app.patch("/api/leads/:id", async (req: any, res) => {
+    try {
+      if (!await requireAdminRole(req, res)) return;
+      
+      const { id } = req.params;
+      const updates = req.body;
+      
+      // Filter to only allowed fields
+      const sanitizedUpdates: Record<string, any> = {};
+      for (const field of allowedLeadUpdateFields) {
+        if (updates[field] !== undefined) {
+          sanitizedUpdates[field] = updates[field];
+        }
+      }
+      
+      // Check if any valid fields were provided
+      if (Object.keys(sanitizedUpdates).length === 0) {
+        return res.status(400).json({ 
+          message: "No valid fields provided. Allowed fields: " + allowedLeadUpdateFields.join(", ") 
+        });
+      }
+      
+      // Validate status if included
+      if (sanitizedUpdates.status) {
+        const validStatuses = ["new", "contacted", "replied", "demo_booked", "won", "lost"];
+        if (!validStatuses.includes(sanitizedUpdates.status)) {
+          return res.status(400).json({ message: "Invalid status" });
+        }
+      }
+      
+      const updatedLead = await storage.updateLead(id, sanitizedUpdates);
+      if (!updatedLead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      res.json(updatedLead);
+    } catch (error) {
+      console.error("Error updating lead:", error);
+      res.status(500).json({ message: "Failed to update lead" });
     }
   });
 

@@ -5,6 +5,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -20,8 +22,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Search, Filter, Loader2 } from "lucide-react";
+import { Upload, Search, Filter, Loader2, X, Save, User, Mail, Phone, MapPin } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import Papa from "papaparse";
 
@@ -34,6 +43,7 @@ interface Lead {
   state: string;
   country: string;
   status: string;
+  notes?: string;
   createdAt: string;
 }
 
@@ -62,6 +72,8 @@ export default function AdminLeads() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [stateFilter, setStateFilter] = useState("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Lead>>({});
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -76,8 +88,9 @@ export default function AdminLeads() {
     }
   }, [isAuthenticated, authLoading, toast]);
 
+  const leadsQueryKey = ["/api/leads"];
   const { data: leads = [], isLoading } = useQuery<Lead[]>({
-    queryKey: ["/api/leads", statusFilter, stateFilter],
+    queryKey: leadsQueryKey,
     enabled: isAuthenticated,
   });
 
@@ -100,6 +113,65 @@ export default function AdminLeads() {
       });
     },
   });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      return await apiRequest("PATCH", `/api/leads/${id}/status`, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      toast({
+        title: "Status Updated",
+        description: "Lead status has been updated.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateLeadMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Lead> }) => {
+      return await apiRequest("PATCH", `/api/leads/${id}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      toast({
+        title: "Lead Updated",
+        description: "Lead details have been saved.",
+      });
+      setSelectedLead(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleLeadClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setEditForm({
+      name: lead.name,
+      email: lead.email,
+      phone: lead.phone,
+      city: lead.city,
+      state: lead.state,
+      country: lead.country,
+      notes: lead.notes || "",
+    });
+  };
+
+  const handleSaveLead = () => {
+    if (!selectedLead) return;
+    updateLeadMutation.mutate({ id: selectedLead.id, updates: editForm });
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -254,7 +326,12 @@ export default function AdminLeads() {
                 </TableHeader>
                 <TableBody>
                   {filteredLeads.map((lead) => (
-                    <TableRow key={lead.id} data-testid={`row-lead-${lead.id}`}>
+                    <TableRow 
+                      key={lead.id} 
+                      data-testid={`row-lead-${lead.id}`}
+                      className="cursor-pointer hover-elevate"
+                      onClick={() => handleLeadClick(lead)}
+                    >
                       <TableCell className="font-medium">{lead.name}</TableCell>
                       <TableCell>{lead.email || "—"}</TableCell>
                       <TableCell>{lead.phone || "—"}</TableCell>
@@ -263,13 +340,34 @@ export default function AdminLeads() {
                           ? `${lead.city}, ${lead.state}`
                           : lead.state || lead.city || "—"}
                       </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={statusColors[lead.status] || ""}
-                          data-testid={`badge-status-${lead.status}`}
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Select
+                          value={lead.status}
+                          onValueChange={(value) => 
+                            updateStatusMutation.mutate({ id: lead.id, status: value })
+                          }
+                          disabled={updateStatusMutation.isPending}
                         >
-                          {statusLabels[lead.status] || lead.status}
-                        </Badge>
+                          <SelectTrigger 
+                            className="w-[140px]" 
+                            data-testid={`select-status-${lead.id}`}
+                          >
+                            <Badge
+                              className={statusColors[lead.status] || ""}
+                              data-testid={`badge-status-${lead.status}`}
+                            >
+                              {statusLabels[lead.status] || lead.status}
+                            </Badge>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="new">New</SelectItem>
+                            <SelectItem value="contacted">Contacted</SelectItem>
+                            <SelectItem value="replied">Replied</SelectItem>
+                            <SelectItem value="demo_booked">Demo Booked</SelectItem>
+                            <SelectItem value="won">Won</SelectItem>
+                            <SelectItem value="lost">Lost</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -283,6 +381,141 @@ export default function AdminLeads() {
       <div className="text-sm text-muted-foreground">
         Showing {filteredLeads.length} of {leads.length} leads
       </div>
+
+      <Sheet open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
+        <SheetContent className="sm:max-w-[500px]" data-testid="sheet-lead-detail">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Lead Details
+            </SheetTitle>
+            <SheetDescription>
+              View and edit lead information
+            </SheetDescription>
+          </SheetHeader>
+          
+          {selectedLead && (
+            <div className="space-y-6 mt-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Badge 
+                  className={statusColors[selectedLead.status] || ""} 
+                  data-testid="badge-lead-status"
+                >
+                  {statusLabels[selectedLead.status] || selectedLead.status}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  Added {new Date(selectedLead.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-name">Name</Label>
+                  <Input
+                    id="edit-name"
+                    value={editForm.name || ""}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                    data-testid="input-edit-name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-email" className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" /> Email
+                  </Label>
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    value={editForm.email || ""}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))}
+                    data-testid="input-edit-email"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-phone" className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" /> Phone
+                  </Label>
+                  <Input
+                    id="edit-phone"
+                    value={editForm.phone || ""}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))}
+                    data-testid="input-edit-phone"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-city" className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" /> City
+                    </Label>
+                    <Input
+                      id="edit-city"
+                      value={editForm.city || ""}
+                      onChange={(e) => setEditForm((prev) => ({ ...prev, city: e.target.value }))}
+                      data-testid="input-edit-city"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-state">State</Label>
+                    <Input
+                      id="edit-state"
+                      value={editForm.state || ""}
+                      onChange={(e) => setEditForm((prev) => ({ ...prev, state: e.target.value }))}
+                      data-testid="input-edit-state"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-country">Country</Label>
+                  <Input
+                    id="edit-country"
+                    value={editForm.country || ""}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, country: e.target.value }))}
+                    data-testid="input-edit-country"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-notes">Notes</Label>
+                  <Textarea
+                    id="edit-notes"
+                    value={editForm.notes || ""}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, notes: e.target.value }))}
+                    rows={4}
+                    placeholder="Add notes about this lead..."
+                    data-testid="input-edit-notes"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  onClick={handleSaveLead}
+                  className="flex-1 gap-2"
+                  disabled={updateLeadMutation.isPending}
+                  data-testid="button-save-lead"
+                >
+                  {updateLeadMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Save Changes
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedLead(null)}
+                  data-testid="button-cancel-edit"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
