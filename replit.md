@@ -14,6 +14,18 @@ DentalLeadGenius is an AI-powered lead generation platform designed for dental c
 
 ## Recent Changes (November 2024)
 
+### Stripe Payment Integration (November 2024)
+- Integrated Stripe payment processing with three pricing tiers:
+  - **Essential**: $1,997 setup + $497/month (1 clinic)
+  - **Growth**: $2,997 setup + $997/month (3 clinics) - Most Popular
+  - **Elite**: $4,997 setup + $1,497/month (unlimited clinics)
+- Created `/pricing` page with package cards and checkout modal
+- Created `/payment/success` page for post-payment flow with credential display
+- Stripe integration uses Replit's stripe-replit-sync for automatic webhook management
+- Users table extended with stripeCustomerId, stripeSubscriptionId fields
+- Checkout flow creates Stripe customer, subscription, user account, and clinic
+- Test mode enabled by default - see PAYMENT_SETUP.md for live mode instructions
+
 ### Instant Demo Delivery
 - Demo form now provides INSTANT access - no scheduling, no waiting, no manual approval
 - Users fill a minimal form (clinic name, owner name, email - phone is optional)
@@ -75,7 +87,9 @@ DentalLeadGenius is an AI-powered lead generation platform designed for dental c
 - **Public demo page**: `/demo` - Interactive demo with tabs (Overview, Leads, Outreach, AI Chatbot, Multi-Clinic)
 - **Demo link in emails**: Points to `/demo` path
 - **Clinic pages**: `/clinic/:slug` - Patient-facing pages with chatbot
-- **Login/Auth**: `/api/login` - Server-side route (NOT a SPA route)
+- **Pricing page**: `/pricing` - Displays three subscription tiers with checkout modal
+- **Payment success**: `/payment/success` - Post-checkout page showing login credentials
+- **Login/Auth**: `/login` - Custom email/password login page
 
 ### Demo Buttons Reference
 All these buttons should work without 404 errors:

@@ -47,6 +47,12 @@ export interface IStorage {
   createUserWithPassword(email: string, hashedPassword: string, role: string, firstName?: string, lastName?: string): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   addUserToClinic(userId: string, clinicId: string, role: string): Promise<void>;
+  updateUserStripeInfo(userId: string, stripeInfo: {
+    stripeCustomerId?: string;
+    stripeSubscriptionId?: string;
+    subscriptionTier?: string;
+    subscriptionStatus?: string;
+  }): Promise<User>;
 
   // Lead operations
   getAllLeads(): Promise<Lead[]>;
@@ -213,6 +219,23 @@ export class DatabaseStorage implements IStorage {
       clinicId,
       role,
     });
+  }
+
+  async updateUserStripeInfo(userId: string, stripeInfo: {
+    stripeCustomerId?: string;
+    stripeSubscriptionId?: string;
+    subscriptionTier?: string;
+    subscriptionStatus?: string;
+  }): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        ...stripeInfo,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
   }
 
   // Lead operations

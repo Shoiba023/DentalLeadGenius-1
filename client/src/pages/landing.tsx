@@ -39,6 +39,11 @@ export default function Landing() {
                     Demo
                   </span>
                 </Link>
+                <Link href="/pricing">
+                  <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                    Pricing
+                  </span>
+                </Link>
               </nav>
             </div>
             
@@ -80,6 +85,11 @@ export default function Landing() {
                 <Link href="/demo">
                   <span className="text-sm cursor-pointer" onClick={() => setMobileMenuOpen(false)}>
                     Demo
+                  </span>
+                </Link>
+                <Link href="/pricing">
+                  <span className="text-sm cursor-pointer" onClick={() => setMobileMenuOpen(false)}>
+                    Pricing
                   </span>
                 </Link>
                 <div className="flex flex-col gap-2 pt-2">

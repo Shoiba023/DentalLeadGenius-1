@@ -34,6 +34,10 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").default("clinic").notNull(), // admin, clinic
   isAdmin: boolean("is_admin").default(false).notNull(),
+  stripeCustomerId: varchar("stripe_customer_id"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  subscriptionTier: varchar("subscription_tier"), // essential, growth, elite
+  subscriptionStatus: varchar("subscription_status"), // active, past_due, canceled
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -1,4 +1,4 @@
-// Referenced from javascript_log_in_with_replit blueprint
+// Referenced from javascript_log_in_with_replit and stripe blueprints
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import express from "express";
@@ -11,6 +11,9 @@ import { z } from "zod";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
+import { WebhookHandlers } from "./webhookHandlers";
+import { initStripe } from "./stripeInit";
 
 // Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), "attached_assets", "uploads");
@@ -1104,6 +1107,349 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating enrollment status:", error);
       res.status(500).json({ message: "Failed to update status" });
+    }
+  });
+
+  // ================== STRIPE PAYMENT ROUTES ==================
+  
+  // Initialize Stripe on startup
+  initStripe().catch(err => console.error("Stripe init error:", err));
+
+  // Stripe webhook handler - uses rawBody from app.ts
+  app.post("/api/stripe/webhook/:uuid", async (req: any, res) => {
+    try {
+      const signature = req.headers['stripe-signature'];
+      if (!signature) {
+        return res.status(400).json({ error: 'Missing stripe-signature' });
+      }
+
+      const sig = Array.isArray(signature) ? signature[0] : signature;
+      const { uuid } = req.params;
+      
+      // Use rawBody which was captured in app.ts
+      const payload = req.rawBody;
+      if (!Buffer.isBuffer(payload)) {
+        console.error('Webhook payload is not a Buffer');
+        return res.status(400).json({ error: 'Invalid payload' });
+      }
+
+      await WebhookHandlers.processWebhook(payload, sig, uuid);
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error('Webhook error:', error.message);
+      res.status(400).json({ error: 'Webhook processing error' });
+    }
+  });
+
+  // Get Stripe publishable key for frontend
+  app.get("/api/stripe/config", async (req, res) => {
+    try {
+      const publishableKey = await getStripePublishableKey();
+      res.json({ publishableKey });
+    } catch (error) {
+      console.error("Error getting Stripe config:", error);
+      res.status(500).json({ message: "Stripe not configured" });
+    }
+  });
+
+  // Get pricing packages (your exact pricing)
+  app.get("/api/pricing", async (req, res) => {
+    const packages = [
+      {
+        id: 'essential',
+        name: 'Essential Package',
+        description: 'Perfect for solo practitioners. Includes AI chatbot, lead management, and basic outreach automation.',
+        setupFee: 1997,
+        monthlyFee: 497,
+        features: [
+          'AI-powered sales chatbot',
+          'Lead management with CSV import',
+          'Basic email outreach',
+          '1 clinic profile',
+          'Patient appointment booking',
+          'Basic analytics dashboard'
+        ],
+        clinicLimit: 1,
+        popular: false
+      },
+      {
+        id: 'growth',
+        name: 'Growth Package',
+        description: 'For growing practices. Includes everything in Essential plus multi-channel outreach, sequences, and up to 3 clinics.',
+        setupFee: 2997,
+        monthlyFee: 997,
+        features: [
+          'Everything in Essential',
+          'Multi-channel outreach (Email, SMS, WhatsApp)',
+          'Automated follow-up sequences',
+          'Up to 3 clinic profiles',
+          'Advanced analytics with charts',
+          'AI-generated message drafts',
+          'Priority email support'
+        ],
+        clinicLimit: 3,
+        popular: true
+      },
+      {
+        id: 'elite',
+        name: 'Elite Package',
+        description: 'For multi-location practices. Includes everything in Growth plus unlimited clinics, priority support, and custom branding.',
+        setupFee: 4997,
+        monthlyFee: 1497,
+        features: [
+          'Everything in Growth',
+          'Unlimited clinic profiles',
+          'Custom branding for each clinic',
+          'Priority phone & email support',
+          'Dedicated account manager',
+          'API access for integrations',
+          'Custom chatbot training'
+        ],
+        clinicLimit: -1,
+        popular: false
+      }
+    ];
+    res.json(packages);
+  });
+
+  // Create checkout session for a package
+  app.post("/api/checkout/create-session", async (req: any, res) => {
+    try {
+      const { packageId, email, clinicName, ownerName } = req.body;
+      
+      if (!packageId || !email || !clinicName || !ownerName) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      
+      // Define package pricing (amounts in cents)
+      const packages: Record<string, { setupFee: number; monthlyFee: number; name: string }> = {
+        essential: { setupFee: 199700, monthlyFee: 49700, name: 'Essential Package' },
+        growth: { setupFee: 299700, monthlyFee: 99700, name: 'Growth Package' },
+        elite: { setupFee: 499700, monthlyFee: 149700, name: 'Elite Package' }
+      };
+
+      const pkg = packages[packageId];
+      if (!pkg) {
+        return res.status(400).json({ message: "Invalid package" });
+      }
+
+      // Create or get customer
+      const customers = await stripe.customers.list({ email, limit: 1 });
+      let customer = customers.data[0];
+      
+      if (!customer) {
+        customer = await stripe.customers.create({
+          email,
+          name: ownerName,
+          metadata: {
+            clinicName,
+            packageId,
+          }
+        });
+      }
+
+      // Build URLs
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+      const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:5000';
+      const baseUrl = `${protocol}://${host}`;
+
+      // Create checkout session with setup fee + subscription
+      const session = await stripe.checkout.sessions.create({
+        customer: customer.id,
+        payment_method_types: ['card'],
+        mode: 'subscription',
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: `${pkg.name} - Setup Fee`,
+                description: 'One-time setup and onboarding fee',
+              },
+              unit_amount: pkg.setupFee,
+            },
+            quantity: 1,
+          },
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: `${pkg.name} - Monthly Subscription`,
+                description: 'Monthly access to DentalLeadGenius platform',
+              },
+              unit_amount: pkg.monthlyFee,
+              recurring: {
+                interval: 'month',
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/pricing`,
+        metadata: {
+          packageId,
+          clinicName,
+          ownerName,
+          email,
+        },
+      });
+
+      res.json({ url: session.url, sessionId: session.id });
+    } catch (error: any) {
+      console.error("Checkout error:", error);
+      res.status(500).json({ message: error.message || "Failed to create checkout session" });
+    }
+  });
+
+  // Handle successful payment - create user account and clinic
+  app.get("/api/checkout/success", async (req: any, res) => {
+    try {
+      const { session_id } = req.query;
+      
+      if (!session_id) {
+        return res.status(400).json({ message: "Missing session ID" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      const session = await stripe.checkout.sessions.retrieve(session_id as string);
+
+      if (session.payment_status !== 'paid') {
+        return res.status(400).json({ message: "Payment not completed" });
+      }
+
+      const { packageId, clinicName, ownerName, email } = session.metadata || {};
+      
+      if (!email || !clinicName || !ownerName) {
+        return res.status(400).json({ message: "Missing session metadata" });
+      }
+
+      // Check if user already exists
+      let user = await storage.getUserByEmail(email);
+      
+      if (!user) {
+        // Generate temporary password
+        const tempPassword = Math.random().toString(36).slice(-10) + 'A1!';
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+        
+        // Create new clinic admin user
+        user = await storage.createUserWithPassword(
+          email,
+          hashedPassword,
+          'clinic',
+          ownerName.split(' ')[0],
+          ownerName.split(' ').slice(1).join(' ') || ''
+        );
+
+        // Update user with Stripe info
+        await storage.updateUserStripeInfo(user.id, {
+          stripeCustomerId: session.customer as string,
+          stripeSubscriptionId: session.subscription as string,
+          subscriptionTier: packageId,
+          subscriptionStatus: 'active'
+        });
+
+        // Create clinic for this user
+        const slug = clinicName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        await storage.createClinic({
+          name: clinicName,
+          slug: slug + '-' + Date.now().toString().slice(-4),
+          ownerId: user.id,
+        });
+
+        console.log("=== NEW CUSTOMER CREATED ===");
+        console.log(`Email: ${email}`);
+        console.log(`Clinic: ${clinicName}`);
+        console.log(`Package: ${packageId}`);
+        console.log(`Temporary Password: ${tempPassword}`);
+        console.log("=== SEND THIS TO CUSTOMER ===");
+
+        res.json({ 
+          success: true, 
+          message: "Account created successfully",
+          email,
+          clinicName,
+          tempPassword, // In production, send this via email
+        });
+      } else {
+        // User exists - update subscription
+        await storage.updateUserStripeInfo(user.id, {
+          stripeCustomerId: session.customer as string,
+          stripeSubscriptionId: session.subscription as string,
+          subscriptionTier: packageId,
+          subscriptionStatus: 'active'
+        });
+
+        res.json({ 
+          success: true, 
+          message: "Subscription updated",
+          email,
+        });
+      }
+    } catch (error: any) {
+      console.error("Success handler error:", error);
+      res.status(500).json({ message: error.message || "Failed to process payment" });
+    }
+  });
+
+  // Get user subscription status
+  app.get("/api/subscription", async (req: any, res) => {
+    try {
+      if (!requireAuth(req, res)) return;
+      
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({
+        tier: user.subscriptionTier,
+        status: user.subscriptionStatus,
+        customerId: user.stripeCustomerId,
+      });
+    } catch (error) {
+      console.error("Error getting subscription:", error);
+      res.status(500).json({ message: "Failed to get subscription" });
+    }
+  });
+
+  // Create customer portal session for managing subscription
+  app.post("/api/stripe/portal", async (req: any, res) => {
+    try {
+      if (!requireAuth(req, res)) return;
+      
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user?.stripeCustomerId) {
+        return res.status(400).json({ message: "No subscription found" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+      const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:5000';
+      const returnUrl = `${protocol}://${host}/admin`;
+
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: user.stripeCustomerId,
+        return_url: returnUrl,
+      });
+
+      res.json({ url: portalSession.url });
+    } catch (error: any) {
+      console.error("Portal error:", error);
+      res.status(500).json({ message: error.message || "Failed to create portal session" });
     }
   });
 
