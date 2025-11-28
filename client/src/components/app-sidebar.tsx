@@ -16,47 +16,72 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
 
-const menuItems = [
+const adminMenuItems = [
   {
     title: "Analytics",
-    url: "/admin",
+    url: "/dashboard",
     icon: BarChart3,
   },
   {
     title: "Leads",
-    url: "/admin/leads",
+    url: "/dashboard/leads",
     icon: Users,
   },
   {
     title: "Outreach",
-    url: "/admin/outreach",
+    url: "/dashboard/outreach",
     icon: Send,
   },
   {
     title: "Sequences",
-    url: "/admin/sequences",
+    url: "/dashboard/sequences",
     icon: Clock,
   },
   {
     title: "Clinics",
-    url: "/admin/clinics",
+    url: "/dashboard/clinics",
     icon: Building2,
   },
   {
     title: "Patient Bookings",
-    url: "/admin/patient-bookings",
+    url: "/dashboard/patient-bookings",
     icon: Calendar,
   },
   {
     title: "Users",
-    url: "/admin/users",
+    url: "/dashboard/users",
     icon: UserPlus,
+  },
+];
+
+const clinicMenuItems = [
+  {
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: BarChart3,
+  },
+  {
+    title: "Leads",
+    url: "/dashboard/leads",
+    icon: Users,
+  },
+  {
+    title: "Outreach",
+    url: "/dashboard/outreach",
+    icon: Send,
+  },
+  {
+    title: "Patient Bookings",
+    url: "/dashboard/patient-bookings",
+    icon: Calendar,
   },
 ];
 
 export function AppSidebar() {
   const [location] = useLocation();
   const { user } = useAuth() as { user: User | undefined };
+  
+  const menuItems = user?.role === 'clinic' ? clinicMenuItems : adminMenuItems;
 
   return (
     <Sidebar>
@@ -72,7 +97,7 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={location === item.url}
-                    data-testid={`nav-${item.title.toLowerCase()}`}
+                    data-testid={`nav-${item.title.toLowerCase().replace(' ', '-')}`}
                   >
                     <Link href={item.url}>
                       <item.icon />

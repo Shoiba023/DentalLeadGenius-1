@@ -14,7 +14,6 @@ import Login from "@/pages/login";
 import Signup from "@/pages/signup";
 import Pricing from "@/pages/pricing";
 import PaymentSuccess from "@/pages/payment-success";
-import AdminDashboard from "@/pages/admin-dashboard";
 import ClinicDashboardPage from "@/pages/clinic-dashboard";
 import AdminAnalytics from "@/pages/admin-analytics";
 import AdminLeads from "@/pages/admin-leads";
@@ -26,13 +25,23 @@ import AdminSequences from "@/pages/admin-sequences";
 import AdminUsers from "@/pages/admin-users";
 import ClinicPage from "@/pages/clinic-page";
 
+function DashboardHome() {
+  const { user } = useAuth();
+  
+  if (user?.role === 'clinic') {
+    return <ClinicDashboardPage />;
+  }
+  
+  return <AdminAnalytics />;
+}
+
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [location] = useLocation();
 
-  // Redirect to login if trying to access admin routes while not authenticated
+  // Redirect to login if trying to access dashboard routes while not authenticated
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && location.startsWith("/admin") && !location.startsWith("/admin/dashboard")) {
+    if (!isLoading && !isAuthenticated && location.startsWith("/dashboard")) {
       window.location.href = "/login";
     }
   }, [isLoading, isAuthenticated, location]);
@@ -46,33 +55,34 @@ function Router() {
     );
   }
 
-  // Helper to check if current path matches demo route (handles /demo, /demo/, /demo?params)
+  // Check if current path is a public route (no sidebar needed)
+  const isLandingRoute = location === "/" || location === "";
   const isDemoRoute = location === "/demo" || location.startsWith("/demo/") || location.startsWith("/demo?");
   const isLoginRoute = location === "/login" || location.startsWith("/login");
   const isSignupRoute = location === "/signup" || location.startsWith("/signup");
   const isPricingRoute = location === "/pricing" || location.startsWith("/pricing");
   const isPaymentRoute = location.startsWith("/payment/");
-  const isPublicDashboard = location === "/admin/dashboard" || location === "/clinic/dashboard";
+  const isClinicRoute = location.startsWith("/clinic/");
   
-  // Public routes that work for BOTH authenticated and unauthenticated users
-  // These pages should always show without the admin sidebar
-  if (isDemoRoute || location.startsWith("/clinic/") || isLoginRoute || isSignupRoute || isPublicDashboard || isPricingRoute || isPaymentRoute) {
+  // Public routes - always show without sidebar (for both authenticated and unauthenticated users)
+  const isPublicRoute = isLandingRoute || isDemoRoute || isLoginRoute || isSignupRoute || isPricingRoute || isPaymentRoute || isClinicRoute;
+  
+  if (isPublicRoute) {
     return (
       <Switch>
+        <Route path="/" component={Landing} />
         <Route path="/login" component={Login} />
         <Route path="/signup" component={Signup} />
         <Route path="/demo" component={Demo} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/payment/success" component={PaymentSuccess} />
-        <Route path="/admin/dashboard" component={AdminDashboard} />
-        <Route path="/clinic/dashboard" component={ClinicDashboardPage} />
         <Route path="/clinic/:slug" component={ClinicPage} />
         <Route component={NotFound} />
       </Switch>
     );
   }
 
-  // Landing page for unauthenticated users
+  // Dashboard routes require authentication
   if (!isAuthenticated) {
     return (
       <Switch>
@@ -82,15 +92,13 @@ function Router() {
         <Route path="/demo" component={Demo} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/payment/success" component={PaymentSuccess} />
-        <Route path="/admin/dashboard" component={AdminDashboard} />
-        <Route path="/clinic/dashboard" component={ClinicDashboardPage} />
         <Route path="/clinic/:slug" component={ClinicPage} />
         <Route component={NotFound} />
       </Switch>
     );
   }
 
-  // Authenticated admin routes with sidebar
+  // Authenticated dashboard routes with sidebar
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
@@ -106,15 +114,14 @@ function Router() {
           </header>
           <main className="flex-1 overflow-auto bg-muted/10">
             <Switch>
-              <Route path="/" component={AdminAnalytics} />
-              <Route path="/admin" component={AdminAnalytics} />
-              <Route path="/admin/leads" component={AdminLeads} />
-              <Route path="/admin/outreach" component={AdminOutreach} />
-              <Route path="/admin/sequences" component={AdminSequences} />
-              <Route path="/admin/clinics" component={AdminClinics} />
-              <Route path="/admin/clinics/:id" component={AdminClinicDashboard} />
-              <Route path="/admin/patient-bookings" component={AdminPatientBookings} />
-              <Route path="/admin/users" component={AdminUsers} />
+              <Route path="/dashboard" component={DashboardHome} />
+              <Route path="/dashboard/leads" component={AdminLeads} />
+              <Route path="/dashboard/outreach" component={AdminOutreach} />
+              <Route path="/dashboard/sequences" component={AdminSequences} />
+              <Route path="/dashboard/clinics" component={AdminClinics} />
+              <Route path="/dashboard/clinics/:id" component={AdminClinicDashboard} />
+              <Route path="/dashboard/patient-bookings" component={AdminPatientBookings} />
+              <Route path="/dashboard/users" component={AdminUsers} />
               <Route path="/demo" component={Demo} />
               <Route component={NotFound} />
             </Switch>

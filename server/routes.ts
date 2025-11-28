@@ -89,7 +89,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { password: _, ...userWithoutPassword } = user;
         res.json({ 
           user: userWithoutPassword,
-          redirectTo: user.role === 'admin' ? '/admin' : '/clinic/dashboard'
+          redirectTo: '/dashboard'
         });
       });
     } catch (error) {
