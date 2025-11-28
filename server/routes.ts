@@ -112,6 +112,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Signup endpoint for new clinic accounts
+  app.post("/api/auth/signup", async (req: any, res) => {
+    try {
+      const { email, password, firstName, lastName, clinicName } = req.body;
+      
+      if (!email || !password || !firstName || !lastName || !clinicName) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+      
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "An account with this email already exists" });
+      }
+      
+      // Hash password and create user
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = await storage.createUserWithPassword(
+        email,
+        hashedPassword,
+        'clinic',
+        firstName,
+        lastName
+      );
+      
+      // Create a clinic for the user
+      const slug = clinicName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const clinic = await storage.createClinic({
+        name: clinicName,
+        slug: slug + '-' + Date.now().toString(36),
+        description: `Welcome to ${clinicName}`,
+        primaryColor: '#0066cc',
+        services: ['General Dentistry', 'Cosmetic Dentistry'],
+        phone: '',
+        email: email,
+        address: '',
+      });
+      
+      // Link user to clinic as owner
+      await storage.addUserToClinic(user.id, clinic.id, 'owner');
+      
+      // Set up session
+      req.session.userId = user.id;
+      req.session.isAuthenticated = true;
+      
+      const { password: _, ...userWithoutPassword } = user;
+      res.json({ 
+        user: userWithoutPassword,
+        clinic: clinic,
+        message: "Account created successfully",
+        redirectTo: "/pricing"
+      });
+    } catch (error) {
+      console.error("Signup error:", error);
+      res.status(500).json({ message: "Failed to create account" });
+    }
+  });
+
   // Get current session user (for email/password auth)
   app.get("/api/auth/session", (req: any, res) => {
     if (req.session?.isAuthenticated && req.session?.userId) {
@@ -133,26 +195,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Seed admin user endpoint (call once to set up admin)
   app.post("/api/auth/seed-admin", async (req, res) => {
     try {
-      const existingAdmin = await storage.getUserByEmail("admin@dentalfunnel.com");
-      if (existingAdmin) {
-        return res.json({ message: "Admin user already exists" });
+      // Create default demo admin if not exists
+      const existingDemoAdmin = await storage.getUserByEmail("admin@dentalfunnel.com");
+      if (!existingDemoAdmin) {
+        const hashedPassword = await bcrypt.hash("Admin123!", 10);
+        await storage.createUserWithPassword(
+          "admin@dentalfunnel.com",
+          hashedPassword,
+          "admin",
+          "Admin",
+          "User"
+        );
+        console.log("Demo admin user created: admin@dentalfunnel.com");
       }
       
-      const hashedPassword = await bcrypt.hash("Admin123!", 10);
-      const admin = await storage.createUserWithPassword(
-        "admin@dentalfunnel.com",
-        hashedPassword,
-        "admin",
-        "Admin",
-        "User"
-      );
+      // Create main admin account if not exists
+      const existingMainAdmin = await storage.getUserByEmail("shoibaali10@gmail.com");
+      if (!existingMainAdmin) {
+        const hashedPassword = await bcrypt.hash("Demo123!", 10);
+        await storage.createUserWithPassword(
+          "shoibaali10@gmail.com",
+          hashedPassword,
+          "admin",
+          "Shoiba",
+          "Ali"
+        );
+        console.log("Main admin user created: shoibaali10@gmail.com");
+      }
       
-      res.json({ message: "Admin user created successfully", email: admin.email });
+      res.json({ message: "Admin users seeded successfully" });
     } catch (error) {
       console.error("Seed admin error:", error);
-      res.status(500).json({ message: "Failed to create admin user" });
+      res.status(500).json({ message: "Failed to create admin users" });
     }
   });
+  
+  // Auto-seed admin users on server start
+  (async () => {
+    try {
+      // Create default demo admin if not exists
+      const existingDemoAdmin = await storage.getUserByEmail("admin@dentalfunnel.com");
+      if (!existingDemoAdmin) {
+        const hashedPassword = await bcrypt.hash("Admin123!", 10);
+        await storage.createUserWithPassword(
+          "admin@dentalfunnel.com",
+          hashedPassword,
+          "admin",
+          "Admin",
+          "User"
+        );
+        console.log("Demo admin user created: admin@dentalfunnel.com");
+      }
+      
+      // Create main admin account if not exists
+      const existingMainAdmin = await storage.getUserByEmail("shoibaali10@gmail.com");
+      if (!existingMainAdmin) {
+        const hashedPassword = await bcrypt.hash("Demo123!", 10);
+        await storage.createUserWithPassword(
+          "shoibaali10@gmail.com",
+          hashedPassword,
+          "admin",
+          "Shoiba",
+          "Ali"
+        );
+        console.log("Main admin user created: shoibaali10@gmail.com");
+      }
+    } catch (error) {
+      console.error("Auto-seed admin users error:", error);
+    }
+  })();
 
   // Create new user (admin only)
   app.post("/api/users", async (req: any, res) => {

@@ -11,6 +11,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Demo from "@/pages/demo";
 import Login from "@/pages/login";
+import Signup from "@/pages/signup";
 import Pricing from "@/pages/pricing";
 import PaymentSuccess from "@/pages/payment-success";
 import AdminDashboard from "@/pages/admin-dashboard";
@@ -48,16 +49,18 @@ function Router() {
   // Helper to check if current path matches demo route (handles /demo, /demo/, /demo?params)
   const isDemoRoute = location === "/demo" || location.startsWith("/demo/") || location.startsWith("/demo?");
   const isLoginRoute = location === "/login" || location.startsWith("/login");
+  const isSignupRoute = location === "/signup" || location.startsWith("/signup");
   const isPricingRoute = location === "/pricing" || location.startsWith("/pricing");
   const isPaymentRoute = location.startsWith("/payment/");
   const isPublicDashboard = location === "/admin/dashboard" || location === "/clinic/dashboard";
   
   // Public routes that work for BOTH authenticated and unauthenticated users
   // These pages should always show without the admin sidebar
-  if (isDemoRoute || location.startsWith("/clinic/") || isLoginRoute || isPublicDashboard || isPricingRoute || isPaymentRoute) {
+  if (isDemoRoute || location.startsWith("/clinic/") || isLoginRoute || isSignupRoute || isPublicDashboard || isPricingRoute || isPaymentRoute) {
     return (
       <Switch>
         <Route path="/login" component={Login} />
+        <Route path="/signup" component={Signup} />
         <Route path="/demo" component={Demo} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/payment/success" component={PaymentSuccess} />
@@ -75,6 +78,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Landing} />
         <Route path="/login" component={Login} />
+        <Route path="/signup" component={Signup} />
         <Route path="/demo" component={Demo} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/payment/success" component={PaymentSuccess} />

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,8 +112,12 @@ export default function Login() {
           </form>
           
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Demo credentials:</p>
-            <p className="font-mono text-xs mt-1">admin@dentalfunnel.com / Admin123!</p>
+            <p>
+              Don't have an account?{" "}
+              <Link href="/signup" className="text-primary hover:underline" data-testid="link-signup">
+                Create one
+              </Link>
+            </p>
           </div>
         </CardContent>
       </Card>
