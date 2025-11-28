@@ -26,6 +26,14 @@ DentalLeadGenius is an AI-powered lead generation platform designed for dental c
 - Checkout flow creates Stripe customer, subscription, user account, and clinic
 - Test mode enabled by default - see PAYMENT_SETUP.md for live mode instructions
 
+### Self-Service Signup (November 2024)
+- Created `/signup` page for new clinic registration
+- Signup form collects: first name, last name, clinic name, email, password
+- Backend creates user with hashed password and linked clinic
+- After signup, redirects to `/pricing` to select subscription tier
+- Login page updated with link to signup for new users
+- Main admin account: shoibaali10@gmail.com / Demo123!
+
 ### Instant Demo Delivery
 - Demo form now provides INSTANT access - no scheduling, no waiting, no manual approval
 - Users fill a minimal form (clinic name, owner name, email - phone is optional)
@@ -65,7 +73,9 @@ DentalLeadGenius is an AI-powered lead generation platform designed for dental c
 - Created `/admin/dashboard` and `/clinic/dashboard` pages
 - Role-based redirects: admin users → /admin/dashboard, clinic users → /clinic/dashboard
 - Session stored in PostgreSQL with 7-day expiration
-- Default admin credentials: admin@dentalfunnel.com / Admin123!
+- Admin credentials: 
+  - Main admin: shoibaali10@gmail.com / Demo123!
+  - Demo admin: admin@dentalfunnel.com / Admin123!
 - Session-based auth helpers (requireAuth, requireAdminRole) work alongside OIDC
 
 ### Important Routing Rules
@@ -90,6 +100,7 @@ DentalLeadGenius is an AI-powered lead generation platform designed for dental c
 - **Pricing page**: `/pricing` - Displays three subscription tiers with checkout modal
 - **Payment success**: `/payment/success` - Post-checkout page showing login credentials
 - **Login/Auth**: `/login` - Custom email/password login page
+- **Signup**: `/signup` - New clinic registration (redirects to /pricing after)
 
 ### Demo Buttons Reference
 All these buttons should work without 404 errors:
