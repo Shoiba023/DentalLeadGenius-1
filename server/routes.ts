@@ -11,9 +11,11 @@ import { z } from "zod";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { initStripe } from "./stripeInit";
+import { sendDemoLinkEmail } from "./email";
 
 // Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), "attached_assets", "uploads");
@@ -189,6 +191,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .catch(() => res.json({ user: null, isAuthenticated: false }));
     } else {
       res.json({ user: null, isAuthenticated: false });
+    }
+  });
+
+  // Send demo access link (email-gated demo access)
+  const sendDemoLinkSchema = z.object({
+    email: z.string().email("Please enter a valid email address"),
+    clinicName: z.string().optional(),
+  });
+  
+  app.post("/api/send-demo-link", async (req, res) => {
+    try {
+      const { email, clinicName } = sendDemoLinkSchema.parse(req.body);
+      
+      // Generate secure token
+      const token = crypto.randomBytes(32).toString("hex");
+      
+      // Set expiration to 24 hours from now
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      
+      // Save token to database
+      await storage.createDemoAccessToken({
+        email,
+        clinicName: clinicName || null,
+        token,
+        expiresAt,
+        used: false,
+      });
+      
+      // Also save as a lead
+      await storage.createLead({
+        name: clinicName || email.split("@")[0],
+        email,
+        status: "new",
+        notes: "Requested demo access via email-gated form",
+      });
+      
+      // Build demo link URL
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const demoLink = `${baseUrl}/demo?token=${token}`;
+      
+      // Send email
+      const emailSent = await sendDemoLinkEmail({
+        to: email,
+        clinicName: clinicName || undefined,
+        demoLink,
+        expiresIn: "24 hours",
+      });
+      
+      if (emailSent) {
+        res.json({ 
+          success: true, 
+          message: "Demo access link has been sent to your email" 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: "Failed to send email. Please try again." 
+        });
+      }
+    } catch (error) {
+      console.error("Send demo link error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          success: false, 
+          message: error.errors[0]?.message || "Invalid email format" 
+        });
+      }
+      res.status(500).json({ 
+        success: false, 
+        message: "Something went wrong. Please try again." 
+      });
+    }
+  });
+  
+  // Verify demo access token
+  app.get("/api/verify-demo-token", async (req, res) => {
+    try {
+      const { token } = req.query;
+      
+      if (!token || typeof token !== "string") {
+        return res.json({ valid: false, message: "No token provided" });
+      }
+      
+      const accessToken = await storage.getDemoAccessTokenByToken(token);
+      
+      if (!accessToken) {
+        return res.json({ valid: false, message: "Invalid access link" });
+      }
+      
+      if (accessToken.expiresAt < new Date()) {
+        return res.json({ valid: false, message: "This demo link has expired" });
+      }
+      
+      // Mark token as used (but still allow access during the 24-hour window)
+      if (!accessToken.used) {
+        await storage.markDemoAccessTokenUsed(token);
+      }
+      
+      res.json({ 
+        valid: true, 
+        email: accessToken.email,
+        clinicName: accessToken.clinicName,
+      });
+    } catch (error) {
+      console.error("Verify demo token error:", error);
+      res.json({ valid: false, message: "Verification failed" });
     }
   });
 
