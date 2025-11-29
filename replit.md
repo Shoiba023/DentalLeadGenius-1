@@ -52,9 +52,26 @@ The platform features two types of AI chatbots: a **Sales Chatbot** on the homep
 
 **Primary Method**: Custom email/password authentication with bcrypt.
 
-**Session Management**: PostgreSQL-backed sessions (7-day TTL) using HTTP-only, secure cookies.
+**Session Management**: PostgreSQL-backed sessions (7-day TTL) using HTTP-only, secure cookies with clinic context tracking.
 
 **Authorization Strategy**: `isAuthenticated` middleware protects routes. Public routes are accessible without authentication. User roles are supported via an `isAdmin` flag.
+
+### Multi-Tenant Isolation
+
+**Clinic Context**: Each authenticated session tracks a `selectedClinicId` representing the active clinic context.
+
+**Data Isolation Pattern**: 
+- All clinic-scoped resources (leads, sequences, campaigns, bookings, analytics) include a `clinicId` foreign key
+- Platform-level demo leads are allowed with NULL clinicId for sales funnel tracking
+- The `requireClinicContext()` helper validates authentication and clinic membership before granting access
+- Clinic-scoped storage helpers (`getLeadsByClinic`, `getSequencesByClinic`, `getBookingsByClinic`, etc.) enforce SQL-level tenant isolation
+
+**Clinic Switcher**: Users with access to multiple clinics can switch between them using the ClinicSwitcher component in the sidebar.
+
+**Security Model**:
+- Routes validate clinic membership via `clinic_users` table before granting access
+- Database-level foreign keys ensure referential integrity
+- Global storage methods are deprecated in favor of clinic-scoped alternatives
 
 ## External Dependencies
 
