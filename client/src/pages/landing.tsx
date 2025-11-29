@@ -1,8 +1,8 @@
-import { MessageSquare, Users, Building2, BarChart3, Phone, Calendar, Play, Menu, X } from "lucide-react";
+import { MessageSquare, Users, Building2, BarChart3, Phone, Calendar, Play, Menu, X, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChatbotWidget } from "@/components/chatbot-widget";
-import { DemoBookingModal } from "@/components/demo-booking-modal";
+import { DemoAccessModal } from "@/components/demo-access-modal";
 import { useState } from "react";
 import { Link } from "wouter";
 import { SiWhatsapp } from "react-icons/si";
@@ -344,8 +344,8 @@ export default function Landing() {
       {/* Chatbot Widget - Auto-opens after 10 seconds, auto-minimizes after another 10 seconds */}
       <ChatbotWidget type="sales" />
 
-      {/* Demo Booking Modal */}
-      <DemoBookingModal open={showDemoModal} onOpenChange={setShowDemoModal} />
+      {/* Demo Access Modal */}
+      <DemoAccessModal open={showDemoModal} onOpenChange={setShowDemoModal} />
     </div>
   );
 }
