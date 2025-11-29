@@ -1143,9 +1143,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Outreach campaign routes
   app.get("/api/campaigns", async (req: any, res) => {
     try {
-      if (!requireAuth(req, res)) return;
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
       
-      const campaigns = await storage.getAllCampaigns();
+      const campaigns = await storage.getCampaignsByClinic(clinicId);
       res.json(campaigns);
     } catch (error) {
       console.error("Error fetching campaigns:", error);
@@ -1155,9 +1156,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/campaigns", async (req: any, res) => {
     try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
       if (!await requireAdminRole(req, res)) return;
       
-      const campaignData = req.body;
+      const campaignData = { ...req.body, clinicId };
       const campaign = await storage.createCampaign(campaignData);
       res.json(campaign);
     } catch (error) {
