@@ -103,6 +103,17 @@ export const clinics = pgTable("clinics", {
   logoUrl: text("logo_url"),
   brandColor: text("brand_color").default("#3B82F6"),
   ownerId: varchar("owner_id").references(() => users.id),
+  // Onboarding fields
+  address: text("address"),
+  phone: text("phone"),
+  website: text("website"),
+  timezone: text("timezone").default("America/New_York"),
+  businessHours: text("business_hours"),
+  services: text("services").array(),
+  // Integration settings
+  emailProvider: text("email_provider"), // gmail, resend, sendgrid
+  smsEnabled: boolean("sms_enabled").default(false),
+  onboardingCompleted: boolean("onboarding_completed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

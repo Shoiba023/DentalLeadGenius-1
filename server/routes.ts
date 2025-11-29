@@ -781,6 +781,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Quick clinic setup - creates clinic with all onboarding data in one step
+  app.post("/api/clinics/quick-setup", async (req: any, res) => {
+    try {
+      // Support both session-based auth (email/password) and OIDC auth
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId || (!req.session?.isAuthenticated && !req.isAuthenticated?.())) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { name, address, phone, website, timezone, services, businessHours, emailProvider, smsEnabled } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ message: "Clinic name is required" });
+      }
+      
+      // Generate slug from clinic name
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      
+      // Create the clinic with all onboarding data
+      const clinic = await storage.createClinic({
+        name,
+        slug: `${slug}-${Date.now()}`,
+        ownerId: userId,
+        address: address || null,
+        phone: phone || null,
+        website: website || null,
+        timezone: timezone || "America/New_York",
+        businessHours: businessHours || null,
+        services: services || [],
+        emailProvider: emailProvider || null,
+        smsEnabled: smsEnabled || false,
+        onboardingCompleted: true,
+      });
+      
+      // Add user as clinic owner
+      await storage.addUserToClinic(userId, clinic.id, 'owner');
+      
+      // Set the selected clinic in session
+      if (req.session) {
+        req.session.selectedClinicId = clinic.id;
+      }
+      
+      res.json({ 
+        ...clinic,
+        setupComplete: true,
+        message: "Clinic created and configured successfully"
+      });
+    } catch (error) {
+      console.error("Error in quick setup:", error);
+      res.status(500).json({ message: "Failed to complete quick setup" });
+    }
+  });
+
+  // Update clinic with onboarding data
+  app.post("/api/clinics/:id/onboarding", async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      // Support both session-based auth (email/password) and OIDC auth
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId || (!req.session?.isAuthenticated && !req.isAuthenticated?.())) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Verify user has access to this clinic
+      const userClinics = await storage.getUserClinics(userId);
+      const hasAccess = userClinics.some((c: any) => c.id === id);
+      
+      if (!hasAccess) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const { name, address, phone, website, timezone, services, businessHours, emailProvider, smsEnabled } = req.body;
+      
+      // Update clinic with all onboarding data
+      const updatedClinic = await storage.updateClinic(id, {
+        ...(name && { name }),
+        address: address || null,
+        phone: phone || null,
+        website: website || null,
+        timezone: timezone || "America/New_York",
+        businessHours: businessHours || null,
+        services: services || [],
+        emailProvider: emailProvider || null,
+        smsEnabled: smsEnabled || false,
+        onboardingCompleted: true,
+      });
+      
+      res.json({ 
+        ...updatedClinic,
+        setupComplete: true,
+        message: "Clinic onboarding completed successfully"
+      });
+    } catch (error) {
+      console.error("Error in onboarding:", error);
+      res.status(500).json({ message: "Failed to complete onboarding" });
+    }
+  });
+
   // Upload clinic logo with comprehensive error handling
   app.post("/api/clinics/:id/logo", isAuthenticated, (req, res) => {
     upload.single("logo")(req, res, async (err) => {
