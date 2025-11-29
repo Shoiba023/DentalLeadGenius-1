@@ -9,11 +9,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  SidebarHeader,
 } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
+import { ClinicSwitcher } from "@/components/clinic-switcher";
 import type { User } from "@shared/schema";
 
 const adminMenuItems = [
@@ -90,10 +92,14 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
+      <SidebarHeader className="p-4 border-b">
+        <div className="text-lg font-bold mb-3">DentalLeadGenius</div>
+        <ClinicSwitcher />
+      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-lg font-bold px-4 py-6">
-            DentalLeadGenius
+          <SidebarGroupLabel className="sr-only">
+            Navigation
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
