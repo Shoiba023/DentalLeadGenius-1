@@ -13,6 +13,9 @@ import {
   sequenceSteps,
   sequenceEnrollments,
   demoAccessTokens,
+  onboardingProgress,
+  onboardingEmails,
+  onboardingEmailLogs,
   type User,
   type UpsertUser,
   type Lead,
@@ -37,6 +40,12 @@ import {
   type InsertSequenceEnrollment,
   type DemoAccessToken,
   type InsertDemoAccessToken,
+  type OnboardingProgress,
+  type InsertOnboardingProgress,
+  type OnboardingEmail,
+  type InsertOnboardingEmail,
+  type OnboardingEmailLog,
+  type InsertOnboardingEmailLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -148,6 +157,24 @@ export interface IStorage {
   createDemoAccessToken(data: InsertDemoAccessToken): Promise<DemoAccessToken>;
   getDemoAccessTokenByToken(token: string): Promise<DemoAccessToken | undefined>;
   markDemoAccessTokenUsed(token: string): Promise<void>;
+  
+  // Onboarding operations
+  createOnboardingProgress(data: InsertOnboardingProgress): Promise<OnboardingProgress>;
+  getOnboardingProgressByClinic(clinicId: string): Promise<OnboardingProgress | undefined>;
+  getOnboardingProgressByUser(userId: string): Promise<OnboardingProgress | undefined>;
+  updateOnboardingProgress(id: string, data: Partial<InsertOnboardingProgress>): Promise<OnboardingProgress>;
+  getAllOnboardingProgress(): Promise<OnboardingProgress[]>;
+  
+  // Onboarding email operations
+  createOnboardingEmail(data: InsertOnboardingEmail): Promise<OnboardingEmail>;
+  getOnboardingEmailsByStage(stage: number): Promise<OnboardingEmail[]>;
+  getOnboardingEmailByTrigger(stage: number, triggerType: string): Promise<OnboardingEmail | undefined>;
+  getAllOnboardingEmails(): Promise<OnboardingEmail[]>;
+  updateOnboardingEmail(id: string, data: Partial<InsertOnboardingEmail>): Promise<OnboardingEmail>;
+  
+  // Onboarding email log operations
+  createOnboardingEmailLog(data: InsertOnboardingEmailLog): Promise<OnboardingEmailLog>;
+  getOnboardingEmailLogs(onboardingId: string): Promise<OnboardingEmailLog[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -666,6 +693,92 @@ export class DatabaseStorage implements IStorage {
       .update(demoAccessTokens)
       .set({ used: true })
       .where(eq(demoAccessTokens.token, token));
+  }
+  
+  // Onboarding operations
+  async createOnboardingProgress(data: InsertOnboardingProgress): Promise<OnboardingProgress> {
+    const [progress] = await db.insert(onboardingProgress).values(data).returning();
+    return progress;
+  }
+  
+  async getOnboardingProgressByClinic(clinicId: string): Promise<OnboardingProgress | undefined> {
+    const [progress] = await db
+      .select()
+      .from(onboardingProgress)
+      .where(eq(onboardingProgress.clinicId, clinicId));
+    return progress;
+  }
+  
+  async getOnboardingProgressByUser(userId: string): Promise<OnboardingProgress | undefined> {
+    const [progress] = await db
+      .select()
+      .from(onboardingProgress)
+      .where(eq(onboardingProgress.userId, userId));
+    return progress;
+  }
+  
+  async updateOnboardingProgress(id: string, data: Partial<InsertOnboardingProgress>): Promise<OnboardingProgress> {
+    const [updated] = await db
+      .update(onboardingProgress)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(onboardingProgress.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async getAllOnboardingProgress(): Promise<OnboardingProgress[]> {
+    return await db.select().from(onboardingProgress).orderBy(desc(onboardingProgress.createdAt));
+  }
+  
+  // Onboarding email operations
+  async createOnboardingEmail(data: InsertOnboardingEmail): Promise<OnboardingEmail> {
+    const [email] = await db.insert(onboardingEmails).values(data).returning();
+    return email;
+  }
+  
+  async getOnboardingEmailsByStage(stage: number): Promise<OnboardingEmail[]> {
+    return await db
+      .select()
+      .from(onboardingEmails)
+      .where(eq(onboardingEmails.stage, stage));
+  }
+  
+  async getOnboardingEmailByTrigger(stage: number, triggerType: string): Promise<OnboardingEmail | undefined> {
+    const [email] = await db
+      .select()
+      .from(onboardingEmails)
+      .where(and(
+        eq(onboardingEmails.stage, stage),
+        eq(onboardingEmails.triggerType, triggerType)
+      ));
+    return email;
+  }
+  
+  async getAllOnboardingEmails(): Promise<OnboardingEmail[]> {
+    return await db.select().from(onboardingEmails).orderBy(onboardingEmails.stage);
+  }
+  
+  async updateOnboardingEmail(id: string, data: Partial<InsertOnboardingEmail>): Promise<OnboardingEmail> {
+    const [updated] = await db
+      .update(onboardingEmails)
+      .set(data)
+      .where(eq(onboardingEmails.id, id))
+      .returning();
+    return updated;
+  }
+  
+  // Onboarding email log operations
+  async createOnboardingEmailLog(data: InsertOnboardingEmailLog): Promise<OnboardingEmailLog> {
+    const [log] = await db.insert(onboardingEmailLogs).values(data).returning();
+    return log;
+  }
+  
+  async getOnboardingEmailLogs(onboardingId: string): Promise<OnboardingEmailLog[]> {
+    return await db
+      .select()
+      .from(onboardingEmailLogs)
+      .where(eq(onboardingEmailLogs.onboardingId, onboardingId))
+      .orderBy(desc(onboardingEmailLogs.sentAt));
   }
 }
 

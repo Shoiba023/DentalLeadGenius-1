@@ -399,3 +399,122 @@ export const insertDemoAccessTokenSchema = createInsertSchema(demoAccessTokens).
 
 export type InsertDemoAccessToken = z.infer<typeof insertDemoAccessTokenSchema>;
 export type DemoAccessToken = typeof demoAccessTokens.$inferSelect;
+
+// Onboarding progress table - tracks 4-stage onboarding workflow
+export const onboardingProgress = pgTable("onboarding_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clinicId: varchar("clinic_id").notNull().references(() => clinics.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  
+  // Stage 1: Welcome
+  welcomeCompleted: boolean("welcome_completed").default(false).notNull(),
+  welcomeCompletedAt: timestamp("welcome_completed_at"),
+  welcomeEmailSent: boolean("welcome_email_sent").default(false).notNull(),
+  
+  // Stage 2: Clinic Setup
+  setupCompleted: boolean("setup_completed").default(false).notNull(),
+  setupCompletedAt: timestamp("setup_completed_at"),
+  clinicAddress: text("clinic_address"),
+  clinicPhone: text("clinic_phone"),
+  clinicWebsite: text("clinic_website"),
+  clinicTimezone: text("clinic_timezone").default("America/New_York"),
+  businessHours: jsonb("business_hours"),
+  services: text("services").array(),
+  
+  // Stage 3: AI Chatbot Activation
+  chatbotCompleted: boolean("chatbot_completed").default(false).notNull(),
+  chatbotCompletedAt: timestamp("chatbot_completed_at"),
+  chatbotEnabled: boolean("chatbot_enabled").default(false).notNull(),
+  chatbotGreeting: text("chatbot_greeting"),
+  chatbotTone: text("chatbot_tone").default("professional"), // professional, friendly, casual
+  chatbotFocusServices: text("chatbot_focus_services").array(),
+  
+  // Stage 4: Growth Optimization
+  optimizationCompleted: boolean("optimization_completed").default(false).notNull(),
+  optimizationCompletedAt: timestamp("optimization_completed_at"),
+  autoFollowupEnabled: boolean("auto_followup_enabled").default(false).notNull(),
+  leadScoringEnabled: boolean("lead_scoring_enabled").default(false).notNull(),
+  reviewRequestsEnabled: boolean("review_requests_enabled").default(false).notNull(),
+  referralProgramEnabled: boolean("referral_program_enabled").default(false).notNull(),
+  targetLeadsPerMonth: integer("target_leads_per_month").default(50),
+  
+  // Overall status
+  currentStage: integer("current_stage").default(1).notNull(), // 1-4
+  completedAt: timestamp("completed_at"), // when all 4 stages done
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertOnboardingProgressSchema = createInsertSchema(onboardingProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOnboardingProgress = z.infer<typeof insertOnboardingProgressSchema>;
+export type OnboardingProgress = typeof onboardingProgress.$inferSelect;
+
+// Onboarding email templates table
+export const onboardingEmails = pgTable("onboarding_emails", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  stage: integer("stage").notNull(), // 1-4
+  name: text("name").notNull(),
+  subject: text("subject").notNull(),
+  htmlContent: text("html_content").notNull(),
+  textContent: text("text_content").notNull(),
+  triggerType: text("trigger_type").notNull(), // stage_start, stage_complete, reminder
+  delayHours: integer("delay_hours").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertOnboardingEmailSchema = createInsertSchema(onboardingEmails).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertOnboardingEmail = z.infer<typeof insertOnboardingEmailSchema>;
+export type OnboardingEmail = typeof onboardingEmails.$inferSelect;
+
+// Onboarding email logs table - tracks sent emails
+export const onboardingEmailLogs = pgTable("onboarding_email_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  onboardingId: varchar("onboarding_id").notNull().references(() => onboardingProgress.id),
+  emailTemplateId: varchar("email_template_id").notNull().references(() => onboardingEmails.id),
+  recipientEmail: text("recipient_email").notNull(),
+  subject: text("subject").notNull(),
+  sentAt: timestamp("sent_at").defaultNow(),
+  status: text("status").default("sent").notNull(), // sent, delivered, opened, clicked, failed
+});
+
+export const insertOnboardingEmailLogSchema = createInsertSchema(onboardingEmailLogs).omit({
+  id: true,
+  sentAt: true,
+});
+
+export type InsertOnboardingEmailLog = z.infer<typeof insertOnboardingEmailLogSchema>;
+export type OnboardingEmailLog = typeof onboardingEmailLogs.$inferSelect;
+
+// Onboarding relations
+export const onboardingProgressRelations = relations(onboardingProgress, ({ one, many }) => ({
+  clinic: one(clinics, {
+    fields: [onboardingProgress.clinicId],
+    references: [clinics.id],
+  }),
+  user: one(users, {
+    fields: [onboardingProgress.userId],
+    references: [users.id],
+  }),
+  emailLogs: many(onboardingEmailLogs),
+}));
+
+export const onboardingEmailLogsRelations = relations(onboardingEmailLogs, ({ one }) => ({
+  onboarding: one(onboardingProgress, {
+    fields: [onboardingEmailLogs.onboardingId],
+    references: [onboardingProgress.id],
+  }),
+  emailTemplate: one(onboardingEmails, {
+    fields: [onboardingEmailLogs.emailTemplateId],
+    references: [onboardingEmails.id],
+  }),
+}));
