@@ -81,6 +81,7 @@ export interface IStorage {
   updateClinic(id: string, data: Partial<InsertClinic>): Promise<Clinic>;
   getClinicById(id: string): Promise<Clinic | undefined>;
   getClinicBySlug(slug: string): Promise<Clinic | undefined>;
+  getUserClinics(userId: string): Promise<Clinic[]>;
 
   // Booking operations
   createBooking(booking: InsertBooking): Promise<Booking>;
@@ -341,6 +342,38 @@ export class DatabaseStorage implements IStorage {
   async getClinicBySlug(slug: string): Promise<Clinic | undefined> {
     const [clinic] = await db.select().from(clinics).where(eq(clinics.slug, slug));
     return clinic;
+  }
+  
+  async getUserClinics(userId: string): Promise<Clinic[]> {
+    // Get all clinics the user is a member of or owns
+    const memberClinics = await db
+      .select({
+        id: clinics.id,
+        name: clinics.name,
+        slug: clinics.slug,
+        logoUrl: clinics.logoUrl,
+        brandColor: clinics.brandColor,
+        ownerId: clinics.ownerId,
+        createdAt: clinics.createdAt,
+        updatedAt: clinics.updatedAt,
+      })
+      .from(clinicUsers)
+      .innerJoin(clinics, eq(clinicUsers.clinicId, clinics.id))
+      .where(eq(clinicUsers.userId, userId));
+    
+    // Also get clinics they own directly (in case not in clinicUsers)
+    const ownedClinics = await db
+      .select()
+      .from(clinics)
+      .where(eq(clinics.ownerId, userId));
+    
+    // Merge and deduplicate by clinic id
+    const allClinics = [...memberClinics, ...ownedClinics];
+    const uniqueClinics = allClinics.filter((clinic, index, self) => 
+      index === self.findIndex(c => c.id === clinic.id)
+    );
+    
+    return uniqueClinics;
   }
 
   // Booking operations

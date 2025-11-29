@@ -75,10 +75,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid email or password" });
       }
       
-      // Set up session
+      // Get user's clinics for multi-tenant context
+      const userClinics = await storage.getUserClinics(user.id);
+      const selectedClinicId = userClinics.length > 0 ? userClinics[0].id : null;
+      
+      // Set up session with clinic context
       req.session.userId = user.id;
       req.session.userRole = user.role;
       req.session.isAuthenticated = true;
+      req.session.selectedClinicId = selectedClinicId;
       
       // Explicitly save session before responding
       req.session.save((err: any) => {
@@ -91,6 +96,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { password: _, ...userWithoutPassword } = user;
         res.json({ 
           user: userWithoutPassword,
+          clinics: userClinics,
+          selectedClinicId,
           redirectTo: '/dashboard'
         });
       });
@@ -172,21 +179,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get current session user (for email/password auth)
-  app.get("/api/auth/session", (req: any, res) => {
+  // Get current session user (for email/password auth) with clinic context
+  app.get("/api/auth/session", async (req: any, res) => {
     if (req.session?.isAuthenticated && req.session?.userId) {
-      storage.getUser(req.session.userId)
-        .then(user => {
-          if (user) {
-            const { password: _, ...userWithoutPassword } = user;
-            res.json({ user: userWithoutPassword, isAuthenticated: true });
-          } else {
-            res.json({ user: null, isAuthenticated: false });
+      try {
+        const user = await storage.getUser(req.session.userId);
+        if (user) {
+          const { password: _, ...userWithoutPassword } = user;
+          const userClinics = await storage.getUserClinics(user.id);
+          
+          // If no selectedClinicId in session, set it to first clinic
+          if (!req.session.selectedClinicId && userClinics.length > 0) {
+            req.session.selectedClinicId = userClinics[0].id;
           }
-        })
-        .catch(() => res.json({ user: null, isAuthenticated: false }));
+          
+          const selectedClinic = req.session.selectedClinicId 
+            ? userClinics.find(c => c.id === req.session.selectedClinicId) || null
+            : null;
+          
+          res.json({ 
+            user: userWithoutPassword, 
+            isAuthenticated: true,
+            clinics: userClinics,
+            selectedClinicId: req.session.selectedClinicId,
+            selectedClinic
+          });
+        } else {
+          res.json({ user: null, isAuthenticated: false });
+        }
+      } catch (error) {
+        console.error("Session error:", error);
+        res.json({ user: null, isAuthenticated: false });
+      }
     } else {
       res.json({ user: null, isAuthenticated: false });
+    }
+  });
+  
+  // Switch clinic context
+  app.post("/api/auth/switch-clinic", async (req: any, res) => {
+    if (!req.session?.isAuthenticated || !req.session?.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const { clinicId } = req.body;
+      if (!clinicId) {
+        return res.status(400).json({ message: "Clinic ID is required" });
+      }
+      
+      // Verify user has access to this clinic
+      const userClinics = await storage.getUserClinics(req.session.userId);
+      const hasAccess = userClinics.some(c => c.id === clinicId);
+      
+      if (!hasAccess) {
+        return res.status(403).json({ message: "Access denied to this clinic" });
+      }
+      
+      // Update session with new clinic
+      req.session.selectedClinicId = clinicId;
+      
+      req.session.save((err: any) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ message: "Failed to switch clinic" });
+        }
+        
+        const selectedClinic = userClinics.find(c => c.id === clinicId);
+        res.json({ 
+          success: true, 
+          selectedClinicId: clinicId,
+          selectedClinic
+        });
+      });
+    } catch (error) {
+      console.error("Switch clinic error:", error);
+      res.status(500).json({ message: "Failed to switch clinic" });
+    }
+  });
+  
+  // Get user's clinics
+  app.get("/api/auth/clinics", async (req: any, res) => {
+    if (!req.session?.isAuthenticated || !req.session?.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const userClinics = await storage.getUserClinics(req.session.userId);
+      res.json({ clinics: userClinics });
+    } catch (error) {
+      console.error("Get clinics error:", error);
+      res.status(500).json({ message: "Failed to get clinics" });
     }
   });
 

@@ -72,6 +72,7 @@ export type User = typeof users.$inferSelect;
 // Leads table
 export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clinicId: varchar("clinic_id").references(() => clinics.id), // Multi-tenant support
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
@@ -193,6 +194,7 @@ export type ChatbotMessage = typeof chatbotMessages.$inferSelect;
 // Outreach campaigns table
 export const outreachCampaigns = pgTable("outreach_campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clinicId: varchar("clinic_id").references(() => clinics.id), // Multi-tenant support
   name: text("name").notNull(),
   type: text("type").notNull(), // email, sms, whatsapp
   subject: text("subject"),
@@ -242,6 +244,7 @@ export type PatientBooking = typeof patientBookings.$inferSelect;
 // Automated follow-up sequences table
 export const sequences = pgTable("sequences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clinicId: varchar("clinic_id").references(() => clinics.id), // Multi-tenant support
   name: text("name").notNull(),
   description: text("description"),
   sequenceType: text("sequence_type").default("custom").notNull(), // new_lead, missed_call, no_show, appointment_reminder, review_request, custom
@@ -314,6 +317,9 @@ export const clinicsRelations = relations(clinics, ({ one, many }) => ({
     references: [users.id],
   }),
   members: many(clinicUsers),
+  leads: many(leads),
+  sequences: many(sequences),
+  outreachCampaigns: many(outreachCampaigns),
   chatbotThreads: many(chatbotThreads),
   patientBookings: many(patientBookings),
 }));
@@ -352,12 +358,23 @@ export const patientBookingsRelations = relations(patientBookings, ({ one }) => 
 }));
 
 export const sequencesRelations = relations(sequences, ({ one, many }) => ({
+  clinic: one(clinics, {
+    fields: [sequences.clinicId],
+    references: [clinics.id],
+  }),
   owner: one(users, {
     fields: [sequences.ownerId],
     references: [users.id],
   }),
   steps: many(sequenceSteps),
   enrollments: many(sequenceEnrollments),
+}));
+
+export const outreachCampaignsRelations = relations(outreachCampaigns, ({ one }) => ({
+  clinic: one(clinics, {
+    fields: [outreachCampaigns.clinicId],
+    references: [clinics.id],
+  }),
 }));
 
 export const sequenceStepsRelations = relations(sequenceSteps, ({ one }) => ({
@@ -378,7 +395,11 @@ export const sequenceEnrollmentsRelations = relations(sequenceEnrollments, ({ on
   }),
 }));
 
-export const leadsRelations = relations(leads, ({ many }) => ({
+export const leadsRelations = relations(leads, ({ one, many }) => ({
+  clinic: one(clinics, {
+    fields: [leads.clinicId],
+    references: [clinics.id],
+  }),
   sequenceEnrollments: many(sequenceEnrollments),
 }));
 
