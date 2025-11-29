@@ -774,12 +774,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Patient booking routes
+  // Patient booking routes with automatic sequence enrollment
   app.post("/api/patient-bookings", async (req, res) => {
     try {
       const { insertPatientBookingSchema } = await import("@shared/schema");
       const bookingData = insertPatientBookingSchema.parse(req.body);
       const booking = await storage.createPatientBooking(bookingData);
+      
+      // Auto-create a lead from patient data and enroll in Appointment Request Sequence
+      try {
+        // Get clinic info for context
+        const clinic = await storage.getClinicById(bookingData.clinicId);
+        
+        // Create a lead from the patient booking
+        const lead = await storage.createLead({
+          name: bookingData.patientName,
+          email: bookingData.patientEmail,
+          phone: bookingData.patientPhone,
+          notes: `Patient booking for ${clinic?.name || 'clinic'} - ${bookingData.appointmentType || 'General'} appointment. Preferred: ${bookingData.preferredDate || 'Flexible'} ${bookingData.preferredTime || ''}. Patient notes: ${bookingData.notes || 'None'}`,
+          status: "new",
+        });
+        
+        // Find and enroll in "Appointment Request Sequence"
+        const sequences = await storage.getAllSequences();
+        const appointmentSequence = sequences.find(s => s.name === "Appointment Request Sequence" && s.status === "active");
+        
+        if (appointmentSequence && lead) {
+          await storage.createSequenceEnrollment({
+            sequenceId: appointmentSequence.id,
+            leadId: lead.id,
+            currentStepOrder: 1,
+            status: "active",
+            nextSendAt: new Date(), // Send first message immediately
+          });
+          console.log(`[Automation] Patient ${bookingData.patientName} enrolled in Appointment Request Sequence`);
+        }
+      } catch (enrollError) {
+        // Don't fail the booking if enrollment fails, just log it
+        console.error("Error auto-enrolling patient in sequence:", enrollError);
+      }
+      
       res.json(booking);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -833,10 +867,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const { status } = req.body;
-      const validStatuses = ["pending", "confirmed", "cancelled", "completed"];
+      const validStatuses = ["pending", "confirmed", "cancelled", "completed", "missed"];
       
       if (!status || !validStatuses.includes(status)) {
-        return res.status(400).json({ message: "Invalid status. Must be one of: pending, confirmed, cancelled, completed" });
+        return res.status(400).json({ message: "Invalid status. Must be one of: pending, confirmed, cancelled, completed, missed" });
       }
       
       const bookings = await storage.getPatientBookingsForUser(userId);
@@ -846,7 +880,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Booking not found or access denied" });
       }
       
+      const previousStatus = booking.status;
       await storage.updatePatientBookingStatus(req.params.id, status);
+      
+      // Auto-enroll in sequences based on status changes
+      try {
+        // Find lead by patient email to enroll in sequences
+        const leads = await storage.getLeadsByEmail(booking.patientEmail);
+        const lead = leads[0]; // Get the most recent lead with this email
+        
+        if (lead) {
+          const sequences = await storage.getAllSequences();
+          
+          // Missed or cancelled → Missed-Appointment Recovery Sequence
+          if ((status === "missed" || status === "cancelled") && previousStatus !== "missed" && previousStatus !== "cancelled") {
+            const missedSequence = sequences.find(s => s.name === "Missed-Appointment Recovery Sequence" && s.status === "active");
+            if (missedSequence) {
+              await storage.createSequenceEnrollment({
+                sequenceId: missedSequence.id,
+                leadId: lead.id,
+                currentStepOrder: 1,
+                status: "active",
+                nextSendAt: new Date(),
+              });
+              console.log(`[Automation] Patient ${booking.patientName} enrolled in Missed-Appointment Recovery Sequence`);
+            }
+          }
+          
+          // Completed → Post-Visit Care Sequence + Review Sequence (delayed)
+          if (status === "completed" && previousStatus !== "completed") {
+            const postVisitSequence = sequences.find(s => s.name === "Post-Visit Care Sequence" && s.status === "active");
+            const reviewSequence = sequences.find(s => s.name === "Review & Testimonial Sequence" && s.status === "active");
+            
+            if (postVisitSequence) {
+              await storage.createSequenceEnrollment({
+                sequenceId: postVisitSequence.id,
+                leadId: lead.id,
+                currentStepOrder: 1,
+                status: "active",
+                nextSendAt: new Date(),
+              });
+              console.log(`[Automation] Patient ${booking.patientName} enrolled in Post-Visit Care Sequence`);
+            }
+            
+            if (reviewSequence) {
+              // Schedule review sequence to start 3 days after visit completion
+              const reviewStartDate = new Date();
+              reviewStartDate.setDate(reviewStartDate.getDate() + 3);
+              await storage.createSequenceEnrollment({
+                sequenceId: reviewSequence.id,
+                leadId: lead.id,
+                currentStepOrder: 1,
+                status: "active",
+                nextSendAt: reviewStartDate,
+              });
+              console.log(`[Automation] Patient ${booking.patientName} enrolled in Review & Testimonial Sequence (starting in 3 days)`);
+            }
+          }
+        }
+      } catch (enrollError) {
+        console.error("Error auto-enrolling patient in sequence on status change:", enrollError);
+      }
+      
       res.json({ message: "Status updated successfully" });
     } catch (error) {
       console.error("Error updating patient booking status:", error);
