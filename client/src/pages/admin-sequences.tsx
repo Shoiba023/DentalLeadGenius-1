@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Plus, Mail, MessageSquare, Clock, Trash2, Play, Pause, ArrowRight, Sparkles } from "lucide-react";
+import { Loader2, Plus, Mail, MessageSquare, Clock, Trash2, Play, Pause, ArrowRight, Sparkles, Phone, CalendarX, CalendarCheck, Star, Users, Filter } from "lucide-react";
 
 interface SequenceStep {
   id: string;
@@ -42,11 +42,27 @@ interface Sequence {
   id: string;
   name: string;
   description?: string;
+  sequenceType?: string;
   status: string;
   ownerId?: string;
   createdAt: string;
   steps?: SequenceStep[];
 }
+
+const SEQUENCE_TYPES = [
+  { value: "all", label: "All Sequences", icon: Users },
+  { value: "new_lead", label: "New Lead", icon: Users },
+  { value: "missed_call", label: "Missed Call", icon: Phone },
+  { value: "no_show", label: "No-Show", icon: CalendarX },
+  { value: "appointment_reminder", label: "Reminder", icon: CalendarCheck },
+  { value: "review_request", label: "Review Request", icon: Star },
+  { value: "custom", label: "Custom", icon: Sparkles },
+];
+
+const getSequenceTypeInfo = (type?: string) => {
+  const typeInfo = SEQUENCE_TYPES.find(t => t.value === type);
+  return typeInfo || { value: "custom", label: "Custom", icon: Sparkles };
+};
 
 export default function AdminSequences() {
   const { toast } = useToast();
@@ -54,7 +70,8 @@ export default function AdminSequences() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null);
   const [isAddStepOpen, setIsAddStepOpen] = useState(false);
-  const [newSequence, setNewSequence] = useState({ name: "", description: "" });
+  const [filterType, setFilterType] = useState("all");
+  const [newSequence, setNewSequence] = useState({ name: "", description: "", sequenceType: "custom" });
   const [newStep, setNewStep] = useState({
     channel: "email",
     subject: "",
@@ -98,7 +115,7 @@ export default function AdminSequences() {
         description: "Your follow-up sequence has been created.",
       });
       setIsCreateOpen(false);
-      setNewSequence({ name: "", description: "" });
+      setNewSequence({ name: "", description: "", sequenceType: "custom" });
     },
     onError: (error: Error) => {
       toast({
@@ -192,6 +209,31 @@ export default function AdminSequences() {
     },
   });
 
+  const seedPatientChatbotMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/sequences/seed-patient-chatbot");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sequences"] });
+      toast({
+        title: "Patient AI Sequences Created",
+        description: "5 patient chatbot sequences have been created: New Lead, Missed Call, No-Show, Appointment Reminder, and Review Request.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Creation Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Filter sequences by type
+  const filteredSequences = filterType === "all" 
+    ? sequences 
+    : sequences.filter(s => s.sequenceType === filterType);
+
   const handleCreateSequence = (e: React.FormEvent) => {
     e.preventDefault();
     createSequenceMutation.mutate(newSequence);
@@ -263,6 +305,24 @@ export default function AdminSequences() {
                 />
               </div>
               <div className="space-y-2">
+                <Label>Sequence Type</Label>
+                <Select 
+                  value={newSequence.sequenceType} 
+                  onValueChange={(value) => setNewSequence((prev) => ({ ...prev, sequenceType: value }))}
+                >
+                  <SelectTrigger data-testid="select-sequence-type">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEQUENCE_TYPES.filter(t => t.value !== "all").map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
@@ -295,7 +355,22 @@ export default function AdminSequences() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Sequences List */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Your Sequences</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold">Your Sequences</h2>
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-[140px]" data-testid="select-filter-type">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SEQUENCE_TYPES.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -308,13 +383,112 @@ export default function AdminSequences() {
                 <p className="text-muted-foreground mb-4" data-testid="text-empty-sequences">
                   Create your first automated follow-up sequence.
                 </p>
+                <div className="space-y-3">
+                  <Button
+                    onClick={() => seedPatientChatbotMutation.mutate()}
+                    disabled={seedPatientChatbotMutation.isPending || seedDefaultSequenceMutation.isPending}
+                    className="w-full gap-2"
+                    data-testid="button-seed-patient-sequences"
+                  >
+                    {seedPatientChatbotMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Creating 5 Sequences...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        Add Patient AI Chatbot Sequences
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => seedDefaultSequenceMutation.mutate()}
+                    disabled={seedDefaultSequenceMutation.isPending || seedPatientChatbotMutation.isPending}
+                    variant="outline"
+                    className="w-full gap-2"
+                    data-testid="button-seed-default-sequence"
+                  >
+                    {seedDefaultSequenceMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4" />
+                        Add Lead Conversion Template
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : filteredSequences.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <Filter className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Matching Sequences</h3>
+                <p className="text-muted-foreground mb-4">
+                  No sequences found for the selected filter.
+                </p>
                 <Button
-                  onClick={() => seedDefaultSequenceMutation.mutate()}
-                  disabled={seedDefaultSequenceMutation.isPending}
+                  variant="outline"
+                  onClick={() => setFilterType("all")}
                   className="gap-2"
-                  data-testid="button-seed-default-sequence"
                 >
-                  {seedDefaultSequenceMutation.isPending ? (
+                  Show All Sequences
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {filteredSequences.map((seq) => {
+                const typeInfo = getSequenceTypeInfo(seq.sequenceType);
+                const TypeIcon = typeInfo.icon;
+                return (
+                  <Card
+                    key={seq.id}
+                    className={`cursor-pointer hover-elevate ${selectedSequence?.id === seq.id ? "ring-2 ring-primary" : ""}`}
+                    onClick={() => setSelectedSequence(seq)}
+                    data-testid={`card-sequence-${seq.id}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2 gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <TypeIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <h3 className="font-semibold truncate" data-testid={`text-sequence-name-${seq.id}`}>
+                            {seq.name}
+                          </h3>
+                        </div>
+                        {getStatusBadge(seq.status)}
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline" className="text-xs">
+                          {typeInfo.label}
+                        </Badge>
+                      </div>
+                      {seq.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {seq.description}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              
+              {/* Quick add buttons when some sequences exist */}
+              <div className="pt-2 space-y-2">
+                <Button
+                  onClick={() => seedPatientChatbotMutation.mutate()}
+                  disabled={seedPatientChatbotMutation.isPending}
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2"
+                  data-testid="button-add-more-patient-sequences"
+                >
+                  {seedPatientChatbotMutation.isPending ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Creating...
@@ -322,36 +496,11 @@ export default function AdminSequences() {
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4" />
-                      Use Smart Lead Conversion Template
+                      Add Patient AI Sequences
                     </>
                   )}
                 </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {sequences.map((seq) => (
-                <Card
-                  key={seq.id}
-                  className={`cursor-pointer hover-elevate ${selectedSequence?.id === seq.id ? "ring-2 ring-primary" : ""}`}
-                  onClick={() => setSelectedSequence(seq)}
-                  data-testid={`card-sequence-${seq.id}`}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold" data-testid={`text-sequence-name-${seq.id}`}>
-                        {seq.name}
-                      </h3>
-                      {getStatusBadge(seq.status)}
-                    </div>
-                    {seq.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {seq.description}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+              </div>
             </div>
           )}
         </div>
