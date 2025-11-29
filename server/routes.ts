@@ -2052,6 +2052,716 @@ P.S. Remember, you're protected by our 60-day money-back guarantee. If you don't
     }
   });
 
+  // ==================== ONBOARDING ROUTES ====================
+  
+  // Get current user's onboarding progress
+  app.get("/api/onboarding/progress", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const progress = await storage.getOnboardingProgressByUser(userId);
+      
+      if (!progress) {
+        return res.json({ 
+          hasOnboarding: false,
+          message: "No onboarding progress found" 
+        });
+      }
+      
+      res.json({ hasOnboarding: true, progress });
+    } catch (error) {
+      console.error("Error fetching onboarding progress:", error);
+      res.status(500).json({ message: "Failed to fetch onboarding progress" });
+    }
+  });
+  
+  // Initialize onboarding for a new clinic
+  app.post("/api/onboarding/initialize", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { clinicId } = req.body;
+      
+      if (!clinicId) {
+        return res.status(400).json({ message: "Clinic ID is required" });
+      }
+      
+      // Check if onboarding already exists
+      const existing = await storage.getOnboardingProgressByClinic(clinicId);
+      if (existing) {
+        return res.json({ progress: existing, message: "Onboarding already initialized" });
+      }
+      
+      // Create new onboarding progress
+      const progress = await storage.createOnboardingProgress({
+        clinicId,
+        userId,
+        currentStage: 1,
+        welcomeCompleted: false,
+        welcomeEmailSent: false,
+        setupCompleted: false,
+        chatbotCompleted: false,
+        optimizationCompleted: false,
+      });
+      
+      // Send welcome email (auto-trigger)
+      const welcomeEmail = await storage.getOnboardingEmailByTrigger(1, "stage_start");
+      if (welcomeEmail) {
+        const user = await storage.getUser(userId);
+        const clinic = await storage.getClinicById(clinicId);
+        
+        if (user?.email) {
+          console.log("=".repeat(60));
+          console.log("ONBOARDING WELCOME EMAIL TRIGGERED");
+          console.log("=".repeat(60));
+          console.log(`To: ${user.email}`);
+          console.log(`Subject: ${welcomeEmail.subject}`);
+          console.log(`Clinic: ${clinic?.name}`);
+          console.log("=".repeat(60));
+          
+          // Log the email
+          await storage.createOnboardingEmailLog({
+            onboardingId: progress.id,
+            emailTemplateId: welcomeEmail.id,
+            recipientEmail: user.email,
+            subject: welcomeEmail.subject,
+            status: "sent",
+          });
+          
+          // Update progress to mark welcome email sent
+          await storage.updateOnboardingProgress(progress.id, {
+            welcomeEmailSent: true,
+          });
+        }
+      }
+      
+      res.json({ progress, message: "Onboarding initialized successfully" });
+    } catch (error) {
+      console.error("Error initializing onboarding:", error);
+      res.status(500).json({ message: "Failed to initialize onboarding" });
+    }
+  });
+  
+  // Complete Welcome stage (Stage 1)
+  app.post("/api/onboarding/complete-welcome", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const progress = await storage.getOnboardingProgressByUser(userId);
+      
+      if (!progress) {
+        return res.status(404).json({ message: "Onboarding not found" });
+      }
+      
+      const updated = await storage.updateOnboardingProgress(progress.id, {
+        welcomeCompleted: true,
+        welcomeCompletedAt: new Date(),
+        currentStage: 2,
+      });
+      
+      // Trigger stage 2 start email
+      const setupEmail = await storage.getOnboardingEmailByTrigger(2, "stage_start");
+      if (setupEmail) {
+        const user = await storage.getUser(userId);
+        if (user?.email) {
+          console.log("=".repeat(60));
+          console.log("ONBOARDING SETUP EMAIL TRIGGERED");
+          console.log("=".repeat(60));
+          console.log(`To: ${user.email}`);
+          console.log(`Subject: ${setupEmail.subject}`);
+          console.log("=".repeat(60));
+          
+          await storage.createOnboardingEmailLog({
+            onboardingId: progress.id,
+            emailTemplateId: setupEmail.id,
+            recipientEmail: user.email,
+            subject: setupEmail.subject,
+            status: "sent",
+          });
+        }
+      }
+      
+      res.json({ progress: updated, message: "Welcome stage completed" });
+    } catch (error) {
+      console.error("Error completing welcome stage:", error);
+      res.status(500).json({ message: "Failed to complete welcome stage" });
+    }
+  });
+  
+  // Complete Clinic Setup stage (Stage 2)
+  app.post("/api/onboarding/complete-setup", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const progress = await storage.getOnboardingProgressByUser(userId);
+      
+      if (!progress) {
+        return res.status(404).json({ message: "Onboarding not found" });
+      }
+      
+      const { clinicAddress, clinicPhone, clinicWebsite, clinicTimezone, businessHours, services } = req.body;
+      
+      const updated = await storage.updateOnboardingProgress(progress.id, {
+        setupCompleted: true,
+        setupCompletedAt: new Date(),
+        currentStage: 3,
+        clinicAddress,
+        clinicPhone,
+        clinicWebsite,
+        clinicTimezone,
+        businessHours,
+        services,
+      });
+      
+      // Trigger stage 3 start email
+      const chatbotEmail = await storage.getOnboardingEmailByTrigger(3, "stage_start");
+      if (chatbotEmail) {
+        const user = await storage.getUser(userId);
+        if (user?.email) {
+          console.log("=".repeat(60));
+          console.log("ONBOARDING CHATBOT ACTIVATION EMAIL TRIGGERED");
+          console.log("=".repeat(60));
+          console.log(`To: ${user.email}`);
+          console.log(`Subject: ${chatbotEmail.subject}`);
+          console.log("=".repeat(60));
+          
+          await storage.createOnboardingEmailLog({
+            onboardingId: progress.id,
+            emailTemplateId: chatbotEmail.id,
+            recipientEmail: user.email,
+            subject: chatbotEmail.subject,
+            status: "sent",
+          });
+        }
+      }
+      
+      res.json({ progress: updated, message: "Clinic setup completed" });
+    } catch (error) {
+      console.error("Error completing setup stage:", error);
+      res.status(500).json({ message: "Failed to complete setup stage" });
+    }
+  });
+  
+  // Complete AI Chatbot Activation stage (Stage 3)
+  app.post("/api/onboarding/complete-chatbot", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const progress = await storage.getOnboardingProgressByUser(userId);
+      
+      if (!progress) {
+        return res.status(404).json({ message: "Onboarding not found" });
+      }
+      
+      const { chatbotEnabled, chatbotGreeting, chatbotTone, chatbotFocusServices } = req.body;
+      
+      const updated = await storage.updateOnboardingProgress(progress.id, {
+        chatbotCompleted: true,
+        chatbotCompletedAt: new Date(),
+        currentStage: 4,
+        chatbotEnabled,
+        chatbotGreeting,
+        chatbotTone,
+        chatbotFocusServices,
+      });
+      
+      // Trigger stage 4 start email
+      const optimizationEmail = await storage.getOnboardingEmailByTrigger(4, "stage_start");
+      if (optimizationEmail) {
+        const user = await storage.getUser(userId);
+        if (user?.email) {
+          console.log("=".repeat(60));
+          console.log("ONBOARDING GROWTH OPTIMIZATION EMAIL TRIGGERED");
+          console.log("=".repeat(60));
+          console.log(`To: ${user.email}`);
+          console.log(`Subject: ${optimizationEmail.subject}`);
+          console.log("=".repeat(60));
+          
+          await storage.createOnboardingEmailLog({
+            onboardingId: progress.id,
+            emailTemplateId: optimizationEmail.id,
+            recipientEmail: user.email,
+            subject: optimizationEmail.subject,
+            status: "sent",
+          });
+        }
+      }
+      
+      res.json({ progress: updated, message: "Chatbot activation completed" });
+    } catch (error) {
+      console.error("Error completing chatbot stage:", error);
+      res.status(500).json({ message: "Failed to complete chatbot stage" });
+    }
+  });
+  
+  // Complete Growth Optimization stage (Stage 4 - Final)
+  app.post("/api/onboarding/complete-optimization", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const progress = await storage.getOnboardingProgressByUser(userId);
+      
+      if (!progress) {
+        return res.status(404).json({ message: "Onboarding not found" });
+      }
+      
+      const { 
+        autoFollowupEnabled, 
+        leadScoringEnabled, 
+        reviewRequestsEnabled, 
+        referralProgramEnabled, 
+        targetLeadsPerMonth 
+      } = req.body;
+      
+      const updated = await storage.updateOnboardingProgress(progress.id, {
+        optimizationCompleted: true,
+        optimizationCompletedAt: new Date(),
+        completedAt: new Date(),
+        autoFollowupEnabled,
+        leadScoringEnabled,
+        reviewRequestsEnabled,
+        referralProgramEnabled,
+        targetLeadsPerMonth,
+      });
+      
+      // Trigger onboarding complete email
+      const completeEmail = await storage.getOnboardingEmailByTrigger(4, "stage_complete");
+      if (completeEmail) {
+        const user = await storage.getUser(userId);
+        if (user?.email) {
+          console.log("=".repeat(60));
+          console.log("ONBOARDING COMPLETE EMAIL TRIGGERED");
+          console.log("=".repeat(60));
+          console.log(`To: ${user.email}`);
+          console.log(`Subject: ${completeEmail.subject}`);
+          console.log("=".repeat(60));
+          
+          await storage.createOnboardingEmailLog({
+            onboardingId: progress.id,
+            emailTemplateId: completeEmail.id,
+            recipientEmail: user.email,
+            subject: completeEmail.subject,
+            status: "sent",
+          });
+        }
+      }
+      
+      res.json({ progress: updated, message: "Onboarding completed! Your clinic is ready to go." });
+    } catch (error) {
+      console.error("Error completing optimization stage:", error);
+      res.status(500).json({ message: "Failed to complete optimization stage" });
+    }
+  });
+  
+  // Get all onboarding email templates
+  app.get("/api/onboarding/emails", isAuthenticated, async (req: any, res) => {
+    try {
+      const emails = await storage.getAllOnboardingEmails();
+      res.json(emails);
+    } catch (error) {
+      console.error("Error fetching onboarding emails:", error);
+      res.status(500).json({ message: "Failed to fetch onboarding emails" });
+    }
+  });
+  
+  // Get email logs for current user's onboarding
+  app.get("/api/onboarding/email-logs", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const progress = await storage.getOnboardingProgressByUser(userId);
+      
+      if (!progress) {
+        return res.json([]);
+      }
+      
+      const logs = await storage.getOnboardingEmailLogs(progress.id);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching email logs:", error);
+      res.status(500).json({ message: "Failed to fetch email logs" });
+    }
+  });
+  
+  // Admin: Get all onboarding progress (for admin dashboard)
+  app.get("/api/admin/onboarding", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const allProgress = await storage.getAllOnboardingProgress();
+      res.json(allProgress);
+    } catch (error) {
+      console.error("Error fetching all onboarding progress:", error);
+      res.status(500).json({ message: "Failed to fetch onboarding progress" });
+    }
+  });
+  
+  // Seed onboarding email templates
+  app.post("/api/admin/seed-onboarding-emails", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      // Stage 1: Welcome emails
+      await storage.createOnboardingEmail({
+        stage: 1,
+        name: "Welcome Email",
+        subject: "Welcome to DentalLeadGenius! Let's Get Started",
+        triggerType: "stage_start",
+        delayHours: 0,
+        isActive: true,
+        htmlContent: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          <tr>
+            <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #0066cc 0%, #0052a3 100%); border-radius: 12px 12px 0 0;">
+              <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff;">Welcome to DentalLeadGenius!</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 600; color: #18181b;">Hi {{firstName}}!</h2>
+              <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
+                Congratulations on taking the first step toward transforming your dental practice! We're thrilled to have <strong>{{clinicName}}</strong> join the DentalLeadGenius family.
+              </p>
+              <div style="padding: 24px; background-color: #f0f9ff; border-radius: 8px; border-left: 4px solid #0066cc; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 12px; color: #0066cc;">Your 4-Step Onboarding Journey:</h3>
+                <ol style="margin: 0; padding-left: 20px; color: #3f3f46; font-size: 14px; line-height: 1.8;">
+                  <li><strong>Welcome</strong> - You're here! Get familiar with your dashboard</li>
+                  <li><strong>Clinic Setup</strong> - Configure your clinic details and hours</li>
+                  <li><strong>AI Chatbot Activation</strong> - Customize your AI assistant</li>
+                  <li><strong>Growth Optimization</strong> - Enable automated follow-ups</li>
+                </ol>
+              </div>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding: 20px 0;">
+                    <a href="{{dashboardUrl}}" style="display: inline-block; padding: 16px 40px; background-color: #0066cc; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">
+                      Start Your Onboarding
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`,
+        textContent: `Welcome to DentalLeadGenius!
+
+Hi {{firstName}}!
+
+Congratulations on taking the first step toward transforming your dental practice! We're thrilled to have {{clinicName}} join the DentalLeadGenius family.
+
+Your 4-Step Onboarding Journey:
+1. Welcome - You're here! Get familiar with your dashboard
+2. Clinic Setup - Configure your clinic details and hours
+3. AI Chatbot Activation - Customize your AI assistant
+4. Growth Optimization - Enable automated follow-ups
+
+Start your onboarding now: {{dashboardUrl}}`,
+      });
+      
+      // Stage 2: Clinic Setup email
+      await storage.createOnboardingEmail({
+        stage: 2,
+        name: "Clinic Setup Guide",
+        subject: "Step 2: Let's Set Up Your Clinic Profile",
+        triggerType: "stage_start",
+        delayHours: 0,
+        isActive: true,
+        htmlContent: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background-color: #f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px;">
+          <tr>
+            <td style="padding: 40px; text-align: center;">
+              <div style="width: 80px; height: 80px; background: #10b981; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 40px; color: white;">2</span>
+              </div>
+              <h1 style="margin: 0 0 16px; font-size: 24px; color: #18181b;">Time to Set Up Your Clinic!</h1>
+              <p style="margin: 0 0 24px; font-size: 16px; color: #3f3f46; line-height: 1.6;">
+                Great progress, {{firstName}}! Now let's configure your clinic profile so your AI assistant knows everything about {{clinicName}}.
+              </p>
+              <div style="text-align: left; padding: 24px; background: #f8fafc; border-radius: 8px; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 16px; color: #18181b;">What you'll set up:</h3>
+                <ul style="margin: 0; padding-left: 20px; color: #3f3f46; line-height: 1.8;">
+                  <li>Your clinic's address and contact info</li>
+                  <li>Business hours and timezone</li>
+                  <li>Services you offer</li>
+                </ul>
+              </div>
+              <a href="{{dashboardUrl}}/onboarding/setup" style="display: inline-block; padding: 14px 32px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">Continue Setup</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`,
+        textContent: `Step 2: Let's Set Up Your Clinic Profile
+
+Great progress, {{firstName}}! Now let's configure your clinic profile so your AI assistant knows everything about {{clinicName}}.
+
+What you'll set up:
+- Your clinic's address and contact info
+- Business hours and timezone
+- Services you offer
+
+Continue setup: {{dashboardUrl}}/onboarding/setup`,
+      });
+      
+      // Stage 3: AI Chatbot Activation email
+      await storage.createOnboardingEmail({
+        stage: 3,
+        name: "AI Chatbot Activation Guide",
+        subject: "Step 3: Activate Your AI Chatbot",
+        triggerType: "stage_start",
+        delayHours: 0,
+        isActive: true,
+        htmlContent: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background-color: #f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px;">
+          <tr>
+            <td style="padding: 40px; text-align: center;">
+              <div style="width: 80px; height: 80px; background: #8b5cf6; border-radius: 50%; margin: 0 auto 20px;">
+                <span style="font-size: 40px; color: white; line-height: 80px;">3</span>
+              </div>
+              <h1 style="margin: 0 0 16px; font-size: 24px; color: #18181b;">Your AI Assistant Awaits!</h1>
+              <p style="margin: 0 0 24px; font-size: 16px; color: #3f3f46; line-height: 1.6;">
+                You're halfway there, {{firstName}}! Now comes the exciting part - setting up your AI chatbot that will engage patients 24/7.
+              </p>
+              <div style="text-align: left; padding: 24px; background: #f5f3ff; border-radius: 8px; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 16px; color: #8b5cf6;">What your AI can do:</h3>
+                <ul style="margin: 0; padding-left: 20px; color: #3f3f46; line-height: 1.8;">
+                  <li>Answer patient questions instantly</li>
+                  <li>Book appointments automatically</li>
+                  <li>Qualify leads while you sleep</li>
+                  <li>Never miss a potential patient</li>
+                </ul>
+              </div>
+              <a href="{{dashboardUrl}}/onboarding/chatbot" style="display: inline-block; padding: 14px 32px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">Activate AI Chatbot</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`,
+        textContent: `Step 3: Activate Your AI Chatbot
+
+You're halfway there, {{firstName}}! Now comes the exciting part - setting up your AI chatbot that will engage patients 24/7.
+
+What your AI can do:
+- Answer patient questions instantly
+- Book appointments automatically
+- Qualify leads while you sleep
+- Never miss a potential patient
+
+Activate AI Chatbot: {{dashboardUrl}}/onboarding/chatbot`,
+      });
+      
+      // Stage 4: Growth Optimization email
+      await storage.createOnboardingEmail({
+        stage: 4,
+        name: "Growth Optimization Guide",
+        subject: "Final Step: Supercharge Your Growth",
+        triggerType: "stage_start",
+        delayHours: 0,
+        isActive: true,
+        htmlContent: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background-color: #f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px;">
+          <tr>
+            <td style="padding: 40px; text-align: center;">
+              <div style="width: 80px; height: 80px; background: #f59e0b; border-radius: 50%; margin: 0 auto 20px;">
+                <span style="font-size: 40px; color: white; line-height: 80px;">4</span>
+              </div>
+              <h1 style="margin: 0 0 16px; font-size: 24px; color: #18181b;">Almost There! Final Step</h1>
+              <p style="margin: 0 0 24px; font-size: 16px; color: #3f3f46; line-height: 1.6;">
+                Amazing work, {{firstName}}! You're on the final step. Let's set up your growth automation to maximize your results.
+              </p>
+              <div style="text-align: left; padding: 24px; background: #fffbeb; border-radius: 8px; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 16px; color: #f59e0b;">Automation options:</h3>
+                <ul style="margin: 0; padding-left: 20px; color: #3f3f46; line-height: 1.8;">
+                  <li>Automated follow-up sequences</li>
+                  <li>Lead scoring & prioritization</li>
+                  <li>Review request automation</li>
+                  <li>Referral program setup</li>
+                </ul>
+              </div>
+              <a href="{{dashboardUrl}}/onboarding/optimization" style="display: inline-block; padding: 14px 32px; background: #f59e0b; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">Complete Setup</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`,
+        textContent: `Final Step: Supercharge Your Growth
+
+Amazing work, {{firstName}}! You're on the final step. Let's set up your growth automation to maximize your results.
+
+Automation options:
+- Automated follow-up sequences
+- Lead scoring & prioritization
+- Review request automation
+- Referral program setup
+
+Complete Setup: {{dashboardUrl}}/onboarding/optimization`,
+      });
+      
+      // Onboarding Complete email
+      await storage.createOnboardingEmail({
+        stage: 4,
+        name: "Onboarding Complete",
+        subject: "Congratulations! You're All Set Up",
+        triggerType: "stage_complete",
+        delayHours: 0,
+        isActive: true,
+        htmlContent: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background-color: #f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px;">
+          <tr>
+            <td style="padding: 40px; text-align: center; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px 12px 0 0;">
+              <div style="font-size: 60px; margin-bottom: 16px;">&#127881;</div>
+              <h1 style="margin: 0; font-size: 28px; color: white;">Congratulations, {{firstName}}!</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px;">
+              <p style="margin: 0 0 24px; font-size: 18px; color: #18181b; text-align: center; font-weight: 500;">
+                {{clinicName}} is now fully set up and ready to generate leads!
+              </p>
+              <div style="padding: 24px; background: #f0fdf4; border-radius: 8px; margin-bottom: 24px; text-align: center;">
+                <h3 style="margin: 0 0 16px; color: #10b981;">What's Active:</h3>
+                <p style="margin: 0; color: #3f3f46; line-height: 1.8;">
+                  &#10004; AI Chatbot - Engaging visitors 24/7<br>
+                  &#10004; Automated Follow-ups - Never miss a lead<br>
+                  &#10004; Smart Scheduling - Reducing no-shows<br>
+                  &#10004; Growth Dashboard - Track your success
+                </p>
+              </div>
+              <p style="margin: 0 0 24px; font-size: 16px; color: #3f3f46; text-align: center;">
+                Your AI assistant is now live and ready to convert visitors into patients. Watch your dashboard for real-time updates!
+              </p>
+              <div style="text-align: center;">
+                <a href="{{dashboardUrl}}" style="display: inline-block; padding: 14px 32px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">Go to Dashboard</a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`,
+        textContent: `Congratulations, {{firstName}}!
+
+{{clinicName}} is now fully set up and ready to generate leads!
+
+What's Active:
+- AI Chatbot - Engaging visitors 24/7
+- Automated Follow-ups - Never miss a lead
+- Smart Scheduling - Reducing no-shows
+- Growth Dashboard - Track your success
+
+Your AI assistant is now live and ready to convert visitors into patients. Watch your dashboard for real-time updates!
+
+Go to Dashboard: {{dashboardUrl}}`,
+      });
+      
+      // Stage 1 reminder email (24 hours)
+      await storage.createOnboardingEmail({
+        stage: 1,
+        name: "Welcome Reminder",
+        subject: "Don't Miss Out - Complete Your Setup",
+        triggerType: "reminder",
+        delayHours: 24,
+        isActive: true,
+        htmlContent: `<!DOCTYPE html>
+<html>
+<body style="font-family: 'Segoe UI', sans-serif; background-color: #f4f4f5; padding: 40px;">
+  <table width="100%" style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px;">
+    <tr>
+      <td style="text-align: center;">
+        <h1 style="color: #18181b;">Hi {{firstName}}, We Miss You!</h1>
+        <p style="color: #3f3f46; font-size: 16px; line-height: 1.6;">
+          You started setting up {{clinicName}} but haven't completed the process. Your AI assistant is waiting to start generating leads for you!
+        </p>
+        <p style="color: #3f3f46; font-size: 16px;">
+          It only takes a few minutes to complete your setup and start seeing results.
+        </p>
+        <a href="{{dashboardUrl}}/onboarding" style="display: inline-block; padding: 14px 32px; background: #0066cc; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; margin-top: 20px;">Continue Setup</a>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`,
+        textContent: `Hi {{firstName}}, We Miss You!
+
+You started setting up {{clinicName}} but haven't completed the process. Your AI assistant is waiting to start generating leads for you!
+
+It only takes a few minutes to complete your setup and start seeing results.
+
+Continue Setup: {{dashboardUrl}}/onboarding`,
+      });
+      
+      const emails = await storage.getAllOnboardingEmails();
+      res.json({ 
+        message: "Onboarding email templates seeded successfully!",
+        count: emails.length,
+        emails 
+      });
+    } catch (error) {
+      console.error("Error seeding onboarding emails:", error);
+      res.status(500).json({ message: "Failed to seed onboarding emails" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
