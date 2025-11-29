@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Plus, Mail, MessageSquare, Clock, Trash2, Play, Pause, ArrowRight } from "lucide-react";
+import { Loader2, Plus, Mail, MessageSquare, Clock, Trash2, Play, Pause, ArrowRight, Sparkles } from "lucide-react";
 
 interface SequenceStep {
   id: string;
@@ -172,6 +172,26 @@ export default function AdminSequences() {
     },
   });
 
+  const seedDefaultSequenceMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/sequences/seed-default");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sequences"] });
+      toast({
+        title: "Default Sequence Created",
+        description: "The 'Smart Lead Conversion Sequence' has been created with 9 pre-written steps.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Creation Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateSequence = (e: React.FormEvent) => {
     e.preventDefault();
     createSequenceMutation.mutate(newSequence);
@@ -285,9 +305,27 @@ export default function AdminSequences() {
               <CardContent className="py-8 text-center">
                 <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No Sequences Yet</h3>
-                <p className="text-muted-foreground" data-testid="text-empty-sequences">
+                <p className="text-muted-foreground mb-4" data-testid="text-empty-sequences">
                   Create your first automated follow-up sequence.
                 </p>
+                <Button
+                  onClick={() => seedDefaultSequenceMutation.mutate()}
+                  disabled={seedDefaultSequenceMutation.isPending}
+                  className="gap-2"
+                  data-testid="button-seed-default-sequence"
+                >
+                  {seedDefaultSequenceMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Use Smart Lead Conversion Template
+                    </>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           ) : (

@@ -1668,6 +1668,295 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ================== SEQUENCE SEEDING ==================
+  
+  // Seed the default "Smart Lead Conversion Sequence" with professional copywriting
+  app.post("/api/sequences/seed-default", async (req: any, res) => {
+    try {
+      if (!requireAuth(req, res)) return;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Check if sequence already exists
+      const existingSequences = await storage.getAllSequences();
+      const hasDefault = existingSequences.some(s => s.name === "Smart Lead Conversion Sequence");
+      if (hasDefault) {
+        return res.status(400).json({ message: "Default sequence already exists" });
+      }
+      
+      // Create the sequence
+      const sequence = await storage.createSequence({
+        name: "Smart Lead Conversion Sequence",
+        description: "A proven 9-step automated follow-up sequence designed for dental clinics. Introduces your services, addresses pain points, builds trust with social proof, and guides leads to book a demo.",
+        status: "active",
+        ownerId: userId,
+      });
+      
+      // Step 1: Welcome Message (Email + SMS) - Immediately
+      await storage.createSequenceStep({
+        sequenceId: sequence.id,
+        stepOrder: 1,
+        channel: "email",
+        subject: "Welcome to DentalLeadGenius - Let's Transform Your Practice",
+        message: `Hi {{name}},
+
+Welcome to DentalLeadGenius! I'm thrilled you're interested in transforming how your dental practice attracts and converts new patients.
+
+You've just taken the first step toward:
+- Never missing another patient call or inquiry
+- Filling your appointment book on autopilot
+- Reducing no-shows by up to 40%
+
+Quick question: What's the #1 challenge holding your practice back from growing right now?
+
+Reply to this email and let me know - I personally read every response and would love to help you solve it.
+
+Looking forward to helping {{clinic}} thrive,
+
+The DentalLeadGenius Team
+
+P.S. Keep an eye on your inbox - I'll be sharing some game-changing insights over the next few days.`,
+        delayDays: 0,
+        delayHours: 0,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: sequence.id,
+        stepOrder: 2,
+        channel: "sms",
+        subject: "",
+        message: `Hi {{name}}! Thanks for connecting with DentalLeadGenius. We help dental clinics like yours get 10x more quality leads using AI. Check your email for a welcome message with details on how we can help {{clinic}} grow!`,
+        delayDays: 0,
+        delayHours: 1,
+      });
+      
+      // Step 2: Pain Point Message (Email) - 1 day later
+      await storage.createSequenceStep({
+        sequenceId: sequence.id,
+        stepOrder: 3,
+        channel: "email",
+        subject: "The 3 Hidden Reasons Your Practice Is Losing Patients",
+        message: `Hi {{name}},
+
+After working with hundreds of dental practices, I've identified the 3 silent killers that cost clinics thousands in lost revenue every month:
+
+1. MISSED CALLS = MISSED PATIENTS
+Studies show 62% of calls to dental offices go unanswered. Each missed call represents $500-$2,000 in potential treatment value. Our AI receptionist answers 100% of calls, 24/7.
+
+2. NO-SHOWS ARE DRAINING YOUR SCHEDULE
+The average no-show rate in dentistry is 15-20%. That's 3-4 empty chairs per day! Our smart reminder system reduces no-shows by 40% through personalized follow-ups.
+
+3. SLOW FOLLOW-UP = LOST LEADS
+78% of leads go to the first practice that responds. If you're not following up within 5 minutes, you're losing patients to competitors. Our AI follows up instantly, every time.
+
+Sound familiar?
+
+The good news: These are all fixable. And we can show you exactly how.
+
+Would you like to see how DentalLeadGenius addresses each of these challenges for practices like yours?
+
+Reply "YES" and I'll send you a personalized practice audit.
+
+Best,
+The DentalLeadGenius Team`,
+        delayDays: 1,
+        delayHours: 0,
+      });
+      
+      // Step 3: Social Proof Message (Email + WhatsApp) - 2 days later
+      await storage.createSequenceStep({
+        sequenceId: sequence.id,
+        stepOrder: 4,
+        channel: "email",
+        subject: "How Dr. Smith Added 47 New Patients in 30 Days",
+        message: `Hi {{name}},
+
+I wanted to share a quick success story that might resonate with you...
+
+Dr. Sarah Smith was frustrated. Her practice was stuck at 150 patients/month despite great reviews and skilled staff. Sound familiar?
+
+Within 30 days of implementing DentalLeadGenius, here's what happened:
+
+Before DentalLeadGenius:
+- Missed 40% of after-hours calls
+- 18% no-show rate
+- 3-day average lead follow-up time
+- 150 new patients/month
+
+After DentalLeadGenius:
+- 0% missed calls (AI handles everything)
+- 8% no-show rate (smart reminders work!)
+- 30-second average response time
+- 197 new patients/month (47 more!)
+
+"I was skeptical about AI, but the results speak for themselves. We're now seeing patients we would have lost to competitors." - Dr. Sarah Smith, SmileBright Dental
+
+What if you could achieve similar results for {{clinic}}?
+
+I'd love to show you exactly how we did it and what it would look like for your practice.
+
+Schedule your free strategy call here: [Link]
+
+Best,
+The DentalLeadGenius Team`,
+        delayDays: 2,
+        delayHours: 0,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: sequence.id,
+        stepOrder: 5,
+        channel: "whatsapp",
+        subject: "",
+        message: `Hey {{name}}! Just sent you an email about how dental practices like yours are adding 40+ new patients per month. Check it out when you have a moment - the Dr. Smith case study is really eye-opening! Let me know if you have any questions.`,
+        delayDays: 2,
+        delayHours: 4,
+      });
+      
+      // Step 4: Value Delivery Message (Email) - 3 days later
+      await storage.createSequenceStep({
+        sequenceId: sequence.id,
+        stepOrder: 6,
+        channel: "email",
+        subject: "Your Free Practice Growth Audit [Inside]",
+        message: `Hi {{name}},
+
+I put together a quick audit of what AI could fix for {{clinic}} based on typical dental practice patterns:
+
+YOUR POTENTIAL QUICK WINS:
+
+1. CAPTURE MORE LEADS (Value: ~$8,000/month)
+Right now, most practices lose 30-40% of website visitors who don't fill out forms. Our AI chatbot engages every visitor, answers questions 24/7, and books appointments automatically.
+
+2. RECOVER MISSED CALLS (Value: ~$5,000/month)
+After-hours and busy-period calls often go to voicemail (and patients call the next dentist). Our AI receptionist handles unlimited concurrent calls and schedules appointments in real-time.
+
+3. REDUCE NO-SHOWS (Value: ~$3,000/month)
+Multi-channel smart reminders (SMS, email, WhatsApp) with easy rescheduling options typically cut no-shows by 40%.
+
+4. SPEED UP FOLLOW-UP (Value: ~$6,000/month)
+Instant lead response (not hours or days) dramatically increases conversion. Our AI follows up in seconds, not days.
+
+ESTIMATED MONTHLY IMPACT: $22,000+ in recovered revenue
+
+Want to see the exact implementation plan for {{clinic}}?
+
+I have a few spots open this week for a complimentary 15-minute strategy call where I'll walk you through:
+- Which quick wins would have the biggest impact for your practice
+- A realistic timeline for implementation
+- What ROI you can expect in the first 90 days
+
+Book your spot here: [Link]
+
+To your practice's success,
+The DentalLeadGenius Team`,
+        delayDays: 3,
+        delayHours: 0,
+      });
+      
+      // Step 5: Demo Reminder Message (SMS + Email) - 4 days later
+      await storage.createSequenceStep({
+        sequenceId: sequence.id,
+        stepOrder: 7,
+        channel: "sms",
+        subject: "",
+        message: `Hi {{name}}, quick reminder: Have you had a chance to review the growth audit I sent? I'd love to walk you through how {{clinic}} could add 40+ new patients/month. Got 15 mins this week? Reply to pick a time!`,
+        delayDays: 4,
+        delayHours: 0,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: sequence.id,
+        stepOrder: 8,
+        channel: "email",
+        subject: "Quick question for you, {{name}}...",
+        message: `Hi {{name}},
+
+I noticed you haven't scheduled your strategy call yet, and I wanted to check in.
+
+I totally get it - running a dental practice is incredibly demanding. Between patient care, staff management, and everything else, adding one more thing to your plate can feel overwhelming.
+
+But here's the thing...
+
+The practices that are growing fastest right now aren't working harder - they're working smarter. They've automated the repetitive tasks that used to eat up hours of their day.
+
+What if I told you that a 15-minute call could show you how to:
+- Free up 10+ hours per week for your team
+- Add 30-50 new patients per month on autopilot
+- Reduce your marketing costs by 40%
+
+All without any risk or long-term commitment.
+
+Would that be worth 15 minutes of your time?
+
+If so, just reply to this email with "DEMO" and I'll personally reach out to find a time that works for you.
+
+Looking forward to hearing from you,
+The DentalLeadGenius Team
+
+P.S. We're offering early adopter pricing this month only. Book your call now to lock in our best rates before they go up.`,
+        delayDays: 4,
+        delayHours: 3,
+      });
+      
+      // Step 6: Final CTA Message (Email) - 5 days later
+      await storage.createSequenceStep({
+        sequenceId: sequence.id,
+        stepOrder: 9,
+        channel: "email",
+        subject: "Last chance: Your exclusive offer expires tomorrow",
+        message: `Hi {{name}},
+
+I'll keep this brief...
+
+This is my final follow-up about DentalLeadGenius, and I wanted to make sure you didn't miss out on our early adopter offer.
+
+HERE'S WHAT YOU'RE LEAVING ON THE TABLE:
+- AI-powered 24/7 patient communication
+- Automated appointment scheduling & reminders
+- Multi-channel lead nurturing (Email, SMS, WhatsApp)
+- Real-time analytics dashboard
+- And much more...
+
+EARLY ADOPTER BONUS (Expires Tomorrow):
+- 30% off your first 3 months
+- Free implementation & onboarding ($2,000 value)
+- Dedicated success manager
+- 60-day money-back guarantee
+
+After tomorrow, these bonuses disappear and pricing increases.
+
+I don't want {{clinic}} to miss this opportunity to transform your practice while the offer is still available.
+
+Final call: Book your demo before midnight tomorrow.
+
+[BOOK MY DEMO NOW]
+
+If now isn't the right time, I completely understand. Just reply "later" and I'll check back in a few months.
+
+Wishing you and {{clinic}} continued success,
+The DentalLeadGenius Team
+
+P.S. Remember, you're protected by our 60-day money-back guarantee. If you don't see results, you don't pay. There's literally no risk.`,
+        delayDays: 5,
+        delayHours: 0,
+      });
+      
+      // Get the complete sequence with steps
+      const steps = await storage.getSequenceSteps(sequence.id);
+      
+      res.json({ 
+        message: "Smart Lead Conversion Sequence created successfully!",
+        sequence: { ...sequence, steps }
+      });
+    } catch (error) {
+      console.error("Error seeding sequence:", error);
+      res.status(500).json({ message: "Failed to seed sequence" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
