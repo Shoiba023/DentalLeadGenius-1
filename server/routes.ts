@@ -883,9 +883,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/bookings", isAuthenticated, async (req, res) => {
+  app.get("/api/bookings", async (req: any, res) => {
     try {
-      const bookings = await storage.getAllBookings();
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+      
+      // Get bookings filtered by clinicId for proper tenant isolation
+      const bookings = await storage.getBookingsByClinic(clinicId);
       res.json(bookings);
     } catch (error) {
       console.error("Error fetching bookings:", error);
@@ -905,8 +909,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get clinic info for context
         const clinic = await storage.getClinicById(bookingData.clinicId);
         
-        // Create a lead from the patient booking
+        // Create a lead from the patient booking (clinic-scoped)
         const lead = await storage.createLead({
+          clinicId: bookingData.clinicId,
           name: bookingData.patientName,
           email: bookingData.patientEmail,
           phone: bookingData.patientPhone,
@@ -914,8 +919,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: "new",
         });
         
-        // Find and enroll in "Appointment Request Sequence"
-        const sequences = await storage.getAllSequences();
+        // Find and enroll in "Appointment Request Sequence" (clinic-scoped)
+        const sequences = await storage.getSequencesByClinic(bookingData.clinicId);
         const appointmentSequence = sequences.find(s => s.name === "Appointment Request Sequence" && s.status === "active");
         
         if (appointmentSequence && lead) {
@@ -1004,12 +1009,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Auto-enroll in sequences based on status changes
       try {
-        // Find lead by patient email to enroll in sequences
-        const leads = await storage.getLeadsByEmail(booking.patientEmail);
-        const lead = leads[0]; // Get the most recent lead with this email
+        // Find lead by patient email to enroll in sequences (clinic-scoped)
+        const leads = await storage.getLeadsByEmailAndClinic(booking.patientEmail, booking.clinicId);
+        const lead = leads[0]; // Get the most recent lead with this email in this clinic
         
         if (lead) {
-          const sequences = await storage.getAllSequences();
+          // Use clinic-scoped sequences
+          const sequences = await storage.getSequencesByClinic(booking.clinicId);
           
           // Missed or cancelled → Missed-Appointment Recovery Sequence
           if ((status === "missed" || status === "cancelled") && previousStatus !== "missed" && previousStatus !== "cancelled") {
@@ -1187,12 +1193,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Analytics route
+  // Analytics route (clinic-scoped)
   app.get("/api/analytics", async (req: any, res) => {
     try {
-      if (!requireAuth(req, res)) return;
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
       
-      const analytics = await storage.getAnalytics();
+      const analytics = await storage.getAnalyticsByClinic(clinicId);
       res.json(analytics);
     } catch (error) {
       console.error("Error fetching analytics:", error);

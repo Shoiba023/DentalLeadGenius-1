@@ -315,6 +315,12 @@ export class DatabaseStorage implements IStorage {
   async getLeadsByEmail(email: string): Promise<Lead[]> {
     return await db.select().from(leads).where(eq(leads.email, email)).orderBy(desc(leads.createdAt));
   }
+  
+  async getLeadsByEmailAndClinic(email: string, clinicId: string): Promise<Lead[]> {
+    return await db.select().from(leads)
+      .where(and(eq(leads.email, email), eq(leads.clinicId, clinicId)))
+      .orderBy(desc(leads.createdAt));
+  }
 
   async updateLeadStatus(id: string, status: string): Promise<void> {
     await db
@@ -401,6 +407,12 @@ export class DatabaseStorage implements IStorage {
 
   async getAllBookings(): Promise<Booking[]> {
     return await db.select().from(bookings).orderBy(desc(bookings.createdAt));
+  }
+  
+  async getBookingsByClinic(clinicId: string): Promise<Booking[]> {
+    return await db.select().from(bookings)
+      .where(eq(bookings.clinicId, clinicId))
+      .orderBy(desc(bookings.createdAt));
   }
 
   // Chatbot thread operations

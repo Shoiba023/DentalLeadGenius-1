@@ -72,7 +72,7 @@ export type User = typeof users.$inferSelect;
 // Leads table
 export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clinicId: varchar("clinic_id").references(() => clinics.id), // Multi-tenant support
+  clinicId: varchar("clinic_id").references(() => clinics.id), // Nullable for platform-level leads (demo requests)
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
@@ -136,6 +136,7 @@ export type ClinicUser = typeof clinicUsers.$inferSelect;
 // Demo bookings table - INSTANT DELIVERY (minimal required fields)
 export const bookings = pgTable("bookings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clinicId: varchar("clinic_id").references(() => clinics.id), // Optional for legacy bookings
   clinicName: text("clinic_name").notNull(),
   ownerName: text("owner_name").notNull(),
   email: text("email").notNull(),
@@ -194,7 +195,7 @@ export type ChatbotMessage = typeof chatbotMessages.$inferSelect;
 // Outreach campaigns table
 export const outreachCampaigns = pgTable("outreach_campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clinicId: varchar("clinic_id").references(() => clinics.id), // Multi-tenant support
+  clinicId: varchar("clinic_id").notNull().references(() => clinics.id), // Multi-tenant isolation
   name: text("name").notNull(),
   type: text("type").notNull(), // email, sms, whatsapp
   subject: text("subject"),
@@ -244,7 +245,7 @@ export type PatientBooking = typeof patientBookings.$inferSelect;
 // Automated follow-up sequences table
 export const sequences = pgTable("sequences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clinicId: varchar("clinic_id").references(() => clinics.id), // Multi-tenant support
+  clinicId: varchar("clinic_id").notNull().references(() => clinics.id), // Multi-tenant isolation
   name: text("name").notNull(),
   description: text("description"),
   sequenceType: text("sequence_type").default("custom").notNull(), // new_lead, missed_call, no_show, appointment_reminder, review_request, custom
