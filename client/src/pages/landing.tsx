@@ -134,8 +134,8 @@ export default function Landing() {
                 <span className="text-primary">10x More</span> Quality Dental Leads
               </h1>
               <p className="text-xl text-muted-foreground max-w-2xl">
-                AI-powered lead generation platform that automates outreach, books more
-                demos, and helps dental clinics grow their practice with intelligent
+                AI-powered lead generation platform that automates outreach, gets more
+                clients, and helps dental clinics grow their practice with intelligent
                 chatbots and multi-channel campaigns.
               </p>
 
