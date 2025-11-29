@@ -148,12 +148,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const clinic = await storage.createClinic({
         name: clinicName,
         slug: slug + '-' + Date.now().toString(36),
-        description: `Welcome to ${clinicName}`,
-        primaryColor: '#0066cc',
-        services: ['General Dentistry', 'Cosmetic Dentistry'],
-        phone: '',
-        email: email,
-        address: '',
+        brandColor: '#0066cc',
+        ownerId: user.id,
       });
       
       // Link user to clinic as owner
