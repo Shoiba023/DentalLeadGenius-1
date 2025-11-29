@@ -1,4 +1,4 @@
-import { Home, Users, Send, Building2, BarChart3, LogOut, Calendar, Clock, UserPlus } from "lucide-react";
+import { Home, Users, Send, Building2, BarChart3, LogOut, Calendar, Clock, UserPlus, Rocket } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -59,6 +59,11 @@ const clinicMenuItems = [
     title: "Dashboard",
     url: "/dashboard",
     icon: BarChart3,
+  },
+  {
+    title: "Onboarding",
+    url: "/dashboard/onboarding",
+    icon: Rocket,
   },
   {
     title: "Leads",

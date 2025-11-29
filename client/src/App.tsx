@@ -24,6 +24,7 @@ import AdminPatientBookings from "@/pages/admin-patient-bookings";
 import AdminSequences from "@/pages/admin-sequences";
 import AdminUsers from "@/pages/admin-users";
 import ClinicPage from "@/pages/clinic-page";
+import Onboarding from "@/pages/onboarding";
 
 function DashboardHome() {
   const { user } = useAuth();
@@ -122,6 +123,7 @@ function Router() {
               <Route path="/dashboard/clinics/:id" component={AdminClinicDashboard} />
               <Route path="/dashboard/patient-bookings" component={AdminPatientBookings} />
               <Route path="/dashboard/users" component={AdminUsers} />
+              <Route path="/dashboard/onboarding" component={Onboarding} />
               <Route path="/demo" component={Demo} />
               <Route component={NotFound} />
             </Switch>
