@@ -66,8 +66,9 @@ export interface IStorage {
     subscriptionStatus?: string;
   }): Promise<User>;
 
-  // Lead operations
+  // Lead operations (multi-tenant)
   getAllLeads(): Promise<Lead[]>;
+  getLeadsByClinic(clinicId: string): Promise<Lead[]>;
   createLead(lead: InsertLead): Promise<Lead>;
   importLeads(leads: InsertLead[]): Promise<void>;
   getLeadById(id: string): Promise<Lead | undefined>;
@@ -93,8 +94,9 @@ export interface IStorage {
   getChatbotMessages(threadId: string): Promise<ChatbotMessage[]>;
   createChatbotMessage(message: InsertChatbotMessage): Promise<ChatbotMessage>;
 
-  // Outreach campaign operations
+  // Outreach campaign operations (multi-tenant)
   getAllCampaigns(): Promise<OutreachCampaign[]>;
+  getCampaignsByClinic(clinicId: string): Promise<OutreachCampaign[]>;
   createCampaign(campaign: InsertOutreachCampaign): Promise<OutreachCampaign>;
 
   // Patient booking operations
@@ -104,8 +106,16 @@ export interface IStorage {
   getPatientBookingsForUser(userId: string): Promise<PatientBooking[]>;
   updatePatientBookingStatus(id: string, status: string): Promise<void>;
 
-  // Analytics
+  // Analytics (multi-tenant)
   getAnalytics(): Promise<{
+    leadsImported: number;
+    leadsContacted: number;
+    replies: number;
+    demosBooked: number;
+    won: number;
+    lost: number;
+  }>;
+  getAnalyticsByClinic(clinicId: string): Promise<{
     leadsImported: number;
     leadsContacted: number;
     replies: number;
@@ -136,8 +146,9 @@ export interface IStorage {
     totalMessages: number;
   }>;
   
-  // Sequence operations
+  // Sequence operations (multi-tenant)
   getAllSequences(): Promise<Sequence[]>;
+  getSequencesByClinic(clinicId: string): Promise<Sequence[]>;
   getSequenceById(id: string): Promise<Sequence | undefined>;
   createSequence(sequence: InsertSequence): Promise<Sequence>;
   updateSequence(id: string, data: Partial<InsertSequence>): Promise<Sequence>;
@@ -279,6 +290,12 @@ export class DatabaseStorage implements IStorage {
   async getAllLeads(): Promise<Lead[]> {
     return await db.select().from(leads).orderBy(desc(leads.createdAt));
   }
+  
+  async getLeadsByClinic(clinicId: string): Promise<Lead[]> {
+    return await db.select().from(leads)
+      .where(eq(leads.clinicId, clinicId))
+      .orderBy(desc(leads.createdAt));
+  }
 
   async createLead(lead: InsertLead): Promise<Lead> {
     const [newLead] = await db.insert(leads).values(lead).returning();
@@ -414,6 +431,12 @@ export class DatabaseStorage implements IStorage {
   async getAllCampaigns(): Promise<OutreachCampaign[]> {
     return await db.select().from(outreachCampaigns).orderBy(desc(outreachCampaigns.createdAt));
   }
+  
+  async getCampaignsByClinic(clinicId: string): Promise<OutreachCampaign[]> {
+    return await db.select().from(outreachCampaigns)
+      .where(eq(outreachCampaigns.clinicId, clinicId))
+      .orderBy(desc(outreachCampaigns.createdAt));
+  }
 
   async createCampaign(campaign: InsertOutreachCampaign): Promise<OutreachCampaign> {
     const [newCampaign] = await db.insert(outreachCampaigns).values(campaign).returning();
@@ -493,6 +516,47 @@ export class DatabaseStorage implements IStorage {
       .select({ count: sql<number>`count(*)` })
       .from(leads)
       .where(eq(leads.status, "lost"));
+
+    return {
+      leadsImported: Number(leadsCount?.count || 0),
+      leadsContacted: Number(contactedCount?.count || 0),
+      replies: Number(repliesCount?.count || 0),
+      demosBooked: Number(demosCount?.count || 0),
+      won: Number(wonCount?.count || 0),
+      lost: Number(lostCount?.count || 0),
+    };
+  }
+  
+  async getAnalyticsByClinic(clinicId: string) {
+    const [leadsCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(leads)
+      .where(eq(leads.clinicId, clinicId));
+
+    const [contactedCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(leads)
+      .where(and(eq(leads.clinicId, clinicId), eq(leads.status, "contacted")));
+
+    const [repliesCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(leads)
+      .where(and(eq(leads.clinicId, clinicId), eq(leads.status, "replied")));
+
+    const [demosCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(patientBookings)
+      .where(eq(patientBookings.clinicId, clinicId));
+
+    const [wonCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(leads)
+      .where(and(eq(leads.clinicId, clinicId), eq(leads.status, "won")));
+
+    const [lostCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(leads)
+      .where(and(eq(leads.clinicId, clinicId), eq(leads.status, "lost")));
 
     return {
       leadsImported: Number(leadsCount?.count || 0),
@@ -632,6 +696,12 @@ export class DatabaseStorage implements IStorage {
   // Sequence operations
   async getAllSequences(): Promise<Sequence[]> {
     return await db.select().from(sequences).orderBy(desc(sequences.createdAt));
+  }
+  
+  async getSequencesByClinic(clinicId: string): Promise<Sequence[]> {
+    return await db.select().from(sequences)
+      .where(eq(sequences.clinicId, clinicId))
+      .orderBy(desc(sequences.createdAt));
   }
   
   async getSequenceById(id: string): Promise<Sequence | undefined> {

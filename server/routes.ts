@@ -580,13 +580,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     return true;
   };
+  
+  // Helper to get selected clinic ID from session
+  const getSelectedClinicId = (req: any): string | null => {
+    return req.session?.selectedClinicId || null;
+  };
+  
+  // Helper to require clinic context
+  const requireClinicContext = async (req: any, res: any): Promise<string | null> => {
+    if (!requireAuth(req, res)) return null;
+    
+    const clinicId = getSelectedClinicId(req);
+    if (!clinicId) {
+      res.status(400).json({ message: "No clinic selected. Please select a clinic first." });
+      return null;
+    }
+    
+    // Verify user has access to this clinic
+    const userId = getUserId(req);
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return null;
+    }
+    
+    const userClinics = await storage.getUserClinics(userId);
+    const hasAccess = userClinics.some(c => c.id === clinicId);
+    
+    if (!hasAccess) {
+      res.status(403).json({ message: "Access denied to this clinic" });
+      return null;
+    }
+    
+    return clinicId;
+  };
 
-  // Lead routes
+  // Lead routes (multi-tenant)
   app.get("/api/leads", async (req: any, res) => {
     try {
-      if (!requireAuth(req, res)) return;
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
       
-      const leads = await storage.getAllLeads();
+      const leads = await storage.getLeadsByClinic(clinicId);
       res.json(leads);
     } catch (error) {
       console.error("Error fetching leads:", error);
@@ -596,7 +630,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/leads/import", async (req: any, res) => {
     try {
-      if (!await requireAdminRole(req, res)) return;
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
       
       const { leads } = req.body;
 
@@ -604,10 +639,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid leads data" });
       }
 
-      // Transform and validate leads
+      // Transform and validate leads with clinic context
       const validLeads = leads
         .filter((lead) => lead.name && lead.name.trim())
         .map((lead) => ({
+          clinicId, // Add clinic context
           name: lead.name || lead.Name || "",
           email: lead.email || lead.Email || null,
           phone: lead.phone || lead.Phone || null,
@@ -1246,8 +1282,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all sequences
   app.get("/api/sequences", async (req: any, res) => {
     try {
-      if (!requireAuth(req, res)) return;
-      const sequences = await storage.getAllSequences();
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+      const sequences = await storage.getSequencesByClinic(clinicId);
       res.json(sequences);
     } catch (error) {
       console.error("Error fetching sequences:", error);
@@ -1274,7 +1311,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new sequence
   app.post("/api/sequences", async (req: any, res) => {
     try {
-      if (!requireAuth(req, res)) return;
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
       const userId = getUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -1282,6 +1320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const sequenceData = insertSequenceSchema.parse({
         ...req.body,
+        clinicId, // Add clinic context
         ownerId: userId,
       });
       const sequence = await storage.createSequence(sequenceData);
@@ -1851,14 +1890,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Seed the default "Smart Lead Conversion Sequence" with professional copywriting
   app.post("/api/sequences/seed-default", async (req: any, res) => {
     try {
-      if (!requireAuth(req, res)) return;
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
       const userId = getUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      // Check if sequence already exists
-      const existingSequences = await storage.getAllSequences();
+      // Check if sequence already exists for this clinic
+      const existingSequences = await storage.getSequencesByClinic(clinicId);
       const hasDefault = existingSequences.some(s => s.name === "Smart Lead Conversion Sequence");
       if (hasDefault) {
         return res.status(400).json({ message: "Default sequence already exists" });
@@ -1870,6 +1910,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: "A proven 9-step automated follow-up sequence designed for dental clinics. Introduces your services, addresses pain points, builds trust with social proof, and guides leads to book a demo.",
         sequenceType: "new_lead",
         status: "active",
+        clinicId,
         ownerId: userId,
       });
       
@@ -2139,7 +2180,8 @@ P.S. Remember, you're protected by our 60-day money-back guarantee. If you don't
   // Seed all patient AI chatbot sequences
   app.post("/api/sequences/seed-patient-chatbot", async (req: any, res) => {
     try {
-      if (!requireAuth(req, res)) return;
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
       const userId = getUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -2153,6 +2195,7 @@ P.S. Remember, you're protected by our 60-day money-back guarantee. If you don't
         description: "Automated welcome and nurturing sequence for new patient inquiries. Converts leads into booked appointments through personalized follow-ups.",
         sequenceType: "new_lead",
         status: "active",
+        clinicId,
         ownerId: userId,
       });
       
@@ -2255,6 +2298,7 @@ The {{clinic_name}} Team`,
         description: "Instantly follow up with patients who called but couldn't reach the office. Captures leads that would otherwise be lost.",
         sequenceType: "missed_call",
         status: "active",
+        clinicId,
         ownerId: userId,
       });
       
@@ -2338,6 +2382,7 @@ The {{clinic_name}} Team`,
         description: "Re-engage patients who missed their scheduled appointments. Reduces revenue loss and fills empty slots.",
         sequenceType: "no_show",
         status: "active",
+        clinicId,
         ownerId: userId,
       });
       
@@ -2434,6 +2479,7 @@ The {{clinic_name}} Team`,
         description: "Multi-touch reminder sequence to reduce no-shows and ensure patients are prepared for their visit.",
         sequenceType: "appointment_reminder",
         status: "active",
+        clinicId,
         ownerId: userId,
       });
       
@@ -2525,6 +2571,7 @@ The {{clinic_name}} Team`,
         description: "Collect 5-star reviews from satisfied patients. Builds online reputation and attracts new patients.",
         sequenceType: "review_request",
         status: "active",
+        clinicId,
         ownerId: userId,
       });
       
