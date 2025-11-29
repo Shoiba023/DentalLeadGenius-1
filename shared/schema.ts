@@ -244,6 +244,7 @@ export const sequences = pgTable("sequences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   description: text("description"),
+  sequenceType: text("sequence_type").default("custom").notNull(), // new_lead, missed_call, no_show, appointment_reminder, review_request, custom
   status: text("status").default("draft").notNull(), // draft, active, paused
   ownerId: varchar("owner_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),

@@ -1785,6 +1785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sequence = await storage.createSequence({
         name: "Smart Lead Conversion Sequence",
         description: "A proven 9-step automated follow-up sequence designed for dental clinics. Introduces your services, addresses pain points, builds trust with social proof, and guides leads to book a demo.",
+        sequenceType: "new_lead",
         status: "active",
         ownerId: userId,
       });
@@ -2049,6 +2050,505 @@ P.S. Remember, you're protected by our 60-day money-back guarantee. If you don't
     } catch (error) {
       console.error("Error seeding sequence:", error);
       res.status(500).json({ message: "Failed to seed sequence" });
+    }
+  });
+
+  // Seed all patient AI chatbot sequences
+  app.post("/api/sequences/seed-patient-chatbot", async (req: any, res) => {
+    try {
+      if (!requireAuth(req, res)) return;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const createdSequences: any[] = [];
+      
+      // ================ 1. NEW LEAD FLOW SEQUENCE ================
+      const newLeadSequence = await storage.createSequence({
+        name: "New Patient Lead Flow",
+        description: "Automated welcome and nurturing sequence for new patient inquiries. Converts leads into booked appointments through personalized follow-ups.",
+        sequenceType: "new_lead",
+        status: "active",
+        ownerId: userId,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: newLeadSequence.id,
+        stepOrder: 1,
+        channel: "sms",
+        subject: "",
+        message: `Hi {{patient_name}}! Thank you for your interest in {{clinic_name}}. We're excited to help you achieve your best smile! A team member will be in touch shortly. Questions? Reply to this message anytime.`,
+        delayDays: 0,
+        delayHours: 0,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: newLeadSequence.id,
+        stepOrder: 2,
+        channel: "email",
+        subject: "Welcome to {{clinic_name}} - Your Smile Journey Begins!",
+        message: `Hi {{patient_name}},
+
+Thank you for reaching out to {{clinic_name}}! We're thrilled you're considering us for your dental care.
+
+Here's what makes us special:
+- State-of-the-art technology for comfortable, efficient treatment
+- Friendly, experienced team dedicated to your care
+- Flexible scheduling to fit your busy life
+- Transparent pricing with no surprises
+
+SPECIAL NEW PATIENT OFFER:
+Book your first appointment within the next 48 hours and receive a complimentary consultation (a $150 value)!
+
+Ready to get started? Simply reply to this email or call us at {{clinic_phone}}.
+
+We can't wait to welcome you to our dental family!
+
+Warm regards,
+The {{clinic_name}} Team`,
+        delayDays: 0,
+        delayHours: 1,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: newLeadSequence.id,
+        stepOrder: 3,
+        channel: "sms",
+        subject: "",
+        message: `Hi {{patient_name}}, just checking in from {{clinic_name}}! Still interested in scheduling your visit? We have appointments available this week. Reply YES and we'll help you find the perfect time!`,
+        delayDays: 1,
+        delayHours: 0,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: newLeadSequence.id,
+        stepOrder: 4,
+        channel: "email",
+        subject: "{{patient_name}}, your smile transformation awaits!",
+        message: `Hi {{patient_name}},
+
+I noticed you haven't scheduled your appointment yet, and I wanted to make sure you didn't miss out on our new patient special!
+
+I understand choosing a new dentist is a big decision. Here's what our patients love about us:
+
+"Dr. Smith and the team are amazing! I used to dread dental visits, but now I actually look forward to them." - Sarah M.
+
+"Best dental experience I've ever had. Gentle, professional, and the office is beautiful!" - James P.
+
+We'd love to give you the same 5-star experience.
+
+REMINDER: Your complimentary consultation offer expires soon!
+
+To book your appointment:
+- Reply to this email with your preferred date/time
+- Call us at {{clinic_phone}}
+- Or visit our online booking at {{clinic_website}}
+
+Looking forward to meeting you!
+
+Best,
+The {{clinic_name}} Team`,
+        delayDays: 2,
+        delayHours: 0,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: newLeadSequence.id,
+        stepOrder: 5,
+        channel: "whatsapp",
+        subject: "",
+        message: `Hey {{patient_name}}! This is {{clinic_name}}. We noticed you inquired about dental services. Would you like to chat about how we can help with your dental needs? We're here to answer any questions!`,
+        delayDays: 3,
+        delayHours: 0,
+      });
+      
+      const newLeadSteps = await storage.getSequenceSteps(newLeadSequence.id);
+      createdSequences.push({ ...newLeadSequence, steps: newLeadSteps });
+      
+      // ================ 2. MISSED CALL SEQUENCE ================
+      const missedCallSequence = await storage.createSequence({
+        name: "Missed Call Recovery",
+        description: "Instantly follow up with patients who called but couldn't reach the office. Captures leads that would otherwise be lost.",
+        sequenceType: "missed_call",
+        status: "active",
+        ownerId: userId,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: missedCallSequence.id,
+        stepOrder: 1,
+        channel: "sms",
+        subject: "",
+        message: `Hi! We noticed we missed your call at {{clinic_name}}. So sorry about that! How can we help you today? Reply here or call us back at {{clinic_phone}} - we're ready to assist!`,
+        delayDays: 0,
+        delayHours: 0,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: missedCallSequence.id,
+        stepOrder: 2,
+        channel: "email",
+        subject: "Sorry we missed your call - {{clinic_name}}",
+        message: `Hi there,
+
+We're so sorry we missed your call! Our team was assisting other patients, but we definitely want to help you.
+
+Here's how to reach us:
+- Reply to this email with your question or request
+- Call us back at {{clinic_phone}}
+- Text us at {{clinic_phone}}
+- Book online at {{clinic_website}}
+
+If you were calling to schedule an appointment, we have openings this week!
+
+Our phone lines are open:
+Monday - Friday: 8am - 6pm
+Saturday: 9am - 2pm
+
+We look forward to speaking with you soon!
+
+Best,
+The {{clinic_name}} Team`,
+        delayDays: 0,
+        delayHours: 0,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: missedCallSequence.id,
+        stepOrder: 3,
+        channel: "sms",
+        subject: "",
+        message: `Hi again from {{clinic_name}}! We really want to help you. Were you calling to schedule an appointment? Reply YES and we'll call you back at a time that works for you!`,
+        delayDays: 0,
+        delayHours: 4,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: missedCallSequence.id,
+        stepOrder: 4,
+        channel: "email",
+        subject: "Still need to reach us? - {{clinic_name}}",
+        message: `Hi,
+
+We tried reaching out yesterday after your call but haven't heard back. We want to make sure you get the help you need!
+
+Quick options:
+1. SCHEDULE ONLINE: {{clinic_website}}
+2. TEXT US: {{clinic_phone}}
+3. CALL DURING OFFICE HOURS: {{clinic_phone}}
+
+If you've already been helped or no longer need assistance, no worries at all!
+
+Take care,
+The {{clinic_name}} Team`,
+        delayDays: 1,
+        delayHours: 0,
+      });
+      
+      const missedCallSteps = await storage.getSequenceSteps(missedCallSequence.id);
+      createdSequences.push({ ...missedCallSequence, steps: missedCallSteps });
+      
+      // ================ 3. NO-SHOW RECOVERY SEQUENCE ================
+      const noShowSequence = await storage.createSequence({
+        name: "No-Show Recovery",
+        description: "Re-engage patients who missed their scheduled appointments. Reduces revenue loss and fills empty slots.",
+        sequenceType: "no_show",
+        status: "active",
+        ownerId: userId,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: noShowSequence.id,
+        stepOrder: 1,
+        channel: "sms",
+        subject: "",
+        message: `Hi {{patient_name}}, we missed you at your appointment today at {{clinic_name}}! We hope everything is okay. Would you like to reschedule? Reply YES and we'll find a new time that works for you.`,
+        delayDays: 0,
+        delayHours: 1,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: noShowSequence.id,
+        stepOrder: 2,
+        channel: "email",
+        subject: "We missed you today, {{patient_name}}!",
+        message: `Hi {{patient_name}},
+
+We noticed you weren't able to make it to your appointment at {{clinic_name}} today. We hope everything is alright!
+
+Life gets busy, and we completely understand. The important thing is making sure you get the dental care you need.
+
+RESCHEDULING IS EASY:
+- Reply to this email with your preferred date/time
+- Call us at {{clinic_phone}}
+- Book online at {{clinic_website}}
+
+IMPORTANT: Regular dental visits help prevent small issues from becoming bigger (and more expensive) problems. We're here to help keep your smile healthy!
+
+We have openings this week and would love to get you back on the schedule.
+
+Best,
+The {{clinic_name}} Team`,
+        delayDays: 0,
+        delayHours: 2,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: noShowSequence.id,
+        stepOrder: 3,
+        channel: "sms",
+        subject: "",
+        message: `{{patient_name}}, we still have your appointment slot open at {{clinic_name}}. Your dental health matters! Can we reschedule you for this week? Reply with a day that works best.`,
+        delayDays: 1,
+        delayHours: 0,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: noShowSequence.id,
+        stepOrder: 4,
+        channel: "email",
+        subject: "Let's get you back on track, {{patient_name}}",
+        message: `Hi {{patient_name}},
+
+We've been thinking about you and wanted to check in one more time about rescheduling your dental appointment.
+
+We know dental visits aren't always at the top of everyone's fun list, but here's why they're so important:
+- Prevent cavities and gum disease
+- Catch problems early (before they become painful and costly)
+- Keep your smile bright and healthy
+- Maintain overall health (dental health is connected to heart health!)
+
+AS A THANK YOU FOR RESCHEDULING:
+We're offering you a complimentary teeth whitening treatment with your next visit!
+
+Ready to reschedule? Just reply to this email or call us at {{clinic_phone}}.
+
+We're here when you're ready!
+
+Warm regards,
+The {{clinic_name}} Team`,
+        delayDays: 3,
+        delayHours: 0,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: noShowSequence.id,
+        stepOrder: 5,
+        channel: "whatsapp",
+        subject: "",
+        message: `Hi {{patient_name}}! This is {{clinic_name}}. We haven't heard back about rescheduling your missed appointment. Is there anything preventing you from coming in? We're happy to work around your schedule or address any concerns!`,
+        delayDays: 5,
+        delayHours: 0,
+      });
+      
+      const noShowSteps = await storage.getSequenceSteps(noShowSequence.id);
+      createdSequences.push({ ...noShowSequence, steps: noShowSteps });
+      
+      // ================ 4. APPOINTMENT REMINDER SEQUENCE ================
+      const reminderSequence = await storage.createSequence({
+        name: "Appointment Reminder Series",
+        description: "Multi-touch reminder sequence to reduce no-shows and ensure patients are prepared for their visit.",
+        sequenceType: "appointment_reminder",
+        status: "active",
+        ownerId: userId,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: reminderSequence.id,
+        stepOrder: 1,
+        channel: "email",
+        subject: "Your upcoming appointment at {{clinic_name}} - 1 Week Away!",
+        message: `Hi {{patient_name}},
+
+This is a friendly reminder that your dental appointment is coming up in 1 week!
+
+APPOINTMENT DETAILS:
+- Date: {{appointment_date}}
+- Time: {{appointment_time}}
+- Location: {{clinic_address}}
+- Service: {{service_type}}
+
+TO PREPARE FOR YOUR VISIT:
+1. Brush and floss before arriving
+2. Bring your insurance card and ID
+3. Arrive 10-15 minutes early for check-in
+4. List any questions or concerns for the dentist
+
+NEED TO RESCHEDULE?
+No problem! Just reply to this email or call us at {{clinic_phone}} at least 24 hours before your appointment.
+
+We look forward to seeing you!
+
+Best,
+The {{clinic_name}} Team`,
+        delayDays: 0,
+        delayHours: 0,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: reminderSequence.id,
+        stepOrder: 2,
+        channel: "sms",
+        subject: "",
+        message: `Hi {{patient_name}}! Reminder: Your appointment at {{clinic_name}} is in 2 days on {{appointment_date}} at {{appointment_time}}. Reply C to confirm or R to reschedule.`,
+        delayDays: 5,
+        delayHours: 0,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: reminderSequence.id,
+        stepOrder: 3,
+        channel: "email",
+        subject: "See you tomorrow! - {{clinic_name}}",
+        message: `Hi {{patient_name}},
+
+Just a quick reminder that we'll see you TOMORROW for your dental appointment!
+
+APPOINTMENT DETAILS:
+- Date: {{appointment_date}}
+- Time: {{appointment_time}}
+- Location: {{clinic_address}}
+
+QUICK REMINDERS:
+- Please arrive 10 minutes early
+- Bring your insurance card
+- Let us know if you have any questions!
+
+Our team is ready to give you an amazing experience. See you soon!
+
+Best,
+The {{clinic_name}} Team`,
+        delayDays: 6,
+        delayHours: 0,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: reminderSequence.id,
+        stepOrder: 4,
+        channel: "sms",
+        subject: "",
+        message: `{{patient_name}}, see you TODAY at {{appointment_time}} at {{clinic_name}}! Address: {{clinic_address}}. Reply if you need anything before your visit!`,
+        delayDays: 7,
+        delayHours: 0,
+      });
+      
+      const reminderSteps = await storage.getSequenceSteps(reminderSequence.id);
+      createdSequences.push({ ...reminderSequence, steps: reminderSteps });
+      
+      // ================ 5. REVIEW REQUEST SEQUENCE ================
+      const reviewSequence = await storage.createSequence({
+        name: "Post-Visit Review Request",
+        description: "Collect 5-star reviews from satisfied patients. Builds online reputation and attracts new patients.",
+        sequenceType: "review_request",
+        status: "active",
+        ownerId: userId,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: reviewSequence.id,
+        stepOrder: 1,
+        channel: "sms",
+        subject: "",
+        message: `Hi {{patient_name}}! Thank you for visiting {{clinic_name}} today! We hope you had a great experience. Would you mind sharing your feedback? It takes less than a minute and helps us serve you better!`,
+        delayDays: 0,
+        delayHours: 2,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: reviewSequence.id,
+        stepOrder: 2,
+        channel: "email",
+        subject: "How was your visit to {{clinic_name}}?",
+        message: `Hi {{patient_name}},
+
+Thank you for choosing {{clinic_name}} for your dental care! We hope your visit today exceeded your expectations.
+
+We have a quick favor to ask...
+
+Your feedback helps other patients find quality dental care and helps us continue improving. Would you take 30 seconds to share your experience?
+
+[LEAVE A GOOGLE REVIEW]
+
+What to mention in your review:
+- How did our team make you feel?
+- Was the appointment comfortable?
+- Would you recommend us to friends/family?
+
+Every review means the world to us!
+
+Thank you for being part of the {{clinic_name}} family.
+
+With gratitude,
+The {{clinic_name}} Team
+
+P.S. Your reviews help us continue providing excellent care to the community. Thank you!`,
+        delayDays: 0,
+        delayHours: 4,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: reviewSequence.id,
+        stepOrder: 3,
+        channel: "sms",
+        subject: "",
+        message: `Hi {{patient_name}}! We truly value your opinion. If you have a moment, we'd love for you to leave a quick review about your visit to {{clinic_name}}. Your feedback helps us grow!`,
+        delayDays: 1,
+        delayHours: 0,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: reviewSequence.id,
+        stepOrder: 4,
+        channel: "email",
+        subject: "One small favor, {{patient_name}}?",
+        message: `Hi {{patient_name}},
+
+I hope you're doing well after your recent visit to {{clinic_name}}!
+
+I noticed you haven't had a chance to leave us a review yet, and I completely understand - life is busy!
+
+But if you could spare just 30 seconds, it would mean so much to our team. Here's why:
+
+- Your review helps other patients find trusted dental care
+- It motivates our team to keep delivering excellent service
+- It helps small businesses like ours compete with larger practices
+
+HAD A GREAT EXPERIENCE?
+Click here to leave a Google review: [REVIEW LINK]
+
+HAD ANY CONCERNS?
+Please reply to this email directly - we want to make it right!
+
+Thank you for being a valued patient. We look forward to your next visit!
+
+Warmly,
+Dr. {{doctor_name}} and The {{clinic_name}} Team`,
+        delayDays: 3,
+        delayHours: 0,
+      });
+      
+      await storage.createSequenceStep({
+        sequenceId: reviewSequence.id,
+        stepOrder: 5,
+        channel: "whatsapp",
+        subject: "",
+        message: `Hi {{patient_name}}! Quick message from {{clinic_name}} - we'd really appreciate your feedback on your recent visit. Could you take a minute to share your experience? It helps other patients discover great dental care!`,
+        delayDays: 5,
+        delayHours: 0,
+      });
+      
+      const reviewSteps = await storage.getSequenceSteps(reviewSequence.id);
+      createdSequences.push({ ...reviewSequence, steps: reviewSteps });
+      
+      res.json({ 
+        message: "All patient AI chatbot sequences created successfully!",
+        sequences: createdSequences,
+        count: createdSequences.length
+      });
+    } catch (error) {
+      console.error("Error seeding patient sequences:", error);
+      res.status(500).json({ message: "Failed to seed patient sequences" });
     }
   });
 
