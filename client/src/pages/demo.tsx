@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { Link } from "wouter";
+import { useState, useEffect } from "react";
+import { Link, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
+import { DemoAccessModal } from "@/components/demo-access-modal";
 import { 
   MessageSquare, 
   Users, 
@@ -15,10 +17,105 @@ import {
   CheckCircle2,
   ArrowRight,
   Play,
-  Sparkles
+  Sparkles,
+  Lock,
+  Mail,
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 
-export default function Demo() {
+interface TokenVerification {
+  valid: boolean;
+  message?: string;
+  email?: string;
+  clinicName?: string;
+}
+
+function DemoGate({ onRequestAccess }: { onRequestAccess: () => void }) {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <Card className="max-w-md w-full">
+        <CardHeader className="text-center">
+          <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+            <Lock className="h-8 w-8 text-primary" />
+          </div>
+          <CardTitle className="text-2xl">Demo Access Required</CardTitle>
+          <CardDescription className="text-base">
+            To explore the full DentalLeadGenius demo, please enter your email. 
+            We'll send you a secure access link.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button 
+            className="w-full" 
+            size="lg" 
+            onClick={onRequestAccess}
+            data-testid="button-request-demo-access"
+          >
+            <Mail className="h-4 w-4 mr-2" />
+            Get Demo Access
+          </Button>
+          <div className="text-center">
+            <Link href="/">
+              <span className="text-sm text-muted-foreground hover:text-foreground cursor-pointer">
+                Back to Homepage
+              </span>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function DemoExpired({ onRequestAccess }: { onRequestAccess: () => void }) {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <Card className="max-w-md w-full">
+        <CardHeader className="text-center">
+          <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+            <AlertCircle className="h-8 w-8 text-destructive" />
+          </div>
+          <CardTitle className="text-2xl">Demo Link Expired</CardTitle>
+          <CardDescription className="text-base">
+            This demo access link has expired. Request a new one to continue exploring DentalLeadGenius.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button 
+            className="w-full" 
+            size="lg" 
+            onClick={onRequestAccess}
+            data-testid="button-request-new-access"
+          >
+            <Mail className="h-4 w-4 mr-2" />
+            Get New Access Link
+          </Button>
+          <div className="text-center">
+            <Link href="/">
+              <span className="text-sm text-muted-foreground hover:text-foreground cursor-pointer">
+                Back to Homepage
+              </span>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function DemoLoading() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+        <p className="text-muted-foreground">Verifying your access...</p>
+      </div>
+    </div>
+  );
+}
+
+function DemoContent() {
   const [activeTab, setActiveTab] = useState("overview");
 
   return (
@@ -56,7 +153,7 @@ export default function Demo() {
           </p>
           <div className="flex justify-center gap-4">
             <Button size="lg" asChild data-testid="button-start-trial">
-              <Link href="/login">
+              <Link href="/pricing">
                 <Play className="h-4 w-4 mr-2" />
                 Start Free Trial
               </Link>
@@ -530,7 +627,7 @@ export default function Demo() {
             Join hundreds of dental clinics already growing with DentalLeadGenius
           </p>
           <Button size="lg" asChild data-testid="button-start-free-trial">
-            <Link href="/login">
+            <Link href="/pricing">
               Start Free Trial
               <ArrowRight className="h-4 w-4 ml-2" />
             </Link>
@@ -539,4 +636,75 @@ export default function Demo() {
       </section>
     </div>
   );
+}
+
+export default function Demo() {
+  const searchString = useSearch();
+  const params = new URLSearchParams(searchString);
+  const token = params.get("token");
+  
+  const [showAccessModal, setShowAccessModal] = useState(false);
+  const [accessState, setAccessState] = useState<"loading" | "gate" | "expired" | "valid">(
+    token ? "loading" : "gate"
+  );
+  
+  const { data: verification, isLoading } = useQuery<TokenVerification>({
+    queryKey: ["/api/verify-demo-token", token],
+    queryFn: async () => {
+      const response = await fetch(`/api/verify-demo-token?token=${token}`);
+      return response.json();
+    },
+    enabled: !!token,
+    retry: false,
+  });
+  
+  useEffect(() => {
+    if (!token) {
+      setAccessState("gate");
+      return;
+    }
+    
+    if (isLoading) {
+      setAccessState("loading");
+      return;
+    }
+    
+    if (verification) {
+      if (verification.valid) {
+        setAccessState("valid");
+      } else if (verification.message?.includes("expired")) {
+        setAccessState("expired");
+      } else {
+        setAccessState("gate");
+      }
+    }
+  }, [token, verification, isLoading]);
+  
+  const handleRequestAccess = () => {
+    setShowAccessModal(true);
+  };
+  
+  if (accessState === "loading") {
+    return <DemoLoading />;
+  }
+  
+  if (accessState === "gate") {
+    return (
+      <>
+        <DemoGate onRequestAccess={handleRequestAccess} />
+        <DemoAccessModal open={showAccessModal} onOpenChange={setShowAccessModal} />
+      </>
+    );
+  }
+  
+  if (accessState === "expired") {
+    return (
+      <>
+        <DemoExpired onRequestAccess={handleRequestAccess} />
+        <DemoAccessModal open={showAccessModal} onOpenChange={setShowAccessModal} />
+      </>
+    );
+  }
+  
+  return <DemoContent />;
 }
