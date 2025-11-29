@@ -12,6 +12,7 @@ import {
   sequences,
   sequenceSteps,
   sequenceEnrollments,
+  demoAccessTokens,
   type User,
   type UpsertUser,
   type Lead,
@@ -34,6 +35,8 @@ import {
   type InsertSequenceStep,
   type SequenceEnrollment,
   type InsertSequenceEnrollment,
+  type DemoAccessToken,
+  type InsertDemoAccessToken,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -139,6 +142,11 @@ export interface IStorage {
   getSequenceEnrollments(sequenceId: string): Promise<SequenceEnrollment[]>;
   createSequenceEnrollment(enrollment: InsertSequenceEnrollment): Promise<SequenceEnrollment>;
   updateSequenceEnrollmentStatus(id: string, status: string): Promise<void>;
+  
+  // Demo access token operations
+  createDemoAccessToken(data: InsertDemoAccessToken): Promise<DemoAccessToken>;
+  getDemoAccessTokenByToken(token: string): Promise<DemoAccessToken | undefined>;
+  markDemoAccessTokenUsed(token: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -632,6 +640,27 @@ export class DatabaseStorage implements IStorage {
       .update(sequenceEnrollments)
       .set({ status })
       .where(eq(sequenceEnrollments.id, id));
+  }
+  
+  // Demo access token operations
+  async createDemoAccessToken(data: InsertDemoAccessToken): Promise<DemoAccessToken> {
+    const [token] = await db.insert(demoAccessTokens).values(data).returning();
+    return token;
+  }
+  
+  async getDemoAccessTokenByToken(token: string): Promise<DemoAccessToken | undefined> {
+    const [accessToken] = await db
+      .select()
+      .from(demoAccessTokens)
+      .where(eq(demoAccessTokens.token, token));
+    return accessToken;
+  }
+  
+  async markDemoAccessTokenUsed(token: string): Promise<void> {
+    await db
+      .update(demoAccessTokens)
+      .set({ used: true })
+      .where(eq(demoAccessTokens.token, token));
   }
 }
 

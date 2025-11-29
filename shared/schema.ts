@@ -380,3 +380,22 @@ export const sequenceEnrollmentsRelations = relations(sequenceEnrollments, ({ on
 export const leadsRelations = relations(leads, ({ many }) => ({
   sequenceEnrollments: many(sequenceEnrollments),
 }));
+
+// Demo access tokens table (for email-gated demo access)
+export const demoAccessTokens = pgTable("demo_access_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull(),
+  clinicName: text("clinic_name"),
+  token: varchar("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertDemoAccessTokenSchema = createInsertSchema(demoAccessTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertDemoAccessToken = z.infer<typeof insertDemoAccessTokenSchema>;
+export type DemoAccessToken = typeof demoAccessTokens.$inferSelect;
