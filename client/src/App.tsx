@@ -25,6 +25,7 @@ import AdminSequences from "@/pages/admin-sequences";
 import AdminUsers from "@/pages/admin-users";
 import ClinicPage from "@/pages/clinic-page";
 import Onboarding from "@/pages/onboarding";
+import PublicOnboarding from "@/pages/public-onboarding";
 
 function DashboardHome() {
   const { user } = useAuth();
@@ -64,9 +65,10 @@ function Router() {
   const isPricingRoute = location === "/pricing" || location.startsWith("/pricing");
   const isPaymentRoute = location.startsWith("/payment/");
   const isClinicRoute = location.startsWith("/clinic/");
+  const isPublicOnboardingRoute = location === "/onboarding" || location.startsWith("/onboarding");
   
   // Public routes - always show without sidebar (for both authenticated and unauthenticated users)
-  const isPublicRoute = isLandingRoute || isDemoRoute || isLoginRoute || isSignupRoute || isPricingRoute || isPaymentRoute || isClinicRoute;
+  const isPublicRoute = isLandingRoute || isDemoRoute || isLoginRoute || isSignupRoute || isPricingRoute || isPaymentRoute || isClinicRoute || isPublicOnboardingRoute;
   
   if (isPublicRoute) {
     return (
@@ -77,6 +79,7 @@ function Router() {
         <Route path="/demo" component={Demo} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/payment/success" component={PaymentSuccess} />
+        <Route path="/onboarding" component={PublicOnboarding} />
         <Route path="/clinic/:slug" component={ClinicPage} />
         <Route component={NotFound} />
       </Switch>
@@ -93,6 +96,7 @@ function Router() {
         <Route path="/demo" component={Demo} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/payment/success" component={PaymentSuccess} />
+        <Route path="/onboarding" component={PublicOnboarding} />
         <Route path="/clinic/:slug" component={ClinicPage} />
         <Route component={NotFound} />
       </Switch>

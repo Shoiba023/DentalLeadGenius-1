@@ -1,0 +1,59 @@
+You are an expert React/TypeScript SaaS developer.
+
+TASK:
+Create a new public onboarding page at route "/onboarding" for DentalLeadGenius. This page will be used as the post-payment redirect from Stripe.
+
+Requirements:
+
+1. Create a new page component (e.g. src/pages/Onboarding.tsx) and add routing so that visiting `/onboarding` loads this page.
+
+2. Layout:
+   - Centered, clean, modern design.
+   - Hero section with:
+     - Title: "Payment Successful – Welcome to DentalLeadGenius 🎉"
+     - Subheading explaining that the subscription is complete and we now need clinic details to set up their branded dashboard and AI chatbot.
+   - A short "What happens next" box listing:
+     - We will create a branded clinic dashboard
+     - Configure the AI chatbot
+     - Activate outreach & reminders
+     - Send a secure login link within 24–48 hours
+
+3. Add a form with the following fields:
+
+   - Clinic / Practice Name (text, required)
+   - Brand / Company Name (text, optional)
+   - Clinic Logo Upload (file input, required, accept PNG/JPG only)
+   - Doctor / Owner Name (text, required)
+   - Best Contact Email (email, required)
+   - WhatsApp / Mobile Number (text, required, with hint to include country code)
+   - Clinic Website (url, optional)
+   - Clinic Country & City (text, required)
+   - Time Zone (text, required)
+   - Plan Purchased (select, required: "Essential Package", "Growth Package", "Elite Package")
+   - Top Services You Want to Promote (textarea)
+   - Preferred Clinic URL / Slug (text, required, with hint like "brightsmile" → used in `/clinic/brightsmile`)
+   - Preferred Contact Channel (select: Email, WhatsApp, Phone call)
+   - Existing Booking Link (url, optional)
+   - Special Notes / Custom Requests (textarea, optional)
+
+4. Form behavior:
+   - Every field should have clear labels and helpful placeholders.
+   - Mark required fields clearly.
+   - On submit, do NOT block submission with real backend validation. For now:
+       - Prevent default
+       - console.log all form values
+       - Show a success state on the page with this message:
+
+         "🎉 Thank you! Your onboarding form has been received. Our team will set up your branded DentalLeadGenius dashboard and AI chatbot within 24–48 hours and send your secure login link via email and WhatsApp."
+
+   - Optionally, prepare a helper function that would POST the form data to `/api/onboarding` in the future, but it can be commented out for now.
+
+5. Styling:
+   - Keep styling consistent with the rest of the app.
+   - Use the same font, colors, and button styles as the main site.
+   - The page should be mobile-friendly.
+   - Place the submit button at the bottom with label: "Complete Onboarding & Submit Details".
+
+6. At the top of the file, add a short comment reminding us that Stripe checkout should redirect to this page after successful payment: `/onboarding`.
+
+After you finish, show me the final Onboarding page component code.
