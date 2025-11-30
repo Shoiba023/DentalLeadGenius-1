@@ -1280,7 +1280,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { type } = req.body;
 
-      if (!type || !["email", "sms", "whatsapp"].includes(type)) {
+      // Support both traditional and social campaign types
+      const validTypes = ["email", "sms", "whatsapp", "facebook_post", "instagram_post", "youtube_post", "tiktok_caption"];
+      if (!type || !validTypes.includes(type)) {
         return res.status(400).json({ message: "Invalid campaign type" });
       }
 
@@ -1289,6 +1291,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating draft:", error);
       res.status(500).json({ message: "Failed to generate draft" });
+    }
+  });
+
+  // Get single campaign by ID
+  app.get("/api/campaigns/:id", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+      
+      const { id } = req.params;
+      const campaign = await storage.getCampaignById(id);
+      
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Verify campaign belongs to user's clinic
+      if (campaign.clinicId !== clinicId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      res.json(campaign);
+    } catch (error) {
+      console.error("Error fetching campaign:", error);
+      res.status(500).json({ message: "Failed to fetch campaign" });
+    }
+  });
+
+  // Update campaign
+  app.put("/api/campaigns/:id", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+      
+      const { id } = req.params;
+      const campaign = await storage.getCampaignById(id);
+      
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Verify campaign belongs to user's clinic
+      if (campaign.clinicId !== clinicId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Don't allow changing clinicId
+      const { clinicId: _, ...updateData } = req.body;
+      
+      const updatedCampaign = await storage.updateCampaign(id, updateData);
+      res.json(updatedCampaign);
+    } catch (error) {
+      console.error("Error updating campaign:", error);
+      res.status(500).json({ message: "Failed to update campaign" });
     }
   });
 
