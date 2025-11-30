@@ -1319,28 +1319,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update campaign
+  // Update campaign (clinic-scoped for security)
   app.put("/api/campaigns/:id", async (req: any, res) => {
     try {
       const clinicId = await requireClinicContext(req, res);
       if (!clinicId) return;
       
       const { id } = req.params;
-      const campaign = await storage.getCampaignById(id);
       
-      if (!campaign) {
-        return res.status(404).json({ message: "Campaign not found" });
-      }
-      
-      // Verify campaign belongs to user's clinic
-      if (campaign.clinicId !== clinicId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-      
-      // Don't allow changing clinicId
+      // Don't allow changing clinicId in request body
       const { clinicId: _, ...updateData } = req.body;
       
-      const updatedCampaign = await storage.updateCampaign(id, updateData);
+      // Use clinic-scoped update for database-level security
+      // This ensures the campaign both exists AND belongs to this clinic
+      const updatedCampaign = await storage.updateCampaignByClinic(id, clinicId, updateData);
+      
+      if (!updatedCampaign) {
+        return res.status(404).json({ message: "Campaign not found or access denied" });
+      }
+      
       res.json(updatedCampaign);
     } catch (error) {
       console.error("Error updating campaign:", error);

@@ -99,7 +99,7 @@ export interface IStorage {
   getCampaignsByClinic(clinicId: string): Promise<OutreachCampaign[]>;
   getCampaignById(id: string): Promise<OutreachCampaign | undefined>;
   createCampaign(campaign: InsertOutreachCampaign): Promise<OutreachCampaign>;
-  updateCampaign(id: string, data: Partial<InsertOutreachCampaign>): Promise<OutreachCampaign | undefined>;
+  updateCampaignByClinic(id: string, clinicId: string, data: Partial<InsertOutreachCampaign>): Promise<OutreachCampaign | undefined>;
 
   // Patient booking operations
   createPatientBooking(booking: InsertPatientBooking): Promise<PatientBooking>;
@@ -471,11 +471,16 @@ export class DatabaseStorage implements IStorage {
     return campaign;
   }
 
-  async updateCampaign(id: string, data: Partial<InsertOutreachCampaign>): Promise<OutreachCampaign | undefined> {
+  async updateCampaignByClinic(id: string, clinicId: string, data: Partial<InsertOutreachCampaign>): Promise<OutreachCampaign | undefined> {
     const [updated] = await db
       .update(outreachCampaigns)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(outreachCampaigns.id, id))
+      .where(
+        and(
+          eq(outreachCampaigns.id, id),
+          eq(outreachCampaigns.clinicId, clinicId)
+        )
+      )
       .returning();
     return updated;
   }
