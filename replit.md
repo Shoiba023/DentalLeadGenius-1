@@ -34,6 +34,24 @@ Preferred communication style: Simple, everyday language.
 
 **AI Integration**: Utilizes OpenAI API for sales chatbot conversations, patient chatbots, and outreach message generation.
 
+### Campaign Hub (Outreach Manager)
+
+**Multi-Channel Support**: The Campaign Hub supports both traditional outreach (Email, SMS, WhatsApp) and social media campaigns (Facebook Post, Instagram Post, YouTube Community Post, TikTok Caption).
+
+**Social Campaign Fields**: 
+- `targetUrl`: Landing page URL for the campaign
+- `mediaUrl`: Image/video URL to use in posts
+- `hashtags`: Comma-separated hashtags for social posts
+- `status`: Campaign status (draft, ready, active, paused, completed, archived)
+
+**Copy/Export Workflow**: Social campaigns include platform-specific copy buttons that format content with hashtags and links for manual posting. Auto-posting via official APIs is planned for future implementation.
+
+**API Endpoints**:
+- `GET /api/campaigns` - List campaigns for current clinic
+- `POST /api/campaigns` - Create new campaign
+- `GET /api/campaigns/:id` - Get campaign by ID
+- `PUT /api/campaigns/:id` - Update campaign (clinic-scoped for security)
+
 ### Chatbot Flow
 
 The platform features two types of AI chatbots: a **Sales Chatbot** on the homepage for demo bookings and a **Patient Chatbot** on clinic pages for appointment bookings. Both interact with the backend to save messages, fetch conversation history, and generate AI responses using GPT-4o with specialized system prompts.
