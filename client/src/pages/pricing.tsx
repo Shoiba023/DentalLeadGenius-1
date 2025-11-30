@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, ArrowLeft, CreditCard, Shield, Zap } from "lucide-react";
+import logoFull from "@/assets/logo/logo-full.png";
 
 const STRIPE_PAYMENT_LINKS: Record<string, { monthly: string; setup: string }> = {
   essential: {
@@ -85,6 +86,11 @@ export default function PricingPage() {
       </header>
 
       <main className="container mx-auto px-4 py-16">
+        {/* Logo */}
+        <div className="flex justify-center mb-8">
+          <img src={logoFull} alt="DentalLeadGenius" className="h-10 md:h-12 w-auto object-contain" />
+        </div>
+
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">Choose Your Plan</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">

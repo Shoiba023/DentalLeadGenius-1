@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { ClinicSwitcher } from "@/components/clinic-switcher";
 import type { User } from "@shared/schema";
+import logoIcon from "@/assets/logo/icon.png";
 
 const adminMenuItems = [
   {
@@ -93,7 +94,10 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="p-4 border-b">
-        <div className="text-lg font-bold mb-3">DentalLeadGenius</div>
+        <div className="flex items-center gap-2 mb-3">
+          <img src={logoIcon} alt="DentalLeadGenius" className="h-8 w-8 object-contain" />
+          <span className="text-lg font-bold">DentalLeadGenius</span>
+        </div>
         <ClinicSwitcher />
       </SidebarHeader>
       <SidebarContent>

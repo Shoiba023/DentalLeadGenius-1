@@ -7,6 +7,8 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { SiWhatsapp } from "react-icons/si";
 import heroImage from "@assets/generated_images/modern_dental_clinic_hero_image.png";
+import logoFull from "@/assets/logo/logo-full.png";
+import logoIcon from "@/assets/logo/icon.png";
 
 export default function Landing() {
   const [showDemoModal, setShowDemoModal] = useState(false);
@@ -23,9 +25,12 @@ export default function Landing() {
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-8">
               <Link href="/">
-                <span className="text-xl font-bold cursor-pointer" data-testid="link-logo">
-                  DentalLeadGenius
-                </span>
+                <img 
+                  src={logoFull} 
+                  alt="DentalLeadGenius" 
+                  className="h-9 md:h-10 w-auto cursor-pointer object-contain"
+                  data-testid="link-logo"
+                />
               </Link>
               <nav className="hidden md:flex items-center gap-6">
                 <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">

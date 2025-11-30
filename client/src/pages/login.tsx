@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import logoFull from "@/assets/logo/logo-full.png";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -51,9 +52,8 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/30 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Sparkles className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold">DentalLeadGenius</span>
+          <div className="flex items-center justify-center mb-4">
+            <img src={logoFull} alt="DentalLeadGenius" className="h-10 w-auto object-contain" />
           </div>
           <CardTitle data-testid="text-login-title">Log in to Dashboard</CardTitle>
           <CardDescription>

@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle, Upload, ArrowLeft, Sparkles, MessageSquare, Bell, Lock } from "lucide-react";
+import logoFull from "@/assets/logo/logo-full.png";
 
 interface OnboardingFormData {
   clinicName: string;
@@ -139,6 +140,11 @@ export default function PublicOnboardingPage() {
       </header>
 
       <main className="container mx-auto px-4 py-12 max-w-3xl">
+        {/* Logo */}
+        <div className="flex justify-center mb-8">
+          <img src={logoFull} alt="DentalLeadGenius" className="h-12 md:h-14 w-auto object-contain" />
+        </div>
+
         {/* Hero Section */}
         <div className="text-center mb-10">
           <h1 className="text-3xl md:text-4xl font-bold mb-4">
