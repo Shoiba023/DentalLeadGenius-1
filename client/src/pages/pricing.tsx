@@ -1,15 +1,24 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { Check, ArrowLeft, CreditCard, Shield, Zap } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+
+const STRIPE_PAYMENT_LINKS: Record<string, { monthly: string; setup: string }> = {
+  essential: {
+    monthly: "https://buy.stripe.com/dRm8wQ2zr9m0fdh3WU0ZW02",
+    setup: "https://buy.stripe.com/dRmeVea1T41GfdheBy0ZW01",
+  },
+  growth: {
+    monthly: "https://buy.stripe.com/5kQ8wQ2zr2XC3uzeBy0ZW04",
+    setup: "https://buy.stripe.com/eVq9AUa1T7dS7KP8da0ZW03",
+  },
+  elite: {
+    monthly: "https://buy.stripe.com/4gMfZi6PHaq49SXctq0ZW06",
+    setup: "https://buy.stripe.com/eVq9AU1vn1Tye9d9he0ZW05",
+  },
+};
 
 interface PricingPackage {
   id: string;
@@ -23,51 +32,22 @@ interface PricingPackage {
 }
 
 export default function PricingPage() {
-  const { toast } = useToast();
-  const [selectedPackage, setSelectedPackage] = useState<PricingPackage | null>(null);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    clinicName: "",
-    ownerName: "",
-    email: "",
-  });
-
   const { data: packages, isLoading } = useQuery<PricingPackage[]>({
     queryKey: ["/api/pricing"],
   });
 
-  const checkoutMutation = useMutation({
-    mutationFn: async (data: { packageId: string; clinicName: string; ownerName: string; email: string }) => {
-      const response = await apiRequest("POST", "/api/checkout/create-session", data);
-      return response.json();
-    },
-    onSuccess: (data) => {
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Checkout failed",
-        description: error.message || "Please try again",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSelectPackage = (pkg: PricingPackage) => {
-    setSelectedPackage(pkg);
-    setCheckoutOpen(true);
+  const handleSubscribe = (packageId: string) => {
+    const links = STRIPE_PAYMENT_LINKS[packageId];
+    if (links) {
+      window.location.href = links.monthly;
+    }
   };
 
-  const handleCheckout = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedPackage) return;
-
-    checkoutMutation.mutate({
-      packageId: selectedPackage.id,
-      ...formData,
-    });
+  const handleSetupFee = (packageId: string) => {
+    const links = STRIPE_PAYMENT_LINKS[packageId];
+    if (links) {
+      window.location.href = links.setup;
+    }
   };
 
   const formatPrice = (cents: number) => {
@@ -157,15 +137,25 @@ export default function PricingPage() {
                   ))}
                 </ul>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex flex-col gap-2">
                 <Button
                   className="w-full"
                   size="lg"
                   variant={pkg.popular ? "default" : "outline"}
-                  onClick={() => handleSelectPackage(pkg)}
-                  data-testid={`button-select-${pkg.id}`}
+                  onClick={() => handleSubscribe(pkg.id)}
+                  data-testid={`button-subscribe-${pkg.id}`}
                 >
-                  Get Started
+                  Get Started - Monthly
+                </Button>
+                <Button
+                  className="w-full"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleSetupFee(pkg.id)}
+                  data-testid={`button-setup-${pkg.id}`}
+                >
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Pay Setup Fee
                 </Button>
               </CardFooter>
             </Card>
@@ -182,79 +172,6 @@ export default function PricingPage() {
           </p>
         </div>
       </main>
-
-      <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Complete Your Order</DialogTitle>
-            <DialogDescription>
-              {selectedPackage && (
-                <span>
-                  {selectedPackage.name}: {formatPrice(selectedPackage.setupFee)} setup + {formatPrice(selectedPackage.monthlyFee)}/month
-                </span>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCheckout} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="clinicName">Clinic Name</Label>
-              <Input
-                id="clinicName"
-                placeholder="Bright Smile Dental"
-                value={formData.clinicName}
-                onChange={(e) => setFormData({ ...formData, clinicName: e.target.value })}
-                required
-                data-testid="input-clinic-name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ownerName">Your Name</Label>
-              <Input
-                id="ownerName"
-                placeholder="Dr. John Smith"
-                value={formData.ownerName}
-                onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
-                required
-                data-testid="input-owner-name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="john@brightsmile.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
-                data-testid="input-email"
-              />
-            </div>
-            <Button
-              type="submit"
-              className="w-full"
-              size="lg"
-              disabled={checkoutMutation.isPending}
-              data-testid="button-proceed-checkout"
-            >
-              {checkoutMutation.isPending ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  Proceed to Checkout
-                </>
-              )}
-            </Button>
-            <p className="text-xs text-center text-muted-foreground">
-              Secure payment powered by Stripe. Your card details are encrypted.
-            </p>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
