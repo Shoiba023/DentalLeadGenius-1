@@ -204,17 +204,23 @@ export type InsertChatbotMessage = z.infer<typeof insertChatbotMessageSchema>;
 export type ChatbotMessage = typeof chatbotMessages.$inferSelect;
 
 // Outreach campaigns table
+// Campaign types: email, sms, whatsapp, facebook_post, instagram_post, youtube_post, tiktok_caption
+// Status: draft, ready, active, paused, completed, archived
 export const outreachCampaigns = pgTable("outreach_campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clinicId: varchar("clinic_id").notNull().references(() => clinics.id), // Multi-tenant isolation
   name: text("name").notNull(),
-  type: text("type").notNull(), // email, sms, whatsapp
+  type: text("type").notNull(), // email, sms, whatsapp, facebook_post, instagram_post, youtube_post, tiktok_caption
   subject: text("subject"),
   message: text("message").notNull(),
-  status: text("status").default("draft").notNull(), // draft, active, paused, completed
+  status: text("status").default("draft").notNull(), // draft, ready, active, paused, completed, archived
   dailyLimit: integer("daily_limit").default(50),
   sentToday: integer("sent_today").default(0),
   totalSent: integer("total_sent").default(0),
+  // Social media specific fields
+  targetUrl: text("target_url"), // Landing page or clinic page URL
+  mediaUrl: text("media_url"), // Optional image/video URL for the post
+  hashtags: text("hashtags"), // Comma-separated hashtags
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
