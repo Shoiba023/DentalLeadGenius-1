@@ -97,7 +97,9 @@ export interface IStorage {
   // Outreach campaign operations (multi-tenant)
   getAllCampaigns(): Promise<OutreachCampaign[]>;
   getCampaignsByClinic(clinicId: string): Promise<OutreachCampaign[]>;
+  getCampaignById(id: string): Promise<OutreachCampaign | undefined>;
   createCampaign(campaign: InsertOutreachCampaign): Promise<OutreachCampaign>;
+  updateCampaign(id: string, data: Partial<InsertOutreachCampaign>): Promise<OutreachCampaign | undefined>;
 
   // Patient booking operations
   createPatientBooking(booking: InsertPatientBooking): Promise<PatientBooking>;
@@ -462,6 +464,20 @@ export class DatabaseStorage implements IStorage {
   async createCampaign(campaign: InsertOutreachCampaign): Promise<OutreachCampaign> {
     const [newCampaign] = await db.insert(outreachCampaigns).values(campaign).returning();
     return newCampaign;
+  }
+
+  async getCampaignById(id: string): Promise<OutreachCampaign | undefined> {
+    const [campaign] = await db.select().from(outreachCampaigns).where(eq(outreachCampaigns.id, id));
+    return campaign;
+  }
+
+  async updateCampaign(id: string, data: Partial<InsertOutreachCampaign>): Promise<OutreachCampaign | undefined> {
+    const [updated] = await db
+      .update(outreachCampaigns)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(outreachCampaigns.id, id))
+      .returning();
+    return updated;
   }
 
   // Patient booking operations
