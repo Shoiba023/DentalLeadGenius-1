@@ -15,7 +15,8 @@ import crypto from "crypto";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { initStripe } from "./stripeInit";
-import { sendDemoLinkEmail } from "./email";
+import { sendDemoLinkEmail, sendLeadNotificationEmail, testSmtpConnection, sendTestEmail, isSmtpConfigured } from "./email";
+import { SITE_NAME } from "@shared/config";
 
 // Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), "attached_assets", "uploads");
@@ -52,6 +53,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for deployment monitoring
   app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  // Email health check endpoint - tests SMTP configuration
+  // GET /health/email - Check if SMTP is configured and connection works
+  // POST /health/email - Send a test email to support address
+  app.get("/health/email", async (req, res) => {
+    try {
+      const configured = isSmtpConfigured();
+      if (!configured) {
+        return res.status(503).json({
+          status: "not_configured",
+          message: "SMTP not configured. Set SMTP_USER and SMTP_PASS environment variables.",
+          smtp_host: process.env.SMTP_HOST || "smtp.zoho.com",
+          smtp_port: process.env.SMTP_PORT || "587",
+        });
+      }
+
+      const result = await testSmtpConnection();
+      if (result.success) {
+        res.json({
+          status: "ok",
+          message: result.message,
+          smtp_host: process.env.SMTP_HOST || "smtp.zoho.com",
+          smtp_port: process.env.SMTP_PORT || "587",
+          smtp_user: process.env.SMTP_USER ? "configured" : "not set",
+        });
+      } else {
+        res.status(503).json({
+          status: "error",
+          message: result.message,
+        });
+      }
+    } catch (error) {
+      console.error("Email health check error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Failed to check email configuration",
+      });
+    }
+  });
+
+  app.post("/health/email", async (req, res) => {
+    try {
+      const { to } = req.body || {};
+      const result = await sendTestEmail(to);
+      
+      if (result.success) {
+        res.json({
+          status: "ok",
+          message: result.message,
+        });
+      } else {
+        res.status(500).json({
+          status: "error",
+          message: result.message,
+        });
+      }
+    } catch (error) {
+      console.error("Test email send error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Failed to send test email",
+      });
+    }
   });
 
   // Serve uploaded files
@@ -310,7 +375,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = `${req.protocol}://${req.get("host")}`;
       const demoLink = `${baseUrl}/demo?token=${token}`;
       
-      // Send email
+      // Send notification email to support about the new demo request
+      sendLeadNotificationEmail({
+        formType: "Demo Link Request",
+        leadData: {
+          email,
+          clinicName: clinicName || undefined,
+          demoLink,
+        },
+        source: "Email-Gated Demo Form",
+      }).catch((err) => {
+        console.error("Failed to send demo request notification:", err);
+      });
+      
+      // Send demo link email to the user
       const emailSent = await sendDemoLinkEmail({
         to: email,
         clinicName: clinicName || undefined,
@@ -951,26 +1029,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = `${protocol}://${host}`;
       const demoUrl = `${baseUrl}/demo`;
       
-      // Log the email that would be sent (email integration not configured)
-      console.log("=== INSTANT DEMO EMAIL ===");
-      console.log(`To: ${bookingData.email}`);
-      console.log(`Subject: Your DentalLeadGenius Demo Access is Ready!`);
-      console.log(`---`);
-      console.log(`Hi ${bookingData.ownerName},`);
-      console.log(``);
-      console.log(`Thank you for your interest in DentalLeadGenius!`);
-      console.log(``);
-      console.log(`Your instant demo access is ready. Click below to explore the platform:`);
-      console.log(`Demo Link: ${demoUrl}`);
-      console.log(``);
-      console.log(`Clinic: ${bookingData.clinicName}`);
-      console.log(`State: ${bookingData.state || 'Not specified'}`);
-      console.log(``);
-      console.log(`No scheduling needed - explore at your own pace!`);
-      console.log(``);
-      console.log(`Best regards,`);
-      console.log(`The DentalLeadGenius Team`);
-      console.log("=== END EMAIL ===");
+      // Send notification email to support about the new demo booking
+      sendLeadNotificationEmail({
+        formType: "Demo Booking Request",
+        leadData: {
+          name: bookingData.ownerName,
+          email: bookingData.email,
+          clinicName: bookingData.clinicName,
+          phone: bookingData.phone,
+          state: bookingData.state,
+          demoLink: demoUrl,
+        },
+        source: "Landing Page Demo Form",
+      }).catch((err) => {
+        console.error("Failed to send lead notification email:", err);
+      });
       
       res.json({ ...booking, demoUrl });
     } catch (error) {
@@ -1003,11 +1076,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const bookingData = insertPatientBookingSchema.parse(req.body);
       const booking = await storage.createPatientBooking(bookingData);
       
+      // Get clinic info for context
+      const clinic = await storage.getClinicById(bookingData.clinicId);
+      
+      // Send notification email to support about the new patient booking
+      sendLeadNotificationEmail({
+        formType: "Patient Appointment Request",
+        leadData: {
+          patientName: bookingData.patientName,
+          patientEmail: bookingData.patientEmail,
+          patientPhone: bookingData.patientPhone,
+          appointmentType: bookingData.appointmentType,
+          preferredDate: bookingData.preferredDate,
+          preferredTime: bookingData.preferredTime,
+          notes: bookingData.notes,
+          clinic: clinic?.name || "Unknown Clinic",
+        },
+        source: `Patient Chatbot - ${clinic?.name || "Clinic Page"}`,
+      }).catch((err) => {
+        console.error("Failed to send patient booking notification:", err);
+      });
+      
       // Auto-create a lead from patient data and enroll in Appointment Request Sequence
       try {
-        // Get clinic info for context
-        const clinic = await storage.getClinicById(bookingData.clinicId);
-        
         // Create a lead from the patient booking (clinic-scoped)
         const lead = await storage.createLead({
           clinicId: bookingData.clinicId,

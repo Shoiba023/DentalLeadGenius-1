@@ -130,7 +130,7 @@ export async function sendSupportEmail(options: SendSupportEmailOptions): Promis
 
 interface LeadNotificationOptions {
   formType: string; // e.g., "Demo Request", "Contact Form", "Booking"
-  leadData: Record<string, string | undefined>;
+  leadData: Record<string, string | null | undefined>;
   source?: string;
 }
 
