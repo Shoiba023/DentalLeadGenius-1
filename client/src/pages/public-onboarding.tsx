@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle, Upload, ArrowLeft, Sparkles, MessageSquare, Bell, Lock } from "lucide-react";
 import logoFull from "@/assets/logo/logo-full.png";
+import { SUPPORT_EMAIL } from "@shared/config";
 
 interface OnboardingFormData {
   clinicName: string;
@@ -440,8 +441,8 @@ export default function PublicOnboardingPage() {
 
         <p className="text-center text-sm text-muted-foreground mt-8">
           Questions? Contact us at{" "}
-          <a href="mailto:support@dentalleadgenius.com" className="text-primary hover:underline">
-            support@dentalleadgenius.com
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline">
+            {SUPPORT_EMAIL}
           </a>
         </p>
       </main>

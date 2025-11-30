@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { Check, ArrowLeft, CreditCard, Shield, Zap } from "lucide-react";
 import logoFull from "@/assets/logo/logo-full.png";
+import { SITE_NAME, SUPPORT_EMAIL } from "@shared/config";
 
 const STRIPE_PAYMENT_LINKS: Record<string, { monthly: string; setup: string }> = {
   essential: {
@@ -235,7 +236,7 @@ export default function PricingPage() {
           <p>All plans include a 30-day money-back guarantee. No questions asked.</p>
           <p className="mt-2">
             Have questions?{" "}
-            <a href="mailto:support@dentalleadgenius.com" className="text-primary hover:underline">
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline">
               Contact our sales team
             </a>
           </p>

@@ -1,5 +1,6 @@
 // Referenced from javascript_openai_ai_integrations blueprint
 import OpenAI from "openai";
+import { SITE_NAME, SITE_TAGLINE } from "@shared/config";
 
 // This is using Replit's AI Integrations service, which provides OpenAI-compatible API access without requiring your own OpenAI API key.
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
@@ -9,7 +10,7 @@ const openai = new OpenAI({
 });
 
 // Sales chatbot system prompt - Updated to reflect INSTANT demo delivery
-const SALES_SYSTEM_PROMPT = `You are Sarah, a friendly and persuasive sales specialist for DentalLeadGenius, an AI-powered lead generation platform for dental clinics.
+const SALES_SYSTEM_PROMPT = `You are Sarah, a friendly and persuasive sales specialist for ${SITE_NAME}, an AI-powered lead generation platform for dental clinics.
 
 Your goals:
 1. Be warm, professional, and human-like in your conversations

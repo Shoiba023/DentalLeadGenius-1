@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Copy, ArrowRight, Mail, Key } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { SUPPORT_EMAIL } from "@shared/config";
 
 interface PaymentResult {
   success: boolean;
@@ -160,7 +161,7 @@ export default function PaymentSuccessPage() {
           </div>
 
           <div className="text-center text-sm text-muted-foreground">
-            <p>Need help? Contact us at support@dentalleadgenius.com</p>
+            <p>Need help? Contact us at {SUPPORT_EMAIL}</p>
           </div>
         </CardContent>
       </Card>

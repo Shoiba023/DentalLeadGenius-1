@@ -91,13 +91,43 @@ The platform features two types of AI chatbots: a **Sales Chatbot** on the homep
 - Database-level foreign keys ensure referential integrity
 - Global storage methods are deprecated in favor of clinic-scoped alternatives
 
+### Site Configuration
+
+**Centralized Config**: Brand identity and contact details are stored in `shared/config.ts`:
+- `SITE_NAME`: "DentalLeadGenius"
+- `SITE_URL`: "https://dentalleadgenius.com"
+- `SUPPORT_EMAIL`: "support@dentalleadgenius.com"
+- `SITE_TAGLINE`: "AI-Powered Lead Generation for Dental Clinics"
+
+This config is imported by both frontend and backend to ensure consistent branding.
+
+### Email Infrastructure
+
+**SMTP Provider**: Zoho Mail (smtp.zoho.com:587, TLS)
+
+**Email Service** (`server/email.ts`):
+- `sendSupportEmail()`: Sends notifications to support@dentalleadgenius.com
+- `sendLeadNotificationEmail()`: Sends formatted lead capture notifications
+- `sendDemoLinkEmail()`: Sends demo access links to users
+- `testSmtpConnection()`: Verifies SMTP connectivity
+- `isSmtpConfigured()`: Checks if SMTP credentials are set
+
+**Health Check Endpoints**:
+- `GET /health/email`: Checks SMTP configuration and connection
+- `POST /health/email`: Sends a test email (optional `to` field in body)
+
+**Lead Notifications**: The following forms send email notifications to support:
+- Demo booking form (`/api/bookings`)
+- Email-gated demo request (`/api/send-demo-link`)
+- Patient appointment requests (`/api/patient-bookings`)
+
 ## External Dependencies
 
 **Third-Party Services**:
 - **Replit AI Integrations**: OpenAI-compatible API for GPT models.
 - **Neon Database**: Serverless PostgreSQL hosting.
 - **Stripe**: Payment processing for subscription tiers.
-- **Resend**: For email delivery (logging currently in console).
+- **Zoho Mail**: SMTP email delivery for transactional emails and notifications.
 - **Google Fonts**: Inter font family.
 
 **Key NPM Packages**:
@@ -117,3 +147,9 @@ The platform features two types of AI chatbots: a **Sales Chatbot** on the homep
 - `AI_INTEGRATIONS_OPENAI_API_KEY`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
+
+**SMTP Configuration (Zoho Mail)**:
+- `SMTP_HOST`: smtp.zoho.com
+- `SMTP_PORT`: 587
+- `SMTP_USER`: support@dentalleadgenius.com
+- `SMTP_PASS`: (App-specific password from Zoho Mail)

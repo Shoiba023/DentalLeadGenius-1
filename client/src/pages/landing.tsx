@@ -9,6 +9,7 @@ import { SiWhatsapp } from "react-icons/si";
 import heroImage from "@assets/generated_images/modern_dental_clinic_hero_image.png";
 import logoFull from "@/assets/logo/logo-full.png";
 import logoIcon from "@/assets/logo/icon.png";
+import { SITE_NAME } from "@shared/config";
 
 export default function Landing() {
   const [showDemoModal, setShowDemoModal] = useState(false);
@@ -332,7 +333,7 @@ export default function Landing() {
             Ready to Transform Your Lead Generation?
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join hundreds of dental clinics already growing with DentalLeadGenius
+            Join hundreds of dental clinics already growing with {SITE_NAME}
           </p>
           <Button
             size="lg"
