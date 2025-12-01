@@ -1,0 +1,141 @@
+You are an expert full-stack engineer.
+Remove the existing Zoho SMTP setup and replace the entire email system with Resend API.
+
+
+---
+
+GOAL
+
+Convert our DentalLeadGenius project to Resend-based email sending, using only the Resend API and the RESEND_API_KEY stored in Replit Secrets.
+
+
+---
+
+REQUIREMENTS
+
+1. Completely remove Zoho integration
+
+Remove Zoho SMTP code.
+
+Remove SMTP utils.
+
+Remove all Zoho-based env variables.
+
+Remove any SMTP or Nodemailer config that points to smtp.zoho.com.
+
+Clean up /utils/email.js or replace it entirely.
+
+
+2. Install Resend package
+
+If using Node.js:
+
+npm install resend
+
+3. Create a new unified email utility
+
+Create a new file:
+
+/backend/utils/email.js
+
+With a function:
+
+const { Resend } = require("resend");
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+async function sendEmail({ to, subject, html }) {
+  try {
+    await resend.emails.send({
+      from: "DentalLeadGenius <notifications@dentalleadgenius.com>",
+      to,
+      subject,
+      html
+    });
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+}
+
+module.exports = { sendEmail };
+
+4. Update backend routes
+
+Update /api/demo-request to use sendEmail() for:
+
+1. Notification → support@dentalleadgenius.com
+
+
+2. Auto-reply email → req.body.email
+
+
+
+Return:
+
+
+{ ok: true }
+
+on success.
+
+5. Update health check route
+
+Update /health/email to send a test email to:
+
+support@dentalleadgenius.com
+
+using the new Resend utility.
+
+Return JSON:
+
+{ ok: true } if email sent
+
+{ ok: false, error } if failed
+
+
+6. Frontend Integration (React)
+
+Make no major UI layout changes, but ensure:
+
+Demo form POSTs to /api/demo-request
+
+On success → clear form
+
+Show success message: “Thank you! Your demo request is received. Our team will contact you soon.”
+
+
+7. Use ENV variable only
+
+Resend must use:
+
+process.env.RESEND_API_KEY
+
+No hardcoding allowed.
+
+8. Show full diff summary
+
+After implementation:
+
+Show list of new files created
+
+Show which files were modified
+
+Show old SMTP code that was removed
+
+Show new Resend-based email code
+
+
+
+---
+
+IMPORTANT
+
+The domain “dentalleadgenius.com” is already added to Resend.
+Do NOT create or verify anything new.
+Just integrate Resend into backend email logic.
+
+
+---
+
+🌟 Final instruction:
+
+Scan entire project → remove Zoho → install Resend → create new email utility → update backend → test → show diff.

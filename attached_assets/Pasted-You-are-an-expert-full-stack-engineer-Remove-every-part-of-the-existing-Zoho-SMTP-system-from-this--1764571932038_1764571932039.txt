@@ -1,0 +1,108 @@
+You are an expert full-stack engineer.
+Remove every part of the existing Zoho SMTP system from this project and replace the entire email system with Resend.com.
+
+GOAL:
+Create a complete, professional, error-free email sending setup using Resend, including demo-request notifications and auto-reply emails.
+
+
+---
+
+TASKS TO IMPLEMENT
+
+1. Remove old Zoho SMTP code
+
+Delete any files that contain Zoho SMTP settings
+
+Remove any SMTP libraries (nodemailer config, smtp.*, ports, TLS, etc.)
+
+Remove all Zoho ENV variables usage (SMTP_USER, SMTP_PASS, SMTP_HOST, etc.)
+
+
+2. Install & configure Resend
+
+Use this library:
+
+npm install resend
+
+3. Create a reusable email utility
+
+File: backend/utils/email.js
+
+The function should be:
+
+import { Resend } from 'resend';
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+export async function sendEmail({ to, subject, html }) {
+  try {
+    const result = await resend.emails.send({
+      from: "DentalLeadGenius <support@dentalleadgenius.com>",
+      to,
+      subject,
+      html,
+    });
+    return { ok: true, result };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+4. Replace backend demo-request route
+
+Route: POST /api/demo-request
+
+Backend must:
+
+Validate: clinicName, contactName, email, phone
+
+Send two emails using Resend:
+
+
+(a) Notification email → to: support@dentalleadgenius.com
+(b) Auto-reply email → to the user’s email
+
+Both emails must use sendEmail() utility.
+
+5. Update frontend demo form
+
+On success: show
+“Thank you! Your demo request is received. Our team will contact you soon.”
+
+On failure: show a readable error
+
+
+6. Create a test route
+
+Add:
+
+GET /health/email
+
+This route must send a simple test email to support@dentalleadgenius.com using Resend.
+
+7. Use only this environment variable:
+
+RESEND_API_KEY
+
+No Zoho variables must remain.
+
+
+---
+
+AFTER YOU FINISH
+
+Show me:
+
+1. Updated file list
+
+
+2. All diffs
+
+
+3. Any new routes
+
+
+4. Any required environment variables
+
+
+
+Now scan the project and implement all of the above.
