@@ -59,8 +59,22 @@ const MODE_COLORS: Record<DemoMode, string> = {
   marketing: "bg-purple-500",
 };
 
-const PRICING_PLANS = [
+type PaymentType = "monthly" | "setup";
+
+interface PricingPlan {
+  id: string;
+  name: string;
+  price: string;
+  setup: string;
+  features: string[];
+  monthlyLink: string;
+  onetimeLink: string;
+  highlight: boolean;
+}
+
+const PRICING_PLANS: PricingPlan[] = [
   {
+    id: "essential",
     name: "Essential",
     price: "$497",
     setup: "$1,997",
@@ -75,6 +89,7 @@ const PRICING_PLANS = [
     highlight: false,
   },
   {
+    id: "growth",
     name: "Growth",
     price: "$997",
     setup: "$2,997",
@@ -89,6 +104,7 @@ const PRICING_PLANS = [
     highlight: true,
   },
   {
+    id: "elite",
     name: "Elite",
     price: "$1,497",
     setup: "$4,997",
@@ -104,6 +120,52 @@ const PRICING_PLANS = [
   },
 ];
 
+interface PaymentToggleProps {
+  planId: string;
+  selected: PaymentType;
+  onChange: (type: PaymentType) => void;
+}
+
+function PaymentToggle({ planId, selected, onChange }: PaymentToggleProps) {
+  return (
+    <div className="w-full mb-4">
+      <div className="relative flex items-center bg-muted rounded-full p-1 h-11">
+        <div
+          className={`absolute h-9 rounded-full bg-primary shadow-md transition-all duration-300 ease-out ${
+            selected === "monthly" ? "left-1 w-[calc(50%-4px)]" : "left-[calc(50%+2px)] w-[calc(50%-4px)]"
+          }`}
+        />
+        
+        <button
+          type="button"
+          onClick={() => onChange("monthly")}
+          className={`relative z-10 flex-1 h-9 text-sm font-medium rounded-full transition-colors duration-200 ${
+            selected === "monthly"
+              ? "text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+          data-testid={`toggle-monthly-${planId}`}
+        >
+          Monthly Subscription
+        </button>
+        
+        <button
+          type="button"
+          onClick={() => onChange("setup")}
+          className={`relative z-10 flex-1 h-9 text-sm font-medium rounded-full transition-colors duration-200 ${
+            selected === "setup"
+              ? "text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+          data-testid={`toggle-setup-${planId}`}
+        >
+          One-Time Setup Fee
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Demo() {
   const [mode, setMode] = useState<DemoMode>("receptionist");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -111,6 +173,31 @@ export default function Demo() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  const [selectedPaymentTypes, setSelectedPaymentTypes] = useState<Record<string, PaymentType>>({
+    essential: "monthly",
+    growth: "monthly",
+    elite: "monthly",
+  });
+
+  const handlePaymentTypeChange = (planId: string, type: PaymentType) => {
+    setSelectedPaymentTypes(prev => ({
+      ...prev,
+      [planId]: type,
+    }));
+  };
+
+  const handleCheckout = (plan: PricingPlan) => {
+    const paymentType = selectedPaymentTypes[plan.id] || "monthly";
+    window.location.href = paymentType === "monthly" ? plan.monthlyLink : plan.onetimeLink;
+  };
+
+  const getButtonText = (planId: string, planName: string) => {
+    const paymentType = selectedPaymentTypes[planId] || "monthly";
+    return paymentType === "monthly" 
+      ? `Start ${planName} — Monthly` 
+      : `Pay ${planName} Setup Fee`;
+  };
 
   const { data: demoMetadata, isLoading: isLoadingDemo } = useQuery<DemoMetadata>({
     queryKey: ["/api/demo"],
@@ -411,8 +498,9 @@ export default function Demo() {
           <div className="grid md:grid-cols-3 gap-6">
             {PRICING_PLANS.map((plan) => (
               <Card 
-                key={plan.name} 
-                className={`relative ${plan.highlight ? "border-primary border-2 shadow-lg" : ""}`}
+                key={plan.id} 
+                className={`relative flex flex-col ${plan.highlight ? "border-primary border-2 shadow-lg" : ""}`}
+                data-testid={`card-plan-${plan.id}`}
               >
                 {plan.highlight && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -420,18 +508,25 @@ export default function Demo() {
                   </div>
                 )}
                 <CardHeader className="text-center pb-4">
-                  <CardTitle className="text-xl" data-testid={`text-plan-name-${plan.name.toLowerCase()}`}>
+                  <CardTitle className="text-xl" data-testid={`text-plan-name-${plan.id}`}>
                     {plan.name}
                   </CardTitle>
                   <div className="mt-2">
-                    <span className="text-3xl font-bold">{plan.price}</span>
-                    <span className="text-muted-foreground">/month</span>
+                    <span className="text-3xl font-bold">
+                      {selectedPaymentTypes[plan.id] === "monthly" ? plan.price : plan.setup}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {selectedPaymentTypes[plan.id] === "monthly" ? "/month" : " one-time"}
+                    </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    + {plan.setup} one-time setup
+                    {selectedPaymentTypes[plan.id] === "monthly" 
+                      ? `+ ${plan.setup} one-time setup`
+                      : `Then ${plan.price}/month subscription`
+                    }
                   </p>
                 </CardHeader>
-                <CardContent className="pb-4">
+                <CardContent className="pb-4 flex-1">
                   <ul className="space-y-2">
                     {plan.features.map((feature) => (
                       <li key={feature} className="flex items-start gap-2 text-sm">
@@ -442,27 +537,20 @@ export default function Demo() {
                   </ul>
                 </CardContent>
                 <CardFooter className="flex flex-col gap-2 pt-4 border-t">
+                  <PaymentToggle
+                    planId={plan.id}
+                    selected={selectedPaymentTypes[plan.id] || "monthly"}
+                    onChange={(type) => handlePaymentTypeChange(plan.id, type)}
+                  />
                   <Button 
                     className="w-full gap-2" 
-                    variant={plan.highlight ? "default" : "outline"}
-                    asChild
-                    data-testid={`button-monthly-${plan.name.toLowerCase()}`}
+                    variant="default"
+                    size="lg"
+                    onClick={() => handleCheckout(plan)}
+                    data-testid={`button-checkout-${plan.id}`}
                   >
-                    <a href={plan.monthlyLink} target="_blank" rel="noopener noreferrer">
-                      Start {plan.name} — Monthly
-                      <ArrowRight className="h-4 w-4" />
-                    </a>
-                  </Button>
-                  <Button 
-                    className="w-full" 
-                    variant="ghost"
-                    size="sm"
-                    asChild
-                    data-testid={`button-onetime-${plan.name.toLowerCase()}`}
-                  >
-                    <a href={plan.onetimeLink} target="_blank" rel="noopener noreferrer">
-                      One-Time Setup Only
-                    </a>
+                    {getButtonText(plan.id, plan.name)}
+                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 </CardFooter>
               </Card>
