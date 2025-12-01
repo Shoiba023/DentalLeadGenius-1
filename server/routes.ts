@@ -15,7 +15,7 @@ import crypto from "crypto";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { initStripe } from "./stripeInit";
-import { sendDemoLinkEmail, sendLeadNotificationEmail, testSmtpConnection, sendTestEmail, isSmtpConfigured } from "./email";
+import { sendDemoLinkEmail, sendLeadNotificationEmail, testSmtpConnection, sendTestEmail, isSmtpConfigured, sendEmail } from "./email";
 import { SITE_NAME } from "@shared/config";
 
 // Configure multer for file uploads
@@ -416,6 +416,169 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false, 
         message: "Failed to send email. Please try again." 
       });
+    }
+  });
+
+  // ============================================================================
+  // DEMO REQUEST FORM - Book a Demo
+  // ============================================================================
+  const demoRequestSchema = z.object({
+    clinicName: z.string().min(1, "Clinic name is required"),
+    contactName: z.string().min(1, "Contact name is required"),
+    email: z.string().email("Please enter a valid email address"),
+    phone: z.string().min(1, "Phone number is required"),
+    city: z.string().min(1, "City is required"),
+    message: z.string().optional(),
+  });
+
+  app.post("/api/demo-request", async (req, res) => {
+    try {
+      const data = demoRequestSchema.parse(req.body);
+      const timestamp = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
+
+      // 1. Send notification email to support
+      const notificationHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f5; padding: 40px 20px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <tr>
+      <td style="padding: 30px; text-align: center; background: #18181b; border-radius: 12px 12px 0 0;">
+        <h1 style="margin: 0; color: #fff; font-size: 24px;">${SITE_NAME}</h1>
+        <p style="margin: 8px 0 0; color: #a1a1aa; font-size: 14px;">New Demo Request</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 30px;">
+        <h2 style="margin: 0 0 20px; font-size: 18px; color: #18181b;">New Lead Captured</h2>
+        <table width="100%" style="border-collapse: collapse;">
+          <tr><td style="padding: 8px 12px; border: 1px solid #e4e4e7; font-weight: 600; background: #f9fafb;">Clinic Name</td><td style="padding: 8px 12px; border: 1px solid #e4e4e7;">${data.clinicName}</td></tr>
+          <tr><td style="padding: 8px 12px; border: 1px solid #e4e4e7; font-weight: 600; background: #f9fafb;">Contact Name</td><td style="padding: 8px 12px; border: 1px solid #e4e4e7;">${data.contactName}</td></tr>
+          <tr><td style="padding: 8px 12px; border: 1px solid #e4e4e7; font-weight: 600; background: #f9fafb;">Email</td><td style="padding: 8px 12px; border: 1px solid #e4e4e7;">${data.email}</td></tr>
+          <tr><td style="padding: 8px 12px; border: 1px solid #e4e4e7; font-weight: 600; background: #f9fafb;">Phone</td><td style="padding: 8px 12px; border: 1px solid #e4e4e7;">${data.phone}</td></tr>
+          <tr><td style="padding: 8px 12px; border: 1px solid #e4e4e7; font-weight: 600; background: #f9fafb;">City</td><td style="padding: 8px 12px; border: 1px solid #e4e4e7;">${data.city}</td></tr>
+          ${data.message ? `<tr><td style="padding: 8px 12px; border: 1px solid #e4e4e7; font-weight: 600; background: #f9fafb;">Message</td><td style="padding: 8px 12px; border: 1px solid #e4e4e7;">${data.message}</td></tr>` : ''}
+        </table>
+        <div style="padding: 16px; background: #f4f4f5; border-radius: 8px; margin-top: 20px;">
+          <p style="margin: 0; font-size: 13px; color: #71717a;"><strong>Captured At:</strong> ${timestamp}</p>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 20px 30px; text-align: center; border-top: 1px solid #e4e4e7; background: #fafafa; border-radius: 0 0 12px 12px;">
+        <p style="margin: 0; font-size: 12px; color: #a1a1aa;">Automated notification from ${SITE_NAME}</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+      const notificationText = `New Demo Request from ${SITE_NAME}
+${"=".repeat(50)}
+
+Clinic Name: ${data.clinicName}
+Contact Name: ${data.contactName}
+Email: ${data.email}
+Phone: ${data.phone}
+City: ${data.city}
+${data.message ? `Message: ${data.message}` : ''}
+
+Captured At: ${timestamp}`;
+
+      const supportEmail = process.env.SUPPORT_EMAIL || "support@dentalleadgenius.com";
+      const notificationResult = await sendEmail({
+        to: supportEmail,
+        subject: `New Demo Request: ${data.clinicName}`,
+        html: notificationHtml,
+        text: notificationText,
+      });
+
+      if (!notificationResult.ok) {
+        console.error("Failed to send notification email:", notificationResult.error);
+        return res.status(500).json({ ok: false, error: "Failed to send email. Please try again." });
+      }
+
+      // 2. Send auto-reply email to the user
+      const autoReplyHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f5; padding: 40px 20px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <tr>
+      <td style="padding: 40px 40px 20px; text-align: center; border-bottom: 1px solid #e4e4e7;">
+        <h1 style="margin: 0; font-size: 24px; color: #18181b;">${SITE_NAME}</h1>
+        <p style="margin: 8px 0 0; font-size: 14px; color: #71717a;">AI-Powered Lead Generation for Dental Clinics</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 40px;">
+        <h2 style="margin: 0 0 16px; font-size: 20px; color: #18181b;">Thank you, ${data.contactName}!</h2>
+        <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
+          We've received your demo request for <strong>${data.clinicName}</strong>. Our team will contact you within <strong>24 hours</strong> to schedule your personalized demo.
+        </p>
+        <div style="padding: 24px; background: #fafafa; border-radius: 8px; border: 1px solid #e4e4e7;">
+          <h3 style="margin: 0 0 16px; font-size: 16px; color: #18181b;">What's Next?</h3>
+          <ul style="margin: 0; padding-left: 20px; color: #3f3f46; font-size: 14px; line-height: 1.8;">
+            <li>Our team will reach out to schedule your demo</li>
+            <li>We'll show you how to generate 10x more leads</li>
+            <li>Get a customized plan for your clinic</li>
+          </ul>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 24px 40px; text-align: center; border-top: 1px solid #e4e4e7; background: #fafafa; border-radius: 0 0 12px 12px;">
+        <p style="margin: 0 0 8px; font-size: 14px; color: #71717a;">Questions? Reply to this email</p>
+        <p style="margin: 0; font-size: 12px; color: #a1a1aa;">${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+      const autoReplyText = `Thank you, ${data.contactName}!
+
+We've received your demo request for ${data.clinicName}. Our team will contact you within 24 hours to schedule your personalized demo.
+
+What's Next?
+- Our team will reach out to schedule your demo
+- We'll show you how to generate 10x more leads
+- Get a customized plan for your clinic
+
+Questions? Reply to this email.
+
+${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
+
+      const autoReplyResult = await sendEmail({
+        to: data.email,
+        subject: `Thank you for your demo request - ${SITE_NAME}`,
+        html: autoReplyHtml,
+        text: autoReplyText,
+      });
+
+      if (!autoReplyResult.ok) {
+        console.error("Failed to send auto-reply email:", autoReplyResult.error);
+        // Still return success since notification was sent
+      }
+
+      // Also save as a lead
+      await storage.createLead({
+        name: data.contactName,
+        email: data.email,
+        phone: data.phone,
+        status: "new",
+        notes: `Demo request from ${data.clinicName} in ${data.city}. ${data.message || ''}`.trim(),
+      });
+
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Demo request error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ ok: false, error: error.errors[0]?.message || "Invalid form data" });
+      }
+      res.status(500).json({ ok: false, error: "Failed to send email. Please try again." });
     }
   });
   

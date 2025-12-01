@@ -64,6 +64,60 @@ export async function testSmtpConnection(): Promise<{ success: boolean; message:
 }
 
 // ============================================================================
+// GENERIC SEND EMAIL UTILITY
+// ============================================================================
+
+interface SendEmailOptions {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}
+
+/**
+ * Generic reusable email sending function.
+ * Accepts: { to, subject, html, text }
+ * Returns: { ok: true } on success, { ok: false, error: "..." } on failure
+ */
+export async function sendEmail(options: SendEmailOptions): Promise<{ ok: boolean; error?: string }> {
+  const { to, subject, html, text } = options;
+  const fromAddress = process.env.SMTP_USER || SUPPORT_EMAIL;
+
+  const mailOptions = {
+    from: `"${EMAIL_FROM_NAME}" <${fromAddress}>`,
+    to,
+    subject,
+    text,
+    html,
+  };
+
+  // If SMTP not configured, log to console (dev/debug mode)
+  if (!isSmtpConfigured()) {
+    console.log("=".repeat(60));
+    console.log("EMAIL (SMTP not configured - logging to console)");
+    console.log("=".repeat(60));
+    console.log(`From: ${mailOptions.from}`);
+    console.log(`To: ${to}`);
+    console.log(`Subject: ${subject}`);
+    console.log("-".repeat(60));
+    console.log("Text Content:");
+    console.log(text);
+    console.log("=".repeat(60));
+    return { ok: true }; // Return ok so dev mode doesn't break flow
+  }
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Email sent successfully to ${to}: ${subject}`);
+    return { ok: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("Failed to send email:", errorMessage);
+    return { ok: false, error: errorMessage };
+  }
+}
+
+// ============================================================================
 // SUPPORT EMAIL UTILITY
 // ============================================================================
 

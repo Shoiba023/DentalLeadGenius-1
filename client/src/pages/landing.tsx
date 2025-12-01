@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChatbotWidget } from "@/components/chatbot-widget";
 import { DemoAccessModal } from "@/components/demo-access-modal";
+import { DemoRequestForm } from "@/components/demo-request-form";
 import { useState } from "react";
 import { Link } from "wouter";
 import { SiWhatsapp } from "react-icons/si";
@@ -326,24 +327,62 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-24 bg-primary/5">
-        <div className="container mx-auto px-6 text-center">
-          <h2 className="text-4xl font-bold mb-6">
-            Ready to Transform Your Lead Generation?
-          </h2>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join hundreds of dental clinics already growing with {SITE_NAME}
-          </p>
-          <Button
-            size="lg"
-            className="px-8"
-            onClick={() => setShowDemoModal(true)}
-            data-testid="button-book-demo-cta"
-          >
-            <Calendar className="h-5 w-5 mr-2" />
-            Get Instant Access
-          </Button>
+      {/* CTA Section with Demo Request Form */}
+      <section id="book-demo" className="py-24 bg-primary/5">
+        <div className="container mx-auto px-6">
+          <div className="grid lg:grid-cols-2 gap-12 items-start">
+            <div className="space-y-6">
+              <h2 className="text-4xl font-bold">
+                Ready to Transform Your Lead Generation?
+              </h2>
+              <p className="text-xl text-muted-foreground">
+                Join hundreds of dental clinics already growing with {SITE_NAME}. 
+                Fill out the form and our team will contact you within 24 hours.
+              </p>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                    <MessageSquare className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-semibold">Personalized Demo</p>
+                    <p className="text-sm text-muted-foreground">See features tailored to your clinic</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                    <Calendar className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-semibold">Quick Response</p>
+                    <p className="text-sm text-muted-foreground">We'll contact you within 24 hours</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-semibold">No Commitment</p>
+                    <p className="text-sm text-muted-foreground">Free consultation with our experts</p>
+                  </div>
+                </div>
+              </div>
+              <div className="pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Prefer instant access?{" "}
+                  <button
+                    onClick={() => setShowDemoModal(true)}
+                    className="text-primary hover:underline font-medium"
+                    data-testid="link-instant-access"
+                  >
+                    Click here for immediate demo access
+                  </button>
+                </p>
+              </div>
+            </div>
+            <DemoRequestForm />
+          </div>
         </div>
       </section>
 
