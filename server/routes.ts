@@ -15,7 +15,7 @@ import crypto from "crypto";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { initStripe } from "./stripeInit";
-import { sendDemoLinkEmail, sendLeadNotificationEmail, testSmtpConnection, sendTestEmail, isSmtpConfigured, sendEmail } from "./email";
+import { sendDemoLinkEmail, sendLeadNotificationEmail, sendTestEmail, isEmailConfigured, sendEmail, testEmailConnection } from "./email";
 import { SITE_NAME } from "@shared/config";
 
 // Configure multer for file uploads
@@ -55,29 +55,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  // Email health check endpoint - tests SMTP configuration
-  // GET /health/email - Check if SMTP is configured and connection works
+  // Email health check endpoint - tests Resend configuration via Replit connector
+  // GET /health/email - Check if Resend is configured and connection works
   // POST /health/email - Send a test email to support address
   app.get("/health/email", async (req, res) => {
     try {
-      const configured = isSmtpConfigured();
+      const configured = await isEmailConfigured();
       if (!configured) {
         return res.json({
           ok: false,
-          error: "SMTP not configured. Set SMTP_USER and SMTP_PASS environment variables.",
+          error: "Resend not configured. Please set up the Resend integration.",
         });
       }
 
-      // Send a test email to support address
-      const result = await sendTestEmail();
-      if (result.success) {
+      // Test the connection
+      const connectionResult = await testEmailConnection();
+      if (connectionResult.success) {
         res.json({
           ok: true,
+          message: connectionResult.message,
         });
       } else {
         res.json({
           ok: false,
-          error: result.message,
+          error: connectionResult.message,
         });
       }
     } catch (error) {

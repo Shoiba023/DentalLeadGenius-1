@@ -103,20 +103,24 @@ This config is imported by both frontend and backend to ensure consistent brandi
 
 ### Email Infrastructure
 
-**SMTP Provider**: Zoho Mail (smtp.zoho.com:587, TLS)
+**Provider**: Resend (via Replit connector integration)
 
 **Email Service** (`server/email.ts`):
+- `sendEmail()`: Generic email sending via Resend API
 - `sendSupportEmail()`: Sends notifications to support@dentalleadgenius.com
 - `sendLeadNotificationEmail()`: Sends formatted lead capture notifications
 - `sendDemoLinkEmail()`: Sends demo access links to users
-- `testSmtpConnection()`: Verifies SMTP connectivity
-- `isSmtpConfigured()`: Checks if SMTP credentials are set
+- `testEmailConnection()`: Verifies Resend connectivity
+- `isEmailConfigured()`: Checks if Resend integration is configured
+
+**Integration**: Uses Replit's built-in Resend connector which automatically manages API keys and authentication. No manual environment variables required.
 
 **Health Check Endpoints**:
-- `GET /health/email`: Checks SMTP configuration and connection
+- `GET /health/email`: Checks Resend configuration and connection
 - `POST /health/email`: Sends a test email (optional `to` field in body)
 
 **Lead Notifications**: The following forms send email notifications to support:
+- Demo request form (`/api/demo-request`)
 - Demo booking form (`/api/bookings`)
 - Email-gated demo request (`/api/send-demo-link`)
 - Patient appointment requests (`/api/patient-bookings`)
@@ -127,7 +131,7 @@ This config is imported by both frontend and backend to ensure consistent brandi
 - **Replit AI Integrations**: OpenAI-compatible API for GPT models.
 - **Neon Database**: Serverless PostgreSQL hosting.
 - **Stripe**: Payment processing for subscription tiers.
-- **Zoho Mail**: SMTP email delivery for transactional emails and notifications.
+- **Resend**: Transactional email delivery (via Replit connector).
 - **Google Fonts**: Inter font family.
 
 **Key NPM Packages**:
@@ -148,8 +152,4 @@ This config is imported by both frontend and backend to ensure consistent brandi
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 
-**SMTP Configuration (Zoho Mail)**:
-- `SMTP_HOST`: smtp.zoho.com
-- `SMTP_PORT`: 587
-- `SMTP_USER`: support@dentalleadgenius.com
-- `SMTP_PASS`: (App-specific password from Zoho Mail)
+**Email Configuration**: No manual environment variables required - Resend integration is managed via Replit's connector system.
