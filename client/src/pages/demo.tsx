@@ -1,710 +1,496 @@
-import { useState, useEffect } from "react";
-import { Link, useSearch } from "wouter";
+import { useState, useRef, useEffect } from "react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
-import { DemoAccessModal } from "@/components/demo-access-modal";
+import { Textarea } from "@/components/ui/textarea";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   MessageSquare, 
-  Users, 
-  Building2, 
-  BarChart3, 
   Send, 
-  Clock, 
-  Calendar,
-  CheckCircle2,
-  ArrowRight,
-  Play,
-  Sparkles,
-  Lock,
-  Mail,
+  Bot,
+  User,
   Loader2,
-  AlertCircle
+  Sparkles,
+  Phone,
+  Calendar,
+  Megaphone,
+  HeartPulse,
+  ArrowRight,
+  CheckCircle2,
+  Zap
 } from "lucide-react";
+import logoFull from "@/assets/logo/logo-full.png";
+import { SITE_NAME } from "@shared/config";
 
-interface TokenVerification {
-  valid: boolean;
-  message?: string;
-  email?: string;
-  clinicName?: string;
+type DemoMode = "receptionist" | "treatment" | "recall" | "marketing";
+
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
 }
 
-function DemoGate({ onRequestAccess }: { onRequestAccess: () => void }) {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <Card className="max-w-md w-full">
-        <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-            <Lock className="h-8 w-8 text-primary" />
-          </div>
-          <CardTitle className="text-2xl">Demo Access Required</CardTitle>
-          <CardDescription className="text-base">
-            To explore the full DentalLeadGenius demo, please enter your email. 
-            We'll send you a secure access link.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button 
-            className="w-full" 
-            size="lg" 
-            onClick={onRequestAccess}
-            data-testid="button-request-demo-access"
-          >
-            <Mail className="h-4 w-4 mr-2" />
-            Get Demo Access
-          </Button>
-          <div className="text-center">
-            <Link href="/">
-              <span className="text-sm text-muted-foreground hover:text-foreground cursor-pointer">
-                Back to Homepage
-              </span>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+interface DemoModeApiData {
+  id: string;
+  name: string;
+  description: string;
 }
 
-function DemoExpired({ onRequestAccess }: { onRequestAccess: () => void }) {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <Card className="max-w-md w-full">
-        <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-            <AlertCircle className="h-8 w-8 text-destructive" />
-          </div>
-          <CardTitle className="text-2xl">Demo Link Expired</CardTitle>
-          <CardDescription className="text-base">
-            This demo access link has expired. Request a new one to continue exploring DentalLeadGenius.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button 
-            className="w-full" 
-            size="lg" 
-            onClick={onRequestAccess}
-            data-testid="button-request-new-access"
-          >
-            <Mail className="h-4 w-4 mr-2" />
-            Get New Access Link
-          </Button>
-          <div className="text-center">
-            <Link href="/">
-              <span className="text-sm text-muted-foreground hover:text-foreground cursor-pointer">
-                Back to Homepage
-              </span>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+interface DemoMetadata {
+  title: string;
+  modes: DemoModeApiData[];
+  initialMessage: string;
 }
 
-function DemoLoading() {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-        <p className="text-muted-foreground">Verifying your access...</p>
-      </div>
-    </div>
-  );
-}
+const MODE_ICONS: Record<DemoMode, typeof Phone> = {
+  receptionist: Phone,
+  treatment: HeartPulse,
+  recall: Calendar,
+  marketing: Megaphone,
+};
 
-function DemoContent() {
-  const [activeTab, setActiveTab] = useState("overview");
+const MODE_COLORS: Record<DemoMode, string> = {
+  receptionist: "bg-blue-500",
+  treatment: "bg-green-500",
+  recall: "bg-amber-500",
+  marketing: "bg-purple-500",
+};
+
+const PRICING_PLANS = [
+  {
+    name: "Essential",
+    price: "$497",
+    setup: "$1,997",
+    features: [
+      "AI Sales Chatbot",
+      "Lead Management Dashboard",
+      "Email Outreach",
+      "Up to 500 leads/month",
+    ],
+    monthlyLink: "https://buy.stripe.com/dRm8wQ2zr9m0fdh3WU0ZW02",
+    onetimeLink: "https://buy.stripe.com/dRmeVea1T41GfdheBy0ZW01",
+    highlight: false,
+  },
+  {
+    name: "Growth",
+    price: "$997",
+    setup: "$2,997",
+    features: [
+      "Everything in Essential",
+      "Multi-Channel (Email, SMS, WhatsApp)",
+      "Automated Follow-ups",
+      "Up to 2,000 leads/month",
+    ],
+    monthlyLink: "https://buy.stripe.com/5kQ8wQ2zr2XC3uzeBy0ZW04",
+    onetimeLink: "https://buy.stripe.com/eVq9AUa1T7dS7KP8da0ZW03",
+    highlight: true,
+  },
+  {
+    name: "Elite",
+    price: "$1,497",
+    setup: "$4,997",
+    features: [
+      "Everything in Growth",
+      "Multi-Clinic Support",
+      "Patient AI Chatbots",
+      "Unlimited leads",
+    ],
+    monthlyLink: "https://buy.stripe.com/eVq9AU1vn1Tye9d9he0ZW05",
+    onetimeLink: "https://buy.stripe.com/4gMfZi6PHaq49SXctq0ZW06",
+    highlight: false,
+  },
+];
+
+export default function Demo() {
+  const [mode, setMode] = useState<DemoMode>("receptionist");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState("");
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const { data: demoMetadata, isLoading: isLoadingDemo } = useQuery<DemoMetadata>({
+    queryKey: ["/api/demo"],
+  });
+
+  useEffect(() => {
+    if (demoMetadata && messages.length === 0) {
+      setMessages([{
+        id: "initial",
+        role: "assistant",
+        content: demoMetadata.initialMessage,
+      }]);
+    }
+  }, [demoMetadata, messages.length]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const sendMessageMutation = useMutation({
+    mutationFn: async (message: string) => {
+      const response = await apiRequest("POST", "/api/ai", {
+        message,
+        mode,
+        sessionId,
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.sessionId && !sessionId) {
+        setSessionId(data.sessionId);
+      }
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: data.reply,
+        },
+      ]);
+    },
+    onError: () => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: "The demo AI is momentarily unavailable. Please try again in a few seconds.",
+        },
+      ]);
+    },
+  });
+
+  const handleSend = () => {
+    const trimmedInput = inputValue.trim();
+    if (!trimmedInput || sendMessageMutation.isPending) return;
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: trimmedInput,
+      },
+    ]);
+    setInputValue("");
+    sendMessageMutation.mutate(trimmedInput);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleModeChange = (newMode: DemoMode) => {
+    setMode(newMode);
+    setSessionId(null);
+    setMessages([
+      {
+        id: "mode-change",
+        role: "assistant",
+        content: getModeWelcomeMessage(newMode),
+      },
+    ]);
+  };
+
+  const getModeWelcomeMessage = (selectedMode: DemoMode): string => {
+    switch (selectedMode) {
+      case "receptionist":
+        return "Hello! I'm your AI Receptionist. I can help schedule appointments, answer patient questions, verify insurance, and handle emergencies. How can I assist you today?";
+      case "treatment":
+        return "Hi there! I'm your AI Treatment Planner. I can explain dental procedures like cleanings, fillings, root canals, implants, and more in simple terms. What would you like to know about?";
+      case "recall":
+        return "Hello! I'm your AI Recall System. I specialize in bringing back patients who haven't visited in a while. Let me show you how I'd reach out to inactive patients with gentle, motivating messages.";
+      case "marketing":
+        return "Hi! I'm your AI Marketing Agent. I can help create promotional campaigns, special offers, and marketing messages to attract new patients. What kind of campaign would you like to explore?";
+      default:
+        return "Hello! How can I help you today?";
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-50 border-b bg-white/80 dark:bg-slate-950/80 backdrop-blur-lg">
+        <div className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link href="/">
-            <span className="text-xl font-bold cursor-pointer" data-testid="link-home">
-              DentalLeadGenius
-            </span>
+            <img 
+              src={logoFull} 
+              alt={SITE_NAME} 
+              className="h-8 w-auto cursor-pointer" 
+              data-testid="link-home-logo"
+            />
           </Link>
-          <div className="flex items-center gap-4">
-            <Badge variant="secondary" className="gap-1">
+          <div className="flex items-center gap-3">
+            <Badge variant="secondary" className="gap-1 hidden sm:flex">
               <Sparkles className="h-3 w-3" />
               Live Demo
             </Badge>
-            <Button asChild data-testid="button-login-demo">
-              <Link href="/login">Login to Dashboard</Link>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/pricing" data-testid="link-pricing-header">View Pricing</Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link href="/login" data-testid="link-login-header">Login</Link>
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="py-16 border-b">
-        <div className="container mx-auto px-6 text-center">
-          <Badge className="mb-4" variant="outline">Interactive Demo</Badge>
-          <h1 className="text-4xl lg:text-5xl font-bold mb-4" data-testid="text-demo-title">
-            Explore DentalLeadGenius
+      {/* Main Content */}
+      <main className="container mx-auto px-4 sm:px-6 py-8 max-w-5xl">
+        {/* Title Section */}
+        <div className="text-center mb-8">
+          <Badge className="mb-4" variant="outline">
+            <Bot className="h-3 w-3 mr-1" />
+            Interactive AI Demo
+          </Badge>
+          <h1 className="text-3xl sm:text-4xl font-bold mb-3" data-testid="text-demo-title">
+            {isLoadingDemo ? (
+              <Skeleton className="h-10 w-80 mx-auto" />
+            ) : (
+              demoMetadata?.title || "AI Dental Receptionist — Live Demo"
+            )}
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            See how our AI-powered platform helps dental clinics generate 10x more quality leads
-            with intelligent automation and multi-channel outreach.
+          <p className="text-muted-foreground max-w-2xl mx-auto text-base sm:text-lg">
+            This is a simulation of what {SITE_NAME} can do for your dental practice.
+            Try different AI modes and see how our technology can transform your clinic.
           </p>
-          <div className="flex justify-center gap-4">
-            <Button size="lg" asChild data-testid="button-start-trial">
-              <Link href="/pricing">
-                <Play className="h-4 w-4 mr-2" />
-                Start Free Trial
+        </div>
+
+        {/* Mode Selector */}
+        <div className="flex flex-wrap justify-center gap-2 mb-6">
+          {isLoadingDemo ? (
+            <div className="flex gap-2">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-9 w-24" />
+              ))}
+            </div>
+          ) : (
+            demoMetadata?.modes.map((modeData) => {
+              const modeKey = modeData.id as DemoMode;
+              const Icon = MODE_ICONS[modeKey];
+              const isActive = mode === modeKey;
+              return (
+                <Button
+                  key={modeKey}
+                  variant={isActive ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleModeChange(modeKey)}
+                  className={`gap-2 ${isActive ? "" : "hover:bg-muted"}`}
+                  data-testid={`button-mode-${modeKey}`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{modeData.name}</span>
+                  <span className="sm:hidden">{modeData.name.split(" ")[0]}</span>
+                </Button>
+              );
+            })
+          )}
+        </div>
+
+        {/* Chat Interface */}
+        <Card className="mb-12 shadow-lg border-2">
+          <CardHeader className="border-b bg-muted/30 py-4">
+            <div className="flex items-center gap-3">
+              <div className={`h-10 w-10 rounded-full ${MODE_COLORS[mode]} flex items-center justify-center`}>
+                {(() => {
+                  const Icon = MODE_ICONS[mode];
+                  return <Icon className="h-5 w-5 text-white" />;
+                })()}
+              </div>
+              <div>
+                <CardTitle className="text-lg">
+                  {demoMetadata?.modes.find(m => m.id === mode)?.name || "AI Assistant"}
+                </CardTitle>
+                <CardDescription>
+                  {demoMetadata?.modes.find(m => m.id === mode)?.description || "Ready to help"}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+
+          {/* Messages Area */}
+          <CardContent className="p-0">
+            <div className="h-[400px] overflow-y-auto p-4 sm:p-6 space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  {message.role === "assistant" && (
+                    <div className={`h-8 w-8 rounded-full ${MODE_COLORS[mode]} flex items-center justify-center flex-shrink-0`}>
+                      <Bot className="h-4 w-4 text-white" />
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                      message.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted"
+                    }`}
+                    data-testid={`message-${message.role}-${message.id}`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  </div>
+                  {message.role === "user" && (
+                    <div className="h-8 w-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
+                      <User className="h-4 w-4" />
+                    </div>
+                  )}
+                </div>
+              ))}
+              {sendMessageMutation.isPending && (
+                <div className="flex gap-3 justify-start">
+                  <div className={`h-8 w-8 rounded-full ${MODE_COLORS[mode]} flex items-center justify-center flex-shrink-0`}>
+                    <Bot className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="bg-muted rounded-2xl px-4 py-3">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </CardContent>
+
+          {/* Input Area */}
+          <CardFooter className="border-t p-4">
+            <div className="flex gap-3 w-full">
+              <Textarea
+                ref={textareaRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type your message... (Press Enter to send)"
+                className="min-h-[44px] max-h-[120px] resize-none flex-1"
+                disabled={sendMessageMutation.isPending}
+                data-testid="input-chat-message"
+              />
+              <Button
+                onClick={handleSend}
+                disabled={!inputValue.trim() || sendMessageMutation.isPending}
+                size="icon"
+                className="h-11 w-11"
+                data-testid="button-send-message"
+              >
+                {sendMessageMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </CardFooter>
+        </Card>
+
+        {/* Pricing CTA Section */}
+        <section className="py-12 border-t">
+          <div className="text-center mb-10">
+            <Badge className="mb-4" variant="outline">
+              <Zap className="h-3 w-3 mr-1" />
+              Get Started Today
+            </Badge>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-3" data-testid="text-pricing-heading">
+              Ready to plug this AI into your clinic?
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              Choose a plan and get started with {SITE_NAME}. Transform your practice with AI-powered automation.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {PRICING_PLANS.map((plan) => (
+              <Card 
+                key={plan.name} 
+                className={`relative ${plan.highlight ? "border-primary border-2 shadow-lg" : ""}`}
+              >
+                {plan.highlight && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-primary text-primary-foreground">Most Popular</Badge>
+                  </div>
+                )}
+                <CardHeader className="text-center pb-4">
+                  <CardTitle className="text-xl" data-testid={`text-plan-name-${plan.name.toLowerCase()}`}>
+                    {plan.name}
+                  </CardTitle>
+                  <div className="mt-2">
+                    <span className="text-3xl font-bold">{plan.price}</span>
+                    <span className="text-muted-foreground">/month</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    + {plan.setup} one-time setup
+                  </p>
+                </CardHeader>
+                <CardContent className="pb-4">
+                  <ul className="space-y-2">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2 text-sm">
+                        <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-2 pt-4 border-t">
+                  <Button 
+                    className="w-full gap-2" 
+                    variant={plan.highlight ? "default" : "outline"}
+                    asChild
+                    data-testid={`button-monthly-${plan.name.toLowerCase()}`}
+                  >
+                    <a href={plan.monthlyLink} target="_blank" rel="noopener noreferrer">
+                      Start {plan.name} — Monthly
+                      <ArrowRight className="h-4 w-4" />
+                    </a>
+                  </Button>
+                  <Button 
+                    className="w-full" 
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    data-testid={`button-onetime-${plan.name.toLowerCase()}`}
+                  >
+                    <a href={plan.onetimeLink} target="_blank" rel="noopener noreferrer">
+                      One-Time Setup Only
+                    </a>
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+
+          <div className="text-center mt-8">
+            <p className="text-sm text-muted-foreground mb-4">
+              Not sure which plan is right for you?
+            </p>
+            <Button variant="outline" asChild>
+              <Link href="/pricing" data-testid="link-compare-plans">
+                Compare All Plans
+                <ArrowRight className="h-4 w-4 ml-2" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" asChild>
-              <a href="/#features">View Features</a>
-            </Button>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
-      {/* Demo Tabs */}
-      <section className="py-16">
-        <div className="container mx-auto px-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 h-auto gap-2">
-              <TabsTrigger value="overview" className="py-3" data-testid="tab-overview">
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Overview
-              </TabsTrigger>
-              <TabsTrigger value="leads" className="py-3" data-testid="tab-leads">
-                <Users className="h-4 w-4 mr-2" />
-                Leads
-              </TabsTrigger>
-              <TabsTrigger value="outreach" className="py-3" data-testid="tab-outreach">
-                <Send className="h-4 w-4 mr-2" />
-                Outreach
-              </TabsTrigger>
-              <TabsTrigger value="chatbot" className="py-3" data-testid="tab-chatbot">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                AI Chatbot
-              </TabsTrigger>
-              <TabsTrigger value="clinics" className="py-3" data-testid="tab-clinics">
-                <Building2 className="h-4 w-4 mr-2" />
-                Multi-Clinic
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview" className="space-y-8">
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Total Leads</CardDescription>
-                    <CardTitle className="text-3xl">2,847</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-green-500">+12% from last month</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Demos Booked</CardDescription>
-                    <CardTitle className="text-3xl">156</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-green-500">+8% from last month</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Conversion Rate</CardDescription>
-                    <CardTitle className="text-3xl">5.5%</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-green-500">+2.1% from last month</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Active Campaigns</CardDescription>
-                    <CardTitle className="text-3xl">12</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-muted-foreground">Across 3 channels</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Platform Highlights</CardTitle>
-                  <CardDescription>Key features that drive results</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-3 gap-6">
-                    <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <MessageSquare className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">AI Sales Chatbot</h4>
-                        <p className="text-sm text-muted-foreground">
-                          24/7 lead qualification and demo booking
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Send className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">Multi-Channel Outreach</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Email, SMS, and WhatsApp campaigns
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Clock className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">Automated Sequences</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Follow-up campaigns on autopilot
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="leads" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Lead Management</CardTitle>
-                  <CardDescription>Import, track, and convert leads efficiently</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                          SC
-                        </div>
-                        <div>
-                          <p className="font-medium">Smile Care Dental</p>
-                          <p className="text-sm text-muted-foreground">contact@smilecare.com</p>
-                        </div>
-                      </div>
-                      <Badge>Demo Booked</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                          FD
-                        </div>
-                        <div>
-                          <p className="font-medium">Family Dentistry</p>
-                          <p className="text-sm text-muted-foreground">info@familydentistry.com</p>
-                        </div>
-                      </div>
-                      <Badge variant="secondary">Replied</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                          BD
-                        </div>
-                        <div>
-                          <p className="font-medium">Bright Dental Group</p>
-                          <p className="text-sm text-muted-foreground">hello@brightdental.com</p>
-                        </div>
-                      </div>
-                      <Badge variant="outline">Contacted</Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">CSV Import</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      <li className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Bulk import thousands of leads
-                      </li>
-                      <li className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Auto-detect column mapping
-                      </li>
-                      <li className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Duplicate detection
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Status Tracking</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      <li className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        New → Contacted → Replied → Won
-                      </li>
-                      <li className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Custom notes and tags
-                      </li>
-                      <li className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Activity timeline
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="outreach" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Multi-Channel Campaigns</CardTitle>
-                  <CardDescription>Reach leads across email, SMS, and WhatsApp</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-3 gap-6">
-                    <div className="p-4 border rounded-lg space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-semibold">Email Campaign</h4>
-                        <Badge variant="secondary">Active</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Introduction to DentalLeadGenius
-                      </p>
-                      <div className="text-sm">
-                        <p>Sent: 1,247</p>
-                        <p>Opened: 423 (34%)</p>
-                        <p>Replied: 89 (7%)</p>
-                      </div>
-                    </div>
-                    <div className="p-4 border rounded-lg space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-semibold">SMS Campaign</h4>
-                        <Badge variant="secondary">Active</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Quick demo invite
-                      </p>
-                      <div className="text-sm">
-                        <p>Sent: 856</p>
-                        <p>Delivered: 821 (96%)</p>
-                        <p>Replied: 156 (18%)</p>
-                      </div>
-                    </div>
-                    <div className="p-4 border rounded-lg space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-semibold">WhatsApp</h4>
-                        <Badge variant="outline">Paused</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Follow-up sequence
-                      </p>
-                      <div className="text-sm">
-                        <p>Sent: 234</p>
-                        <p>Read: 201 (86%)</p>
-                        <p>Replied: 67 (29%)</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>AI-Generated Messages</CardTitle>
-                  <CardDescription>Let AI craft personalized outreach</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <p className="text-sm italic">
-                      "Hi Dr. Smith, I noticed your practice has been growing rapidly. 
-                      Many clinics like yours are using DentalLeadGenius to automate 
-                      lead generation and book 10x more demos. Would you like instant 
-                      access to see how it works for Family Dental Care?"
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Generated by AI • Personalized for each lead
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="chatbot" className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Sales Chatbot</CardTitle>
-                    <CardDescription>For your website visitors</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                      <div className="flex gap-2">
-                        <div className="h-8 w-8 rounded-full bg-primary/20 flex-shrink-0" />
-                        <div className="bg-background rounded-lg p-2 text-sm">
-                          Hi! I'm Sarah from DentalLeadGenius. How can I help you today?
-                        </div>
-                      </div>
-                      <div className="flex gap-2 justify-end">
-                        <div className="bg-primary text-primary-foreground rounded-lg p-2 text-sm">
-                          What's your pricing?
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="h-8 w-8 rounded-full bg-primary/20 flex-shrink-0" />
-                        <div className="bg-background rounded-lg p-2 text-sm">
-                          Great question! We have 3 packages starting at $1,997 setup + $497/month...
-                        </div>
-                      </div>
-                    </div>
-                    <ul className="space-y-2 text-sm">
-                      <li className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        24/7 lead qualification
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Answers pricing questions
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Books demos instantly
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Patient Chatbot</CardTitle>
-                    <CardDescription>For your clinic's patients</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                      <div className="flex gap-2">
-                        <div className="h-8 w-8 rounded-full bg-green-500/20 flex-shrink-0" />
-                        <div className="bg-background rounded-lg p-2 text-sm">
-                          Welcome to Smile Dental! How can I help you today?
-                        </div>
-                      </div>
-                      <div className="flex gap-2 justify-end">
-                        <div className="bg-green-500 text-white rounded-lg p-2 text-sm">
-                          I need to book a cleaning
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="h-8 w-8 rounded-full bg-green-500/20 flex-shrink-0" />
-                        <div className="bg-background rounded-lg p-2 text-sm">
-                          I'd be happy to help! What date works best for you?
-                        </div>
-                      </div>
-                    </div>
-                    <ul className="space-y-2 text-sm">
-                      <li className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Answers dental questions
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Books appointments
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Custom clinic branding
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="clinics" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Multi-Clinic Management</CardTitle>
-                  <CardDescription>Manage multiple clinics from one dashboard</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div className="p-4 border rounded-lg">
-                      <div className="h-12 w-12 rounded-lg bg-blue-500/20 flex items-center justify-center mb-3">
-                        <Building2 className="h-6 w-6 text-blue-500" />
-                      </div>
-                      <h4 className="font-semibold">Smile Care Dental</h4>
-                      <p className="text-sm text-muted-foreground mb-2">Los Angeles, CA</p>
-                      <Badge variant="secondary">156 patients</Badge>
-                    </div>
-                    <div className="p-4 border rounded-lg">
-                      <div className="h-12 w-12 rounded-lg bg-green-500/20 flex items-center justify-center mb-3">
-                        <Building2 className="h-6 w-6 text-green-500" />
-                      </div>
-                      <h4 className="font-semibold">Family Dentistry</h4>
-                      <p className="text-sm text-muted-foreground mb-2">Houston, TX</p>
-                      <Badge variant="secondary">89 patients</Badge>
-                    </div>
-                    <div className="p-4 border rounded-lg">
-                      <div className="h-12 w-12 rounded-lg bg-purple-500/20 flex items-center justify-center mb-3">
-                        <Building2 className="h-6 w-6 text-purple-500" />
-                      </div>
-                      <h4 className="font-semibold">Bright Smile NYC</h4>
-                      <p className="text-sm text-muted-foreground mb-2">New York, NY</p>
-                      <Badge variant="secondary">234 patients</Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Branded Pages</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      <li className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Custom logo and colors
-                      </li>
-                      <li className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Unique URL for each clinic
-                      </li>
-                      <li className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Patient chatbot included
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Appointment System</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      <li className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Online booking widget
-                      </li>
-                      <li className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Appointment tracking
-                      </li>
-                      <li className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        Per-clinic analytics
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-16 border-t bg-muted/30">
-        <div className="container mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
-          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Join hundreds of dental clinics already growing with DentalLeadGenius
+      {/* Footer */}
+      <footer className="border-t py-8 mt-8">
+        <div className="container mx-auto px-4 sm:px-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            {SITE_NAME} — AI-Powered Lead Generation for Dental Clinics
           </p>
-          <Button size="lg" asChild data-testid="button-start-free-trial">
-            <Link href="/pricing">
-              Start Free Trial
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Link>
-          </Button>
         </div>
-      </section>
+      </footer>
     </div>
   );
-}
-
-export default function Demo() {
-  const searchString = useSearch();
-  const params = new URLSearchParams(searchString);
-  const token = params.get("token");
-  
-  const [showAccessModal, setShowAccessModal] = useState(false);
-  const [accessState, setAccessState] = useState<"loading" | "gate" | "expired" | "valid">(
-    token ? "loading" : "gate"
-  );
-  
-  const { data: verification, isLoading } = useQuery<TokenVerification>({
-    queryKey: ["/api/verify-demo-token", token],
-    queryFn: async () => {
-      const response = await fetch(`/api/verify-demo-token?token=${token}`);
-      return response.json();
-    },
-    enabled: !!token,
-    retry: false,
-  });
-  
-  useEffect(() => {
-    if (!token) {
-      setAccessState("gate");
-      return;
-    }
-    
-    if (isLoading) {
-      setAccessState("loading");
-      return;
-    }
-    
-    if (verification) {
-      if (verification.valid) {
-        setAccessState("valid");
-      } else if (verification.message?.includes("expired")) {
-        setAccessState("expired");
-      } else {
-        setAccessState("gate");
-      }
-    }
-  }, [token, verification, isLoading]);
-  
-  const handleRequestAccess = () => {
-    setShowAccessModal(true);
-  };
-  
-  if (accessState === "loading") {
-    return <DemoLoading />;
-  }
-  
-  if (accessState === "gate") {
-    return (
-      <>
-        <DemoGate onRequestAccess={handleRequestAccess} />
-        <DemoAccessModal open={showAccessModal} onOpenChange={setShowAccessModal} />
-      </>
-    );
-  }
-  
-  if (accessState === "expired") {
-    return (
-      <>
-        <DemoExpired onRequestAccess={handleRequestAccess} />
-        <DemoAccessModal open={showAccessModal} onOpenChange={setShowAccessModal} />
-      </>
-    );
-  }
-  
-  return <DemoContent />;
 }

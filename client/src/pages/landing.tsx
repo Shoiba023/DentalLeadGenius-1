@@ -2,7 +2,6 @@ import { MessageSquare, Users, Building2, BarChart3, Phone, Calendar, Play, Menu
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChatbotWidget } from "@/components/chatbot-widget";
-import { DemoAccessModal } from "@/components/demo-access-modal";
 import { DemoRequestForm } from "@/components/demo-request-form";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -13,7 +12,6 @@ import logoIcon from "@/assets/logo/icon.png";
 import { SITE_NAME } from "@shared/config";
 
 export default function Landing() {
-  const [showDemoModal, setShowDemoModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const ADMIN_WHATSAPP = "1234567890"; // Replace with actual admin WhatsApp
@@ -64,8 +62,10 @@ export default function Landing() {
                   View Demo
                 </Link>
               </Button>
-              <Button onClick={() => setShowDemoModal(true)} data-testid="button-get-access-nav">
-                Get Instant Access
+              <Button asChild data-testid="button-get-access-nav">
+                <Link href="/demo">
+                  Try Live Demo
+                </Link>
               </Button>
             </div>
 
@@ -109,8 +109,10 @@ export default function Landing() {
                       View Demo
                     </Link>
                   </Button>
-                  <Button onClick={() => { setShowDemoModal(true); setMobileMenuOpen(false); }}>
-                    Get Instant Access
+                  <Button asChild onClick={() => setMobileMenuOpen(false)}>
+                    <Link href="/demo">
+                      Try Live Demo
+                    </Link>
                   </Button>
                 </div>
               </nav>
@@ -151,11 +153,13 @@ export default function Landing() {
                 <Button
                   size="lg"
                   className="gap-2 px-6"
-                  onClick={() => setShowDemoModal(true)}
+                  asChild
                   data-testid="button-book-demo-hero"
                 >
-                  <Calendar className="h-5 w-5" />
-                  Get Instant Access
+                  <Link href="/demo">
+                    <Play className="h-5 w-5" />
+                    Try Live Demo
+                  </Link>
                 </Button>
                 <Button
                   size="lg"
@@ -370,14 +374,14 @@ export default function Landing() {
               </div>
               <div className="pt-4">
                 <p className="text-sm text-muted-foreground">
-                  Prefer instant access?{" "}
-                  <button
-                    onClick={() => setShowDemoModal(true)}
+                  Want to see the AI in action first?{" "}
+                  <Link 
+                    href="/demo"
                     className="text-primary hover:underline font-medium"
                     data-testid="link-instant-access"
                   >
-                    Click here for immediate demo access
-                  </button>
+                    Try our live AI demo
+                  </Link>
                 </p>
               </div>
             </div>
@@ -388,9 +392,6 @@ export default function Landing() {
 
       {/* Chatbot Widget - Auto-opens after 10 seconds, auto-minimizes after another 10 seconds */}
       <ChatbotWidget type="sales" />
-
-      {/* Demo Access Modal */}
-      <DemoAccessModal open={showDemoModal} onOpenChange={setShowDemoModal} />
     </div>
   );
 }

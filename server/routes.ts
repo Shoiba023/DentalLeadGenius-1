@@ -5,7 +5,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { generateChatResponse, generateOutreachDraft } from "./openai";
+import { generateChatResponse, generateOutreachDraft, generateDemoResponse, type DemoMode } from "./openai";
 import { insertLeadSchema, insertClinicSchema, insertBookingSchema, insertSequenceSchema, insertSequenceStepSchema, insertSequenceEnrollmentSchema, loginSchema, createUserSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
@@ -1429,6 +1429,76 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
       console.error("Error updating patient booking status:", error);
       res.status(500).json({ message: "Failed to update status" });
     }
+  });
+
+  // ============================================================================
+  // AI DEMO ENDPOINT - Live demo chat for the /demo page
+  // ============================================================================
+  
+  // In-memory session storage for demo conversations (simple, no persistence needed)
+  const demoSessions: Map<string, Array<{ role: "user" | "assistant"; content: string }>> = new Map();
+
+  // AI Demo endpoint - POST /api/ai
+  // Request: { message: string, mode: "receptionist" | "treatment" | "recall" | "marketing", sessionId: string }
+  // Response: { reply: string }
+  app.post("/api/ai", async (req, res) => {
+    try {
+      const { message, mode, sessionId } = req.body;
+
+      if (!message || typeof message !== "string") {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      if (!mode || !["receptionist", "treatment", "recall", "marketing"].includes(mode)) {
+        return res.status(400).json({ error: "Valid mode is required (receptionist, treatment, recall, marketing)" });
+      }
+
+      const session = sessionId || crypto.randomUUID();
+
+      // Get or create conversation history for this session
+      if (!demoSessions.has(session)) {
+        demoSessions.set(session, []);
+      }
+
+      const conversationHistory = demoSessions.get(session)!;
+
+      // Add user message to history
+      conversationHistory.push({ role: "user", content: message });
+
+      // Generate AI response with mode-specific behavior
+      const reply = await generateDemoResponse(conversationHistory, mode as DemoMode);
+
+      // Add AI response to history
+      conversationHistory.push({ role: "assistant", content: reply });
+
+      // Clean up old sessions (keep only last 100 sessions to prevent memory issues)
+      if (demoSessions.size > 100) {
+        const oldestKey = demoSessions.keys().next().value;
+        if (oldestKey) demoSessions.delete(oldestKey);
+      }
+
+      res.json({ reply, sessionId: session });
+    } catch (error) {
+      console.error("AI demo error:", error);
+      res.status(500).json({ 
+        reply: "The demo AI is momentarily unavailable. Please try again in a few seconds.",
+        error: "AI service temporarily unavailable"
+      });
+    }
+  });
+
+  // GET /api/demo - Serve demo metadata
+  app.get("/api/demo", (req, res) => {
+    res.json({
+      title: "AI Dental Receptionist — Live Demo",
+      modes: [
+        { id: "receptionist", name: "AI Receptionist", description: "Front-desk agent for patient scheduling" },
+        { id: "treatment", name: "AI Treatment Planner", description: "Explains dental procedures" },
+        { id: "recall", name: "AI Recall System", description: "Reactivates inactive patients" },
+        { id: "marketing", name: "AI Marketing Agent", description: "Creates promotional campaigns" },
+      ],
+      initialMessage: "Hello! I'm the AI Dental Receptionist for this demo. I can schedule patients, verify insurance details, handle emergencies, explain treatments, re-activate old patients, and even help with marketing campaigns for your clinic.\n\nChoose a mode above or just say 'hi' and see how I respond!",
+    });
   });
 
   // Chatbot routes
