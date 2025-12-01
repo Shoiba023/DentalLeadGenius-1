@@ -436,6 +436,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = demoRequestSchema.parse(req.body);
       const timestamp = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
 
+      // First, save the lead to the database (so we don't lose data if email fails)
+      try {
+        await storage.createLead({
+          name: data.contactName,
+          email: data.email,
+          phone: data.phone,
+          status: "new",
+          notes: `Demo request from ${data.clinicName} in ${data.city}. ${data.message || ''}`.trim(),
+        });
+        console.log(`Lead saved: ${data.email} from ${data.clinicName}`);
+      } catch (leadError) {
+        console.error("Failed to save lead:", leadError);
+        // Continue anyway - email is more important than lead storage
+      }
+
       // 1. Send notification email to support
       const notificationHtml = `
 <!DOCTYPE html>
@@ -562,15 +577,6 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
         console.error("Failed to send auto-reply email:", autoReplyResult.error);
         // Still return success since notification was sent
       }
-
-      // Also save as a lead
-      await storage.createLead({
-        name: data.contactName,
-        email: data.email,
-        phone: data.phone,
-        status: "new",
-        notes: `Demo request from ${data.clinicName} in ${data.city}. ${data.message || ''}`.trim(),
-      });
 
       res.json({ ok: true });
     } catch (error) {
