@@ -62,34 +62,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const configured = isSmtpConfigured();
       if (!configured) {
-        return res.status(503).json({
-          status: "not_configured",
-          message: "SMTP not configured. Set SMTP_USER and SMTP_PASS environment variables.",
-          smtp_host: process.env.SMTP_HOST || "smtp.zoho.com",
-          smtp_port: process.env.SMTP_PORT || "587",
+        return res.json({
+          ok: false,
+          error: "SMTP not configured. Set SMTP_USER and SMTP_PASS environment variables.",
         });
       }
 
-      const result = await testSmtpConnection();
+      // Send a test email to support address
+      const result = await sendTestEmail();
       if (result.success) {
         res.json({
-          status: "ok",
-          message: result.message,
-          smtp_host: process.env.SMTP_HOST || "smtp.zoho.com",
-          smtp_port: process.env.SMTP_PORT || "587",
-          smtp_user: process.env.SMTP_USER ? "configured" : "not set",
+          ok: true,
         });
       } else {
-        res.status(503).json({
-          status: "error",
-          message: result.message,
+        res.json({
+          ok: false,
+          error: result.message,
         });
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error("Email health check error:", error);
-      res.status(500).json({
-        status: "error",
-        message: "Failed to check email configuration",
+      res.json({
+        ok: false,
+        error: errorMessage,
       });
     }
   });
@@ -399,9 +395,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (emailSent) {
         res.json({ 
           success: true, 
-          message: "Demo access link has been sent to your email" 
+          message: "Email sent" 
         });
       } else {
+        console.error("Failed to send demo link email to:", email);
         res.status(500).json({ 
           success: false, 
           message: "Failed to send email. Please try again." 
@@ -417,7 +414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.status(500).json({ 
         success: false, 
-        message: "Something went wrong. Please try again." 
+        message: "Failed to send email. Please try again." 
       });
     }
   });

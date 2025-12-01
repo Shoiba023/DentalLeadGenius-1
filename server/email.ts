@@ -18,7 +18,8 @@ import { SITE_NAME, SITE_URL, SUPPORT_EMAIL, EMAIL_FROM_NAME, SITE_TAGLINE } fro
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.zoho.com",
   port: parseInt(process.env.SMTP_PORT || "587"),
-  secure: false, // Use TLS (port 587)
+  secure: false, // Use STARTTLS (port 587)
+  requireTLS: true, // Force TLS upgrade
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
