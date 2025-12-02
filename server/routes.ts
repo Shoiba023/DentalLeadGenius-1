@@ -920,6 +920,9 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
           state: lead.state || lead.State || null,
           country: lead.country || lead.Country || "USA",
           notes: lead.notes || lead.Notes || null,
+          websiteUrl: lead.websiteUrl || lead.website || lead.Website || null,
+          rating: lead.rating || lead.Rating || null,
+          reviewCount: lead.reviewCount || lead.reviews || null,
           status: "new",
         }));
 
@@ -972,7 +975,7 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
   });
 
   // Allowed fields for lead updates
-  const allowedLeadUpdateFields = ['name', 'email', 'phone', 'city', 'state', 'country', 'notes', 'status'];
+  const allowedLeadUpdateFields = ['name', 'email', 'phone', 'city', 'state', 'country', 'notes', 'status', 'websiteUrl', 'rating', 'reviewCount', 'marketingOptIn'];
 
   // Update lead
   app.patch("/api/leads/:id", async (req: any, res) => {
@@ -1089,6 +1092,8 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
         notes: validatedLead.notes || null,
         googleMapsUrl: validatedLead.googleMapsUrl || null,
         websiteUrl: validatedLead.websiteUrl || null,
+        rating: validatedLead.rating || null, // Google rating from DentalMapsHelper
+        reviewCount: validatedLead.reviewCount || null, // Number of Google reviews
         source: validatedLead.source || "maps-helper",
         marketingOptIn: validatedLead.marketingOptIn || false,
         tags: validatedLead.tags || ["maps-helper"],
@@ -1199,6 +1204,8 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
             notes: validated.notes || null,
             googleMapsUrl: validated.googleMapsUrl || null,
             websiteUrl: validated.websiteUrl || null,
+            rating: validated.rating || null, // Google rating from DentalMapsHelper
+            reviewCount: validated.reviewCount || null, // Number of Google reviews
             source: validated.source || "maps-helper",
             marketingOptIn: validated.marketingOptIn || false,
             tags: validated.tags || ["maps-helper"],
