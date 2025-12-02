@@ -30,7 +30,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Search, Filter, Loader2, X, Save, User, Mail, Phone, MapPin } from "lucide-react";
+import { Upload, Search, Filter, Loader2, X, Save, User, Mail, Phone, MapPin, Star, Globe, Check } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import Papa from "papaparse";
 
@@ -44,6 +44,12 @@ interface Lead {
   country: string;
   status: string;
   notes?: string;
+  websiteUrl?: string;
+  rating?: string;
+  reviewCount?: number;
+  source?: string;
+  syncStatus?: string;
+  marketingOptIn?: boolean;
   createdAt: string;
 }
 
@@ -321,6 +327,8 @@ export default function AdminLeads() {
                     <TableHead>Email</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Location</TableHead>
+                    <TableHead>Rating</TableHead>
+                    <TableHead>Source</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -339,6 +347,41 @@ export default function AdminLeads() {
                         {lead.city && lead.state
                           ? `${lead.city}, ${lead.state}`
                           : lead.state || lead.city || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {lead.rating ? (
+                          <div className="flex items-center gap-1">
+                            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                            <span>{lead.rating}</span>
+                            {lead.reviewCount && (
+                              <span className="text-muted-foreground text-xs">
+                                ({lead.reviewCount})
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {lead.source === "maps-helper" ? (
+                            <Badge variant="outline" className="text-xs">
+                              Maps Helper
+                            </Badge>
+                          ) : lead.source === "manual" ? (
+                            <Badge variant="secondary" className="text-xs">
+                              Manual
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">
+                              {lead.source || "—"}
+                            </Badge>
+                          )}
+                          {lead.syncStatus === "synced" && (
+                            <Check className="h-3 w-3 text-green-500" />
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Select
