@@ -125,6 +125,75 @@ This config is imported by both frontend and backend to ensure consistent brandi
 - Email-gated demo request (`/api/send-demo-link`)
 - Patient appointment requests (`/api/patient-bookings`)
 
+### Lead Segmentation Service
+
+**Service File**: `server/leadSegmentation.ts`
+
+**Purpose**: Provides helper functions for managing lead statuses, sources, and tags consistently across the application.
+
+**Key Functions**:
+- `markContacted(leadId)`: Mark a lead as contacted (first outreach sent)
+- `markWarm(leadId)`: Mark a lead as warm (showed interest)
+- `markConverted(leadId)`: Mark a lead as won/converted
+- `addTag(leadId, tag)`: Add a tag to a lead
+- `removeTag(leadId, tag)`: Remove a tag from a lead
+- `getSegmentationSummary(clinicId)`: Get breakdown by status, source, and tags
+
+**Lead Statuses**: new, contacted, warm, replied, demo_booked, won, lost
+
+**API Endpoints**:
+- `PATCH /api/leads/:id/status`: Update lead status
+- `POST /api/leads/:id/tags`: Add tag to lead
+- `DELETE /api/leads/:id/tags/:tag`: Remove tag from lead
+- `GET /api/segmentation/:clinicId`: Get segmentation summary
+
+### Nurture Campaign Service
+
+**Service File**: `server/nurtureCampaign.ts`
+
+**Purpose**: Automated 3-step follow-up sequences for new leads.
+
+**Sequence Schedule**:
+- Day 0: Welcome & Introduction email
+- Day 2: Value Proposition & Features email
+- Day 5: Final CTA with Demo Offer email
+
+**Key Functions**:
+- `runClinicNurtureCampaign(clinicId)`: Process all eligible leads
+- `getNurtureStatus(leadId)`: Get current nurture status for a lead
+- `processLeadNurture(lead, clinic)`: Send next nurture step for a single lead
+
+**Tracking Tags**:
+- `nurture_step_1_sent`, `nurture_step_2_sent`, `nurture_step_3_sent`
+- `nurture_complete` (when all 3 steps finished)
+
+**API Endpoints**:
+- `POST /api/nurture/run/:clinicId`: Run nurture campaign for a clinic
+- `GET /api/nurture/status/:leadId`: Get nurture status for a lead
+- `POST /api/nurture/campaigns`: Create a new nurture campaign
+
+### Booking Tracking Service
+
+**Service File**: `server/bookingTracking.ts`
+
+**Purpose**: Campaign attribution and lead conversion tracking for patient bookings.
+
+**Booking Sources**: direct, email, sms, chatbot, website, referral
+
+**Schema Fields** (in `patient_bookings`):
+- `campaignId`: Links booking to the campaign that drove it
+- `leadId`: Links booking to the lead that converted
+- `source`: How the patient found us
+
+**Key Functions**:
+- `processNewBooking(bookingData, referrer)`: Create booking with automatic attribution
+- `getClinicBookingAnalytics(clinicId)`: Get booking stats for a clinic
+- `getCampaignConversionStats(campaignId)`: Get conversion metrics for a campaign
+
+**API Endpoints**:
+- `GET /api/analytics/bookings/:clinicId`: Get booking analytics
+- `GET /api/analytics/campaign/:campaignId/conversions`: Get campaign conversion stats
+
 ### External API (Lead Import)
 
 Production-grade API for syncing leads from external tools like DentalMapsHelper. Features idempotent imports with automatic deduplication.

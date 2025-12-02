@@ -8,6 +8,30 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { generateChatResponse, generateOutreachDraft, generateDemoResponse, type DemoMode } from "./openai";
 import { insertLeadSchema, insertClinicSchema, insertBookingSchema, insertSequenceSchema, insertSequenceStepSchema, insertSequenceEnrollmentSchema, loginSchema, createUserSchema } from "@shared/schema";
 import { z } from "zod";
+import {
+  runClinicNurtureCampaign,
+  getNurtureStatus,
+  processLeadNurture,
+  createNurtureSequenceCampaign,
+} from "./nurtureCampaign";
+import {
+  processNewBooking,
+  getClinicBookingAnalytics,
+  getCampaignConversionStats,
+} from "./bookingTracking";
+import {
+  markContacted,
+  markWarm,
+  markReplied,
+  markDemoBooked,
+  markConverted,
+  markLost,
+  addTag,
+  removeTag,
+  getSegmentationSummary,
+  LEAD_STATUSES,
+  LEAD_TAGS,
+} from "./leadSegmentation";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -2277,6 +2301,87 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
     }
   });
   
+  // Enhanced Dashboard Stats - comprehensive platform overview
+  app.get("/api/dashboard/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Check if clinic filter is provided
+      const clinicId = req.query.clinicId as string | undefined;
+      
+      // If clinic filter provided, verify user has access
+      if (clinicId) {
+        const clinic = await storage.getClinicById(clinicId);
+        if (!clinic || clinic.ownerId !== userId) {
+          return res.status(403).json({ message: "Access denied to this clinic" });
+        }
+      }
+      
+      // Get dashboard stats (optionally filtered by clinic)
+      const stats = await storage.getDashboardStats(clinicId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+  
+  // Recent leads for dashboard
+  app.get("/api/dashboard/recent-leads", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const limit = parseInt(req.query.limit as string) || 10;
+      const clinicId = req.query.clinicId as string | undefined;
+      
+      // If clinic filter provided, verify user has access
+      if (clinicId) {
+        const clinic = await storage.getClinicById(clinicId);
+        if (!clinic || clinic.ownerId !== userId) {
+          return res.status(403).json({ message: "Access denied to this clinic" });
+        }
+      }
+      
+      const recentLeads = await storage.getRecentLeads(limit, clinicId);
+      res.json(recentLeads);
+    } catch (error) {
+      console.error("Error fetching recent leads:", error);
+      res.status(500).json({ message: "Failed to fetch recent leads" });
+    }
+  });
+  
+  // Campaigns with stats for dashboard
+  app.get("/api/dashboard/campaigns", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const clinicId = req.query.clinicId as string | undefined;
+      
+      // If clinic filter provided, verify user has access
+      if (clinicId) {
+        const clinic = await storage.getClinicById(clinicId);
+        if (!clinic || clinic.ownerId !== userId) {
+          return res.status(403).json({ message: "Access denied to this clinic" });
+        }
+      }
+      
+      const campaigns = await storage.getCampaignsWithStats(clinicId);
+      res.json(campaigns);
+    } catch (error) {
+      console.error("Error fetching campaigns:", error);
+      res.status(500).json({ message: "Failed to fetch campaigns" });
+    }
+  });
+  
   // Get specific clinic by ID (authenticated - returns full clinic data for owner)
   app.get("/api/clinics/:id", isAuthenticated, async (req: any, res) => {
     try {
@@ -2341,6 +2446,195 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
     } catch (error) {
       console.error("Error fetching clinic chat threads:", error);
       res.status(500).json({ message: "Failed to fetch chat threads" });
+    }
+  });
+  
+  // ================== NURTURE CAMPAIGN ROUTES ==================
+  
+  // Run nurture campaign for a clinic
+  app.post("/api/nurture/run/:clinicId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const clinic = await storage.getClinicById(req.params.clinicId);
+      if (!clinic || clinic.ownerId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const results = await runClinicNurtureCampaign(req.params.clinicId);
+      res.json(results);
+    } catch (error) {
+      console.error("Error running nurture campaign:", error);
+      res.status(500).json({ message: "Failed to run nurture campaign" });
+    }
+  });
+  
+  // Get nurture status for a lead
+  app.get("/api/nurture/status/:leadId", isAuthenticated, async (req: any, res) => {
+    try {
+      const status = await getNurtureStatus(req.params.leadId);
+      res.json(status);
+    } catch (error) {
+      console.error("Error fetching nurture status:", error);
+      res.status(500).json({ message: "Failed to fetch nurture status" });
+    }
+  });
+  
+  // Create nurture campaign for clinic
+  app.post("/api/nurture/campaigns", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { clinicId, name } = req.body;
+      
+      const clinic = await storage.getClinicById(clinicId);
+      if (!clinic || clinic.ownerId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const campaign = await createNurtureSequenceCampaign(clinicId, name);
+      res.json(campaign);
+    } catch (error) {
+      console.error("Error creating nurture campaign:", error);
+      res.status(500).json({ message: "Failed to create nurture campaign" });
+    }
+  });
+  
+  // ================== LEAD SEGMENTATION ROUTES ==================
+  
+  // Update lead status
+  app.patch("/api/leads/:id/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const { status } = req.body;
+      let updatedLead;
+      
+      switch (status) {
+        case "contacted":
+          updatedLead = await markContacted(req.params.id);
+          break;
+        case "warm":
+          updatedLead = await markWarm(req.params.id);
+          break;
+        case "replied":
+          updatedLead = await markReplied(req.params.id);
+          break;
+        case "demo_booked":
+          updatedLead = await markDemoBooked(req.params.id);
+          break;
+        case "won":
+          updatedLead = await markConverted(req.params.id);
+          break;
+        case "lost":
+          updatedLead = await markLost(req.params.id);
+          break;
+        default:
+          return res.status(400).json({ message: `Invalid status: ${status}` });
+      }
+      
+      if (!updatedLead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      res.json(updatedLead);
+    } catch (error) {
+      console.error("Error updating lead status:", error);
+      res.status(500).json({ message: "Failed to update lead status" });
+    }
+  });
+  
+  // Add tag to lead
+  app.post("/api/leads/:id/tags", isAuthenticated, async (req: any, res) => {
+    try {
+      const { tag } = req.body;
+      if (!tag) {
+        return res.status(400).json({ message: "Tag is required" });
+      }
+      
+      const lead = await addTag(req.params.id, tag);
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      res.json(lead);
+    } catch (error) {
+      console.error("Error adding tag:", error);
+      res.status(500).json({ message: "Failed to add tag" });
+    }
+  });
+  
+  // Remove tag from lead
+  app.delete("/api/leads/:id/tags/:tag", isAuthenticated, async (req: any, res) => {
+    try {
+      const lead = await removeTag(req.params.id, req.params.tag);
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      res.json(lead);
+    } catch (error) {
+      console.error("Error removing tag:", error);
+      res.status(500).json({ message: "Failed to remove tag" });
+    }
+  });
+  
+  // Get segmentation summary for clinic
+  app.get("/api/segmentation/:clinicId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const clinic = await storage.getClinicById(req.params.clinicId);
+      if (!clinic || clinic.ownerId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const summary = await getSegmentationSummary(req.params.clinicId);
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching segmentation summary:", error);
+      res.status(500).json({ message: "Failed to fetch segmentation summary" });
+    }
+  });
+  
+  // ================== BOOKING ANALYTICS ROUTES ==================
+  
+  // Get booking analytics for a clinic
+  app.get("/api/analytics/bookings/:clinicId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const clinic = await storage.getClinicById(req.params.clinicId);
+      if (!clinic || clinic.ownerId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const analytics = await getClinicBookingAnalytics(req.params.clinicId);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching booking analytics:", error);
+      res.status(500).json({ message: "Failed to fetch booking analytics" });
+    }
+  });
+  
+  // Get campaign conversion stats
+  app.get("/api/analytics/campaign/:campaignId/conversions", isAuthenticated, async (req: any, res) => {
+    try {
+      const stats = await getCampaignConversionStats(req.params.campaignId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching campaign conversion stats:", error);
+      res.status(500).json({ message: "Failed to fetch conversion stats" });
     }
   });
   

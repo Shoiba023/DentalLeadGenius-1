@@ -203,6 +203,33 @@ export interface IStorage {
   // Onboarding email log operations
   createOnboardingEmailLog(data: InsertOnboardingEmailLog): Promise<OnboardingEmailLog>;
   getOnboardingEmailLogs(onboardingId: string): Promise<OnboardingEmailLog[]>;
+  
+  // Enhanced Dashboard operations
+  getDashboardStats(clinicId?: string): Promise<{
+    totalClinics: number;
+    totalLeads: number;
+    totalCampaigns: number;
+    activeCampaigns: number;
+    pendingBookings: number;
+    leadsByStatus: {
+      new: number;
+      contacted: number;
+      warm: number;
+      replied: number;
+      demo_booked: number;
+      won: number;
+      lost: number;
+    };
+  }>;
+  
+  getRecentLeads(limit: number, clinicId?: string): Promise<(Lead & { clinicName: string | null })[]>;
+  
+  getCampaignsWithStats(clinicId?: string): Promise<(OutreachCampaign & { clinicName: string | null })[]>;
+  
+  // Sequence enrollment with lead info
+  getEnrollmentsByLead(leadId: string): Promise<(SequenceEnrollment & { sequenceName: string })[]>;
+  updateSequenceEnrollment(id: string, data: Partial<InsertSequenceEnrollment> & { nextSendAt?: Date; completedAt?: Date }): Promise<SequenceEnrollment>;
+  getActiveEnrollmentsDue(): Promise<(SequenceEnrollment & { lead: Lead; sequence: Sequence; step: SequenceStep | null })[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1074,6 +1101,271 @@ export class DatabaseStorage implements IStorage {
       .from(onboardingEmailLogs)
       .where(eq(onboardingEmailLogs.onboardingId, onboardingId))
       .orderBy(desc(onboardingEmailLogs.sentAt));
+  }
+  
+  // Enhanced Dashboard operations
+  async getDashboardStats(clinicId?: string): Promise<{
+    totalClinics: number;
+    totalLeads: number;
+    totalCampaigns: number;
+    activeCampaigns: number;
+    pendingBookings: number;
+    leadsByStatus: {
+      new: number;
+      contacted: number;
+      warm: number;
+      replied: number;
+      demo_booked: number;
+      won: number;
+      lost: number;
+    };
+  }> {
+    // Get total clinics
+    const [clinicsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(clinics);
+    
+    // Get leads count (filtered by clinic if provided)
+    const leadsQuery = clinicId 
+      ? db.select({ count: sql<number>`count(*)::int` }).from(leads).where(eq(leads.clinicId, clinicId))
+      : db.select({ count: sql<number>`count(*)::int` }).from(leads);
+    const [leadsCount] = await leadsQuery;
+    
+    // Get campaigns count
+    const campaignsQuery = clinicId
+      ? db.select({ count: sql<number>`count(*)::int` }).from(outreachCampaigns).where(eq(outreachCampaigns.clinicId, clinicId))
+      : db.select({ count: sql<number>`count(*)::int` }).from(outreachCampaigns);
+    const [campaignsCount] = await campaignsQuery;
+    
+    // Get active campaigns count
+    const activeCampaignsQuery = clinicId
+      ? db.select({ count: sql<number>`count(*)::int` }).from(outreachCampaigns).where(and(eq(outreachCampaigns.clinicId, clinicId), eq(outreachCampaigns.status, "active")))
+      : db.select({ count: sql<number>`count(*)::int` }).from(outreachCampaigns).where(eq(outreachCampaigns.status, "active"));
+    const [activeCampaignsCount] = await activeCampaignsQuery;
+    
+    // Get pending bookings
+    const pendingQuery = clinicId
+      ? db.select({ count: sql<number>`count(*)::int` }).from(patientBookings).where(and(eq(patientBookings.clinicId, clinicId), eq(patientBookings.status, "pending")))
+      : db.select({ count: sql<number>`count(*)::int` }).from(patientBookings).where(eq(patientBookings.status, "pending"));
+    const [pendingCount] = await pendingQuery;
+    
+    // Get leads by status
+    const statusCounts = await Promise.all([
+      clinicId 
+        ? db.select({ count: sql<number>`count(*)::int` }).from(leads).where(and(eq(leads.clinicId, clinicId), eq(leads.status, "new")))
+        : db.select({ count: sql<number>`count(*)::int` }).from(leads).where(eq(leads.status, "new")),
+      clinicId 
+        ? db.select({ count: sql<number>`count(*)::int` }).from(leads).where(and(eq(leads.clinicId, clinicId), eq(leads.status, "contacted")))
+        : db.select({ count: sql<number>`count(*)::int` }).from(leads).where(eq(leads.status, "contacted")),
+      clinicId 
+        ? db.select({ count: sql<number>`count(*)::int` }).from(leads).where(and(eq(leads.clinicId, clinicId), eq(leads.status, "warm")))
+        : db.select({ count: sql<number>`count(*)::int` }).from(leads).where(eq(leads.status, "warm")),
+      clinicId 
+        ? db.select({ count: sql<number>`count(*)::int` }).from(leads).where(and(eq(leads.clinicId, clinicId), eq(leads.status, "replied")))
+        : db.select({ count: sql<number>`count(*)::int` }).from(leads).where(eq(leads.status, "replied")),
+      clinicId 
+        ? db.select({ count: sql<number>`count(*)::int` }).from(leads).where(and(eq(leads.clinicId, clinicId), eq(leads.status, "demo_booked")))
+        : db.select({ count: sql<number>`count(*)::int` }).from(leads).where(eq(leads.status, "demo_booked")),
+      clinicId 
+        ? db.select({ count: sql<number>`count(*)::int` }).from(leads).where(and(eq(leads.clinicId, clinicId), eq(leads.status, "won")))
+        : db.select({ count: sql<number>`count(*)::int` }).from(leads).where(eq(leads.status, "won")),
+      clinicId 
+        ? db.select({ count: sql<number>`count(*)::int` }).from(leads).where(and(eq(leads.clinicId, clinicId), eq(leads.status, "lost")))
+        : db.select({ count: sql<number>`count(*)::int` }).from(leads).where(eq(leads.status, "lost")),
+    ]);
+    
+    return {
+      totalClinics: clinicsCount?.count || 0,
+      totalLeads: leadsCount?.count || 0,
+      totalCampaigns: campaignsCount?.count || 0,
+      activeCampaigns: activeCampaignsCount?.count || 0,
+      pendingBookings: pendingCount?.count || 0,
+      leadsByStatus: {
+        new: statusCounts[0][0]?.count || 0,
+        contacted: statusCounts[1][0]?.count || 0,
+        warm: statusCounts[2][0]?.count || 0,
+        replied: statusCounts[3][0]?.count || 0,
+        demo_booked: statusCounts[4][0]?.count || 0,
+        won: statusCounts[5][0]?.count || 0,
+        lost: statusCounts[6][0]?.count || 0,
+      },
+    };
+  }
+  
+  async getRecentLeads(limit: number, clinicId?: string): Promise<(Lead & { clinicName: string | null })[]> {
+    const query = clinicId
+      ? db.select({
+          id: leads.id,
+          clinicId: leads.clinicId,
+          name: leads.name,
+          email: leads.email,
+          phone: leads.phone,
+          address: leads.address,
+          city: leads.city,
+          state: leads.state,
+          country: leads.country,
+          notes: leads.notes,
+          googleMapsUrl: leads.googleMapsUrl,
+          websiteUrl: leads.websiteUrl,
+          source: leads.source,
+          marketingOptIn: leads.marketingOptIn,
+          tags: leads.tags,
+          status: leads.status,
+          contactedAt: leads.contactedAt,
+          createdAt: leads.createdAt,
+          updatedAt: leads.updatedAt,
+          lastImportedAt: leads.lastImportedAt,
+          clinicName: clinics.name,
+        })
+        .from(leads)
+        .leftJoin(clinics, eq(leads.clinicId, clinics.id))
+        .where(eq(leads.clinicId, clinicId))
+        .orderBy(desc(leads.createdAt))
+        .limit(limit)
+      : db.select({
+          id: leads.id,
+          clinicId: leads.clinicId,
+          name: leads.name,
+          email: leads.email,
+          phone: leads.phone,
+          address: leads.address,
+          city: leads.city,
+          state: leads.state,
+          country: leads.country,
+          notes: leads.notes,
+          googleMapsUrl: leads.googleMapsUrl,
+          websiteUrl: leads.websiteUrl,
+          source: leads.source,
+          marketingOptIn: leads.marketingOptIn,
+          tags: leads.tags,
+          status: leads.status,
+          contactedAt: leads.contactedAt,
+          createdAt: leads.createdAt,
+          updatedAt: leads.updatedAt,
+          lastImportedAt: leads.lastImportedAt,
+          clinicName: clinics.name,
+        })
+        .from(leads)
+        .leftJoin(clinics, eq(leads.clinicId, clinics.id))
+        .orderBy(desc(leads.createdAt))
+        .limit(limit);
+    
+    return await query;
+  }
+  
+  async getCampaignsWithStats(clinicId?: string): Promise<(OutreachCampaign & { clinicName: string | null })[]> {
+    const query = clinicId
+      ? db.select({
+          id: outreachCampaigns.id,
+          clinicId: outreachCampaigns.clinicId,
+          name: outreachCampaigns.name,
+          type: outreachCampaigns.type,
+          subject: outreachCampaigns.subject,
+          message: outreachCampaigns.message,
+          status: outreachCampaigns.status,
+          dailyLimit: outreachCampaigns.dailyLimit,
+          sentToday: outreachCampaigns.sentToday,
+          totalSent: outreachCampaigns.totalSent,
+          targetUrl: outreachCampaigns.targetUrl,
+          mediaUrl: outreachCampaigns.mediaUrl,
+          hashtags: outreachCampaigns.hashtags,
+          createdAt: outreachCampaigns.createdAt,
+          updatedAt: outreachCampaigns.updatedAt,
+          clinicName: clinics.name,
+        })
+        .from(outreachCampaigns)
+        .leftJoin(clinics, eq(outreachCampaigns.clinicId, clinics.id))
+        .where(eq(outreachCampaigns.clinicId, clinicId))
+        .orderBy(desc(outreachCampaigns.createdAt))
+      : db.select({
+          id: outreachCampaigns.id,
+          clinicId: outreachCampaigns.clinicId,
+          name: outreachCampaigns.name,
+          type: outreachCampaigns.type,
+          subject: outreachCampaigns.subject,
+          message: outreachCampaigns.message,
+          status: outreachCampaigns.status,
+          dailyLimit: outreachCampaigns.dailyLimit,
+          sentToday: outreachCampaigns.sentToday,
+          totalSent: outreachCampaigns.totalSent,
+          targetUrl: outreachCampaigns.targetUrl,
+          mediaUrl: outreachCampaigns.mediaUrl,
+          hashtags: outreachCampaigns.hashtags,
+          createdAt: outreachCampaigns.createdAt,
+          updatedAt: outreachCampaigns.updatedAt,
+          clinicName: clinics.name,
+        })
+        .from(outreachCampaigns)
+        .leftJoin(clinics, eq(outreachCampaigns.clinicId, clinics.id))
+        .orderBy(desc(outreachCampaigns.createdAt));
+    
+    return await query;
+  }
+  
+  // Sequence enrollment with lead info
+  async getEnrollmentsByLead(leadId: string): Promise<(SequenceEnrollment & { sequenceName: string })[]> {
+    const results = await db.select({
+      id: sequenceEnrollments.id,
+      sequenceId: sequenceEnrollments.sequenceId,
+      leadId: sequenceEnrollments.leadId,
+      currentStepOrder: sequenceEnrollments.currentStepOrder,
+      status: sequenceEnrollments.status,
+      nextSendAt: sequenceEnrollments.nextSendAt,
+      enrolledAt: sequenceEnrollments.enrolledAt,
+      completedAt: sequenceEnrollments.completedAt,
+      sequenceName: sequences.name,
+    })
+    .from(sequenceEnrollments)
+    .innerJoin(sequences, eq(sequenceEnrollments.sequenceId, sequences.id))
+    .where(eq(sequenceEnrollments.leadId, leadId))
+    .orderBy(desc(sequenceEnrollments.enrolledAt));
+    
+    return results;
+  }
+  
+  async updateSequenceEnrollment(id: string, data: Partial<InsertSequenceEnrollment> & { nextSendAt?: Date; completedAt?: Date }): Promise<SequenceEnrollment> {
+    const [updated] = await db
+      .update(sequenceEnrollments)
+      .set(data)
+      .where(eq(sequenceEnrollments.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async getActiveEnrollmentsDue(): Promise<(SequenceEnrollment & { lead: Lead; sequence: Sequence; step: SequenceStep | null })[]> {
+    const now = new Date();
+    
+    // Get enrollments where nextSendAt is in the past and status is active
+    const enrollments = await db.select()
+      .from(sequenceEnrollments)
+      .where(and(
+        eq(sequenceEnrollments.status, "active"),
+        sql`${sequenceEnrollments.nextSendAt} <= ${now}`
+      ));
+    
+    const results: (SequenceEnrollment & { lead: Lead; sequence: Sequence; step: SequenceStep | null })[] = [];
+    
+    for (const enrollment of enrollments) {
+      const lead = await this.getLeadById(enrollment.leadId);
+      const sequence = await this.getSequenceById(enrollment.sequenceId);
+      
+      if (!lead || !sequence) continue;
+      
+      // Get the next step to send
+      const [step] = await db.select()
+        .from(sequenceSteps)
+        .where(and(
+          eq(sequenceSteps.sequenceId, enrollment.sequenceId),
+          eq(sequenceSteps.stepOrder, enrollment.currentStepOrder + 1)
+        ));
+      
+      results.push({
+        ...enrollment,
+        lead,
+        sequence,
+        step: step || null,
+      });
+    }
+    
+    return results;
   }
 }
 

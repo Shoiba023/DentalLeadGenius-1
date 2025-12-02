@@ -319,6 +319,10 @@ export const patientBookings = pgTable("patient_bookings", {
   preferredTime: text("preferred_time"),
   notes: text("notes"),
   status: text("status").default("pending").notNull(),
+  // Campaign tracking fields
+  campaignId: varchar("campaign_id").references(() => outreachCampaigns.id),
+  leadId: varchar("lead_id").references(() => leads.id),
+  source: text("source").default("direct"), // direct, email, sms, chatbot, website
   createdAt: timestamp("created_at").defaultNow(),
 });
 
