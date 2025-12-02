@@ -75,6 +75,19 @@ export interface IStorage {
   getLeadsByEmail(email: string): Promise<Lead[]>;
   updateLeadStatus(id: string, status: string): Promise<void>;
   updateLead(id: string, updates: Partial<InsertLead>): Promise<Lead | undefined>;
+  
+  // Deduplication methods for external imports
+  findLeadByGoogleMapsUrl(googleMapsUrl: string): Promise<Lead | undefined>;
+  findLeadByEmailAndCity(email: string, city: string, country: string): Promise<Lead | undefined>;
+  upsertLeadByDedupe(lead: InsertLead): Promise<{ lead: Lead; existing: boolean }>;
+  
+  // Import stats for admin
+  getImportStats(): Promise<{
+    totalLeads: number;
+    totalMapsHelperLeads: number;
+    lastImportedAt: Date | null;
+    importedTodayCount: number;
+  }>;
 
   // Clinic operations
   getAllClinics(): Promise<Clinic[]>;
@@ -339,6 +352,132 @@ export class DatabaseStorage implements IStorage {
       .where(eq(leads.id, id))
       .returning();
     return updatedLead;
+  }
+
+  // Deduplication methods for external imports
+  // Primary dedupe: googleMapsUrl (unique when present)
+  async findLeadByGoogleMapsUrl(googleMapsUrl: string): Promise<Lead | undefined> {
+    const [lead] = await db.select().from(leads)
+      .where(eq(leads.googleMapsUrl, googleMapsUrl));
+    return lead;
+  }
+
+  // Secondary dedupe: email + city + country combination
+  async findLeadByEmailAndCity(email: string, city: string, country: string): Promise<Lead | undefined> {
+    const [lead] = await db.select().from(leads)
+      .where(and(
+        eq(leads.email, email),
+        eq(leads.city, city),
+        eq(leads.country, country)
+      ));
+    return lead;
+  }
+
+  // Upsert with deduplication logic
+  // Returns { lead, existing: true } if found and merged, { lead, existing: false } if new
+  // Handles race conditions gracefully by retrying on unique constraint violation
+  async upsertLeadByDedupe(leadData: InsertLead): Promise<{ lead: Lead; existing: boolean }> {
+    // Helper function to merge data into existing lead
+    const mergeIntoExisting = async (existingLead: Lead, newData: InsertLead): Promise<{ lead: Lead; existing: boolean }> => {
+      const mergedData: Partial<InsertLead> = {};
+      if (!existingLead.phone && newData.phone) mergedData.phone = newData.phone;
+      if (!existingLead.email && newData.email) mergedData.email = newData.email;
+      if (!existingLead.websiteUrl && newData.websiteUrl) mergedData.websiteUrl = newData.websiteUrl;
+      if (!existingLead.address && newData.address) mergedData.address = newData.address;
+      if (!existingLead.googleMapsUrl && newData.googleMapsUrl) mergedData.googleMapsUrl = newData.googleMapsUrl;
+      if (newData.notes && newData.notes !== existingLead.notes) {
+        mergedData.notes = existingLead.notes 
+          ? `${existingLead.notes}\n---\n${newData.notes}` 
+          : newData.notes;
+      }
+      // Always update lastImportedAt for synced leads
+      mergedData.lastImportedAt = new Date();
+      
+      if (Object.keys(mergedData).length > 0) {
+        const updated = await this.updateLead(existingLead.id, mergedData);
+        return { lead: updated || existingLead, existing: true };
+      }
+      return { lead: existingLead, existing: true };
+    };
+
+    // Primary dedupe: Check googleMapsUrl first (most reliable for maps-helper imports)
+    if (leadData.googleMapsUrl) {
+      const existingByMaps = await this.findLeadByGoogleMapsUrl(leadData.googleMapsUrl);
+      if (existingByMaps) {
+        return mergeIntoExisting(existingByMaps, leadData);
+      }
+    }
+
+    // Secondary dedupe: Check email + city + country (fallback when no googleMapsUrl)
+    if (leadData.email && leadData.city && leadData.country) {
+      const existingByEmail = await this.findLeadByEmailAndCity(
+        leadData.email, 
+        leadData.city, 
+        leadData.country
+      );
+      if (existingByEmail) {
+        return mergeIntoExisting(existingByEmail, leadData);
+      }
+    }
+
+    // No duplicate found - attempt to create new lead
+    // Handle race condition: if unique constraint violated, retry lookup and merge
+    try {
+      const newLead = await this.createLead({
+        ...leadData,
+        lastImportedAt: new Date(),
+      });
+      return { lead: newLead, existing: false };
+    } catch (error) {
+      // Check if this is a unique constraint violation (race condition)
+      if (error instanceof Error && error.message.includes("unique constraint")) {
+        // Race condition: another request inserted this lead concurrently
+        // Retry lookup and merge instead of failing
+        if (leadData.googleMapsUrl) {
+          const existingByMaps = await this.findLeadByGoogleMapsUrl(leadData.googleMapsUrl);
+          if (existingByMaps) {
+            return mergeIntoExisting(existingByMaps, leadData);
+          }
+        }
+        if (leadData.email && leadData.city && leadData.country) {
+          const existingByEmail = await this.findLeadByEmailAndCity(
+            leadData.email, 
+            leadData.city, 
+            leadData.country
+          );
+          if (existingByEmail) {
+            return mergeIntoExisting(existingByEmail, leadData);
+          }
+        }
+      }
+      // Re-throw if not a handled constraint violation
+      throw error;
+    }
+  }
+
+  // Import stats for admin dashboard
+  async getImportStats(): Promise<{
+    totalLeads: number;
+    totalMapsHelperLeads: number;
+    lastImportedAt: Date | null;
+    importedTodayCount: number;
+  }> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [stats] = await db.select({
+      totalLeads: sql<number>`count(*)::int`,
+      totalMapsHelperLeads: sql<number>`count(*) filter (where source = 'maps-helper')::int`,
+      lastImportedAt: sql<Date>`max(last_imported_at)`,
+      importedTodayCount: sql<number>`count(*) filter (where last_imported_at >= ${today})::int`,
+    }).from(leads);
+
+    return {
+      totalLeads: stats.totalLeads || 0,
+      totalMapsHelperLeads: stats.totalMapsHelperLeads || 0,
+      lastImportedAt: stats.lastImportedAt || null,
+      importedTodayCount: stats.importedTodayCount || 0,
+    };
   }
 
   // Clinic operations

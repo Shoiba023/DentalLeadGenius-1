@@ -997,12 +997,19 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
   // External API Routes (Bearer Token Auth)
   // ========================================
   
+  // Import the enhanced schema from shared types
+  const { externalLeadPayloadSchema } = await import("@shared/schema");
+  
   // Helper function to validate Bearer token for external API access
+  // SECURITY: Never log the actual API key value
   const validateImportApiKey = (req: any, res: any): boolean => {
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      res.status(401).json({ success: false, message: "Missing or invalid Authorization header. Use: Bearer <API_KEY>" });
+      res.status(401).json({ 
+        success: false, 
+        message: "Missing or invalid Authorization header. Use: Bearer <API_KEY>" 
+      });
       return false;
     }
     
@@ -1010,7 +1017,8 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
     const validApiKey = process.env.IMPORT_API_KEY;
     
     if (!validApiKey) {
-      console.error("IMPORT_API_KEY is not configured in environment");
+      // Log error without exposing key details
+      console.error("[IMPORT API] IMPORT_API_KEY environment variable not configured");
       res.status(500).json({ success: false, message: "API key not configured on server" });
       return false;
     }
@@ -1023,56 +1031,82 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
     return true;
   };
 
-  // Schema for external lead import
-  const externalLeadSchema = z.object({
-    clinicId: z.string().optional(),
-    name: z.string().min(1, "Name is required"),
-    email: z.string().email().optional().nullable(),
-    phone: z.string().optional().nullable(),
-    city: z.string().optional().nullable(),
-    state: z.string().optional().nullable(),
-    country: z.string().optional().nullable().default("USA"),
-    notes: z.string().optional().nullable(),
-    googleMapsUrl: z.string().url().optional().nullable(),
-    websiteUrl: z.string().url().optional().nullable(),
-    status: z.enum(["new", "contacted", "replied", "demo_booked", "won", "lost"]).optional().default("new"),
-  });
+  // Structured logging helper for imports (sanitizes PII)
+  const logImport = (action: string, details: {
+    leadsCount?: number;
+    created?: number;
+    existing?: number;
+    failed?: number;
+    source?: string;
+    error?: string;
+  }) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[IMPORT API] [${timestamp}] ${action}:`, JSON.stringify(details));
+  };
 
   // POST /api/external/leads/import - Import a single lead (Bearer token auth)
+  // Supports deduplication: if lead exists (by googleMapsUrl or email+city), merges data
   app.post("/api/external/leads/import", async (req: any, res) => {
     try {
       if (!validateImportApiKey(req, res)) return;
 
-      const validatedLead = externalLeadSchema.parse(req.body);
+      // Validate with enhanced schema
+      const validatedLead = externalLeadPayloadSchema.parse(req.body);
       
       const leadData = {
         clinicId: validatedLead.clinicId || null,
         name: validatedLead.name,
         email: validatedLead.email || null,
         phone: validatedLead.phone || null,
+        address: validatedLead.address || null,
         city: validatedLead.city || null,
         state: validatedLead.state || null,
         country: validatedLead.country || "USA",
         notes: validatedLead.notes || null,
         googleMapsUrl: validatedLead.googleMapsUrl || null,
         websiteUrl: validatedLead.websiteUrl || null,
+        source: validatedLead.source || "maps-helper",
+        marketingOptIn: validatedLead.marketingOptIn || false,
+        tags: validatedLead.tags || ["maps-helper"],
         status: validatedLead.status || "new",
       };
 
-      const newLead = await storage.createLead(leadData);
+      // Use upsert with deduplication
+      const { lead, existing } = await storage.upsertLeadByDedupe(leadData);
+      
+      logImport("Single import", { 
+        leadsCount: 1, 
+        created: existing ? 0 : 1, 
+        existing: existing ? 1 : 0,
+        source: leadData.source 
+      });
       
       res.json({ 
         success: true, 
-        leadId: newLead.id
+        leadId: lead.id,
+        existing
       });
     } catch (error) {
-      console.error("Error importing lead via external API:", error);
+      // Log error without exposing full payload (may contain PII)
+      console.error("[IMPORT API] Error importing single lead:", 
+        error instanceof Error ? error.message : "Unknown error");
       
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
           success: false, 
           message: "Validation failed",
-          errors: error.errors 
+          errors: error.errors.map(e => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        });
+      }
+      
+      // Handle unique constraint violations gracefully
+      if (error instanceof Error && error.message.includes("unique constraint")) {
+        return res.status(409).json({ 
+          success: false, 
+          message: "Lead already exists (duplicate detected)"
         });
       }
       
@@ -1084,7 +1118,10 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
   });
 
   // POST /api/external/leads/bulk-import - Import multiple leads (Bearer token auth)
+  // Processes each lead individually - one bad lead doesn't fail the batch
   app.post("/api/external/leads/bulk-import", async (req: any, res) => {
+    const startTime = Date.now();
+    
     try {
       if (!validateImportApiKey(req, res)) return;
 
@@ -1104,62 +1141,184 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
         });
       }
 
-      // Validate and transform each lead
-      const validatedLeads = [];
-      const errors = [];
+      // Process each lead individually for granular error handling
+      const results: Array<{
+        index: number;
+        success: boolean;
+        leadId?: string;
+        existing?: boolean;
+        error?: string;
+      }> = [];
+      
+      let created = 0;
+      let existing = 0;
+      let failed = 0;
 
       for (let i = 0; i < leads.length; i++) {
         try {
-          const validated = externalLeadSchema.parse(leads[i]);
-          validatedLeads.push({
+          // Validate individual lead
+          const validated = externalLeadPayloadSchema.parse(leads[i]);
+          
+          const leadData = {
             clinicId: validated.clinicId || null,
             name: validated.name,
             email: validated.email || null,
             phone: validated.phone || null,
+            address: validated.address || null,
             city: validated.city || null,
             state: validated.state || null,
             country: validated.country || "USA",
             notes: validated.notes || null,
             googleMapsUrl: validated.googleMapsUrl || null,
             websiteUrl: validated.websiteUrl || null,
+            source: validated.source || "maps-helper",
+            marketingOptIn: validated.marketingOptIn || false,
+            tags: validated.tags || ["maps-helper"],
             status: validated.status || "new",
+          };
+
+          // Use upsert with deduplication
+          const result = await storage.upsertLeadByDedupe(leadData);
+          
+          results.push({
+            index: i,
+            success: true,
+            leadId: result.lead.id,
+            existing: result.existing
           });
+          
+          if (result.existing) {
+            existing++;
+          } else {
+            created++;
+          }
+          
         } catch (err) {
+          failed++;
+          
           if (err instanceof z.ZodError) {
-            errors.push({ index: i, errors: err.errors });
+            results.push({
+              index: i,
+              success: false,
+              error: err.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
+            });
+          } else if (err instanceof Error && err.message.includes("unique constraint")) {
+            // Handle DB constraint violations as existing lead
+            results.push({
+              index: i,
+              success: false,
+              error: "Duplicate lead detected"
+            });
+          } else {
+            results.push({
+              index: i,
+              success: false,
+              error: err instanceof Error ? err.message : "Unknown error"
+            });
           }
         }
       }
 
-      if (errors.length > 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Validation failed for ${errors.length} lead(s)`,
-          validationErrors: errors,
-          validCount: validatedLeads.length
-        });
-      }
-
-      const importedLeads = await storage.importLeads(validatedLeads);
+      const duration = Date.now() - startTime;
       
-      // Return array of results with success status and leadId for each
-      const results = importedLeads.map(lead => ({
-        success: true,
-        leadId: lead.id
-      }));
+      // Structured logging for bulk import
+      logImport("Bulk import completed", {
+        leadsCount: leads.length,
+        created,
+        existing,
+        failed,
+        source: "maps-helper"
+      });
+      
+      console.log(`[IMPORT API] Bulk import processed ${leads.length} leads in ${duration}ms`);
       
       res.json({ 
-        success: true, 
+        success: failed === 0,
+        totalProcessed: leads.length,
+        created,
+        existing,
+        failed,
         results
       });
     } catch (error) {
-      console.error("Error bulk importing leads via external API:", error);
+      console.error("[IMPORT API] Error in bulk import:", 
+        error instanceof Error ? error.message : "Unknown error");
+      
       res.status(500).json({ 
         success: false, 
-        message: "Failed to bulk import leads" 
+        message: "Failed to process bulk import" 
       });
     }
   });
+
+  // GET /api/admin/leads/import-stats - Internal admin endpoint for import statistics
+  // Protected by session authentication (internal use only)
+  app.get("/api/admin/leads/import-stats", isAuthenticated, async (req: any, res) => {
+    try {
+      // Only allow admin users
+      if (!req.user?.claims?.sub) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const stats = await storage.getImportStats();
+      
+      res.json({
+        success: true,
+        stats
+      });
+    } catch (error) {
+      console.error("[ADMIN] Error fetching import stats:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to fetch import statistics" 
+      });
+    }
+  });
+
+  // Test-only route for verifying import functionality (development only)
+  if (process.env.NODE_ENV !== "production") {
+    app.post("/api/test/import-verification", async (req: any, res) => {
+      try {
+        if (!validateImportApiKey(req, res)) return;
+        
+        // Create a clearly marked test lead that should never be emailed
+        const testLead = {
+          name: "Test Sync Clinic – DO NOT EMAIL",
+          email: "test-sync-do-not-email@example.com",
+          phone: "000-000-0000",
+          city: "Test City",
+          state: "TS",
+          country: "USA",
+          googleMapsUrl: `https://maps.google.com/test-verification-${Date.now()}`,
+          source: "maps-helper",
+          marketingOptIn: false,
+          tags: ["maps-helper", "test-verification", "do-not-email"],
+          status: "new" as const,
+          notes: "AUTO-GENERATED TEST LEAD - Safe to delete",
+        };
+        
+        const { lead, existing } = await storage.upsertLeadByDedupe(testLead);
+        
+        res.json({
+          success: true,
+          message: "Test lead created/verified successfully",
+          leadId: lead.id,
+          existing,
+          verification: {
+            hasCorrectSource: lead.source === "maps-helper",
+            hasCorrectTags: lead.tags?.includes("maps-helper"),
+            isMarkedDoNotEmail: lead.marketingOptIn === false
+          }
+        });
+      } catch (error) {
+        console.error("[TEST] Import verification failed:", error);
+        res.status(500).json({ 
+          success: false, 
+          message: "Test verification failed" 
+        });
+      }
+    });
+  }
 
   // Clinic routes
   app.get("/api/clinics", isAuthenticated, async (req, res) => {

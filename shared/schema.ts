@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
 import {
   index,
+  uniqueIndex,
   jsonb,
   pgTable,
   timestamp,
@@ -69,24 +70,37 @@ export type LoginCredentials = z.infer<typeof loginSchema>;
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
 
-// Leads table
+// Leads table - Campaign-ready with deduplication support
 export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clinicId: varchar("clinic_id").references(() => clinics.id), // Nullable for platform-level leads (demo requests)
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
+  address: text("address"), // Full street address
   city: text("city"),
   state: text("state"),
   country: text("country").default("USA"),
   notes: text("notes"),
-  googleMapsUrl: text("google_maps_url"),
+  googleMapsUrl: text("google_maps_url"), // Primary dedupe key when present
   websiteUrl: text("website_url"),
+  // Campaign readiness fields
+  source: text("source").default("manual"), // maps-helper, manual-import, demo-request, etc.
+  marketingOptIn: boolean("marketing_opt_in").default(false),
+  tags: text("tags").array(), // For filtering/segmentation
   status: text("status").default("new").notNull(), // new, contacted, replied, demo_booked, won, lost
   contactedAt: timestamp("contacted_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+  lastImportedAt: timestamp("last_imported_at"), // Track when lead was last synced via import
+}, (table) => ({
+  // Unique index on googleMapsUrl for primary deduplication (nullable-safe)
+  googleMapsUrlIdx: uniqueIndex("leads_google_maps_url_unique").on(table.googleMapsUrl).where(sql`google_maps_url IS NOT NULL`),
+  // Index on source for quick filtering of imported leads
+  sourceIdx: index("leads_source_idx").on(table.source),
+  // Index on email for secondary dedup lookups
+  emailIdx: index("leads_email_idx").on(table.email),
+}));
 
 export const insertLeadSchema = createInsertSchema(leads).omit({
   id: true,
@@ -96,6 +110,61 @@ export const insertLeadSchema = createInsertSchema(leads).omit({
 
 export type InsertLead = z.infer<typeof insertLeadSchema>;
 export type Lead = typeof leads.$inferSelect;
+
+// ========================================
+// External API Types (for lead import)
+// ========================================
+
+// Payload schema for external lead import with strong validation
+export const externalLeadPayloadSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255, "Name too long"),
+  email: z.string().email("Invalid email format").max(255).optional().nullable(),
+  phone: z.string().max(50, "Phone too long").optional().nullable(),
+  address: z.string().max(500, "Address too long").optional().nullable(),
+  city: z.string().max(100, "City name too long").optional().nullable(),
+  state: z.string().max(100, "State name too long").optional().nullable(),
+  country: z.string().max(100, "Country name too long").optional().nullable().default("USA"),
+  googleMapsUrl: z.string().url("Invalid Google Maps URL").max(2000).optional().nullable(),
+  websiteUrl: z.string().url("Invalid website URL").max(2000).optional().nullable(),
+  notes: z.string().max(5000, "Notes too long").optional().nullable(),
+  source: z.string().max(50).optional().default("maps-helper"),
+  marketingOptIn: z.boolean().optional().default(false),
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  status: z.enum(["new", "contacted", "replied", "demo_booked", "won", "lost"]).optional().default("new"),
+  clinicId: z.string().uuid().optional().nullable(),
+});
+
+export type ExternalLeadPayload = z.infer<typeof externalLeadPayloadSchema>;
+
+// Result types for import operations
+export interface SingleImportResult {
+  success: true;
+  leadId: string;
+  existing?: boolean; // true if lead was found via dedup and merged
+}
+
+export interface SingleImportError {
+  success: false;
+  error: string;
+  field?: string;
+}
+
+export interface BulkImportResultItem {
+  index: number;
+  success: boolean;
+  leadId?: string;
+  existing?: boolean;
+  error?: string;
+}
+
+export interface BulkImportResult {
+  success: boolean;
+  totalProcessed: number;
+  created: number;
+  existing: number;
+  failed: number;
+  results: BulkImportResultItem[];
+}
 
 // Clinics table
 export const clinics = pgTable("clinics", {

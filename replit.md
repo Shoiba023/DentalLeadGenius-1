@@ -127,24 +127,43 @@ This config is imported by both frontend and backend to ensure consistent brandi
 
 ### External API (Lead Import)
 
+Production-grade API for syncing leads from external tools like DentalMapsHelper. Features idempotent imports with automatic deduplication.
+
+**Full Documentation**: See `docs/import-api.md` for complete API reference.
+
 **Authentication**: Bearer token using `IMPORT_API_KEY` environment variable.
 
 **Endpoints**:
 
-1. `POST /api/external/leads/import` - Import a single lead
+1. `POST /api/external/leads/import` - Import a single lead with deduplication
    - Headers: `Authorization: Bearer <IMPORT_API_KEY>`
-   - Body: `{ name, email?, phone?, city?, state?, country?, googleMapsUrl?, websiteUrl?, clinicId?, notes?, status? }`
-   - Response: `{ success: true, leadId: "<uuid>" }`
+   - Body: `{ name, email?, phone?, address?, city?, state?, country?, googleMapsUrl?, websiteUrl?, source?, marketingOptIn?, tags?, clinicId?, notes?, status? }`
+   - Response: `{ success: true, leadId: "<uuid>", existing: false }`
 
-2. `POST /api/external/leads/bulk-import` - Import multiple leads
+2. `POST /api/external/leads/bulk-import` - Import multiple leads (per-lead error handling)
    - Headers: `Authorization: Bearer <IMPORT_API_KEY>`
-   - Body: `{ leads: [{ name, email?, phone?, city?, state?, country?, googleMapsUrl?, websiteUrl?, clinicId?, notes?, status? }, ...] }`
-   - Response: `{ success: true, results: [{ success: true, leadId: "<uuid>" }, ...] }`
+   - Body: `{ leads: [...] }`
+   - Response: `{ success: true, totalProcessed: N, created: N, existing: N, failed: N, results: [...] }`
+
+3. `GET /api/admin/leads/import-stats` - Admin statistics (session auth required)
+   - Returns: `{ totalLeads, totalMapsHelperLeads, lastImportedAt, importedTodayCount }`
+
+**Deduplication Strategy**:
+- Primary: `googleMapsUrl` unique when present (most reliable for maps-sourced leads)
+- Secondary: `email + city + country` combination when googleMapsUrl missing
+- On duplicate: Merges missing fields, updates `lastImportedAt`, returns `existing: true`
+
+**Campaign-Ready Fields**:
+- `source`: Import source (default: "maps-helper") - indexed for filtering
+- `marketingOptIn`: Email/SMS consent (default: false)
+- `tags`: Array of strings for segmentation
+- `lastImportedAt`: Tracks sync timestamp
 
 **Error Responses**:
 - 401: Missing or invalid Authorization header
 - 403: Invalid API key
-- 400: Validation errors (with detailed error messages)
+- 400: Validation errors (with field-level details)
+- 409: Duplicate detected (unique constraint)
 - 500: Server error
 
 **Usage Example**:
@@ -152,7 +171,7 @@ This config is imported by both frontend and backend to ensure consistent brandi
 curl -X POST "https://yourapp.replit.app/api/external/leads/import" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-import-api-key" \
-  -d '{"name":"Smile Dental", "email":"info@smile.com", "city":"New York", "googleMapsUrl":"https://maps.google.com/place?id=abc123"}'
+  -d '{"name":"Smile Dental", "city":"New York", "googleMapsUrl":"https://maps.google.com/place?id=abc123", "source":"maps-helper"}'
 ```
 
 ## External Dependencies
