@@ -48,7 +48,13 @@ The `server/bookingTracking.ts` service focuses on campaign attribution and lead
 A production-grade API allows idempotent lead imports from external tools like DentalMapsHelper. It supports single and bulk imports, using bearer token authentication and deduplication strategies based on `googleMapsUrl` or `email + city + country`.
 
 ### DentalMapsHelper Integration
-This integration facilitates automated lead syncing from DentalMapsHelper to the Lead Library and Campaign Hub. It tracks `syncStatus`, `externalSourceId`, and `lastSyncedAt` for leads. The Campaign Hub allows auto-loading synced leads into campaigns, with security ensuring clinic context and ownership.
+This integration facilitates automated lead syncing from DentalMapsHelper to the Lead Library and Campaign Hub. It stores complete lead data including:
+- **Core Fields**: name, email, phone, address, city, state, country
+- **Google Data**: googleMapsUrl, websiteUrl, rating (e.g., "4.8"), reviewCount
+- **Sync Tracking**: syncStatus, externalSourceId, lastSyncedAt, source
+- **Campaign Readiness**: marketingOptIn flag for filtering eligible leads
+
+The Lead Library UI displays rating with star icon, review count, source badge, and sync status. The Campaign Hub allows auto-loading synced leads into campaigns with one click, filtering by syncStatus="synced" and marketingOptIn=true. Security ensures clinic context and ownership.
 
 ## External Dependencies
 
