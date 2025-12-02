@@ -71,6 +71,7 @@ export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
 
 // Leads table - Campaign-ready with deduplication support
+// syncStatus: pending (awaiting sync), synced (successfully imported), errored (sync failed), disabled (opt-out)
 export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clinicId: varchar("clinic_id").references(() => clinics.id), // Nullable for platform-level leads (demo requests)
@@ -93,6 +94,11 @@ export const leads = pgTable("leads", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   lastImportedAt: timestamp("last_imported_at"), // Track when lead was last synced via import
+  // DentalMapsHelper sync tracking
+  syncStatus: text("sync_status").default("synced").notNull(), // pending, synced, errored, disabled
+  externalSourceId: text("external_source_id"), // External system identifier (e.g., DentalMapsHelper ID)
+  syncError: text("sync_error"), // Error message if sync failed
+  lastSyncedAt: timestamp("last_synced_at"), // When lead was last successfully synced
 }, (table) => ({
   // Unique index on googleMapsUrl for primary deduplication (nullable-safe)
   googleMapsUrlIdx: uniqueIndex("leads_google_maps_url_unique").on(table.googleMapsUrl).where(sql`google_maps_url IS NOT NULL`),
@@ -100,6 +106,10 @@ export const leads = pgTable("leads", {
   sourceIdx: index("leads_source_idx").on(table.source),
   // Index on email for secondary dedup lookups
   emailIdx: index("leads_email_idx").on(table.email),
+  // Index on syncStatus for filtering campaign-ready leads
+  syncStatusIdx: index("leads_sync_status_idx").on(table.syncStatus),
+  // Index on clinicId for multi-tenant queries
+  clinicIdIdx: index("leads_clinic_id_idx").on(table.clinicId),
 }));
 
 export const insertLeadSchema = createInsertSchema(leads).omit({
@@ -132,6 +142,9 @@ export const externalLeadPayloadSchema = z.object({
   tags: z.array(z.string().max(50)).max(20).optional(),
   status: z.enum(["new", "contacted", "replied", "demo_booked", "won", "lost"]).optional().default("new"),
   clinicId: z.string().uuid().optional().nullable(),
+  // DentalMapsHelper sync fields
+  externalSourceId: z.string().max(255).optional().nullable(), // External ID from DentalMapsHelper
+  syncStatus: z.enum(["pending", "synced", "errored", "disabled"]).optional().default("synced"),
 });
 
 export type ExternalLeadPayload = z.infer<typeof externalLeadPayloadSchema>;
@@ -307,6 +320,39 @@ export const insertOutreachCampaignSchema = createInsertSchema(outreachCampaigns
 export type InsertOutreachCampaign = z.infer<typeof insertOutreachCampaignSchema>;
 export type OutreachCampaign = typeof outreachCampaigns.$inferSelect;
 
+// Campaign-Leads join table - Links campaigns to their target leads
+// This enables automatic lead loading into campaigns and tracking email sends
+export const campaignLeads = pgTable("campaign_leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").notNull().references(() => outreachCampaigns.id),
+  leadId: varchar("lead_id").notNull().references(() => leads.id),
+  // Send tracking
+  status: text("status").default("pending").notNull(), // pending, sent, failed, bounced, opened, clicked
+  sentAt: timestamp("sent_at"),
+  openedAt: timestamp("opened_at"),
+  clickedAt: timestamp("clicked_at"),
+  errorMessage: text("error_message"),
+  // Metadata
+  addedAt: timestamp("added_at").defaultNow(),
+}, (table) => ({
+  // Unique constraint to prevent duplicate campaign-lead pairs
+  uniqueCampaignLead: uniqueIndex("campaign_leads_unique").on(table.campaignId, table.leadId),
+  // Index for finding all leads in a campaign
+  campaignIdIdx: index("campaign_leads_campaign_id_idx").on(table.campaignId),
+  // Index for finding all campaigns a lead is in
+  leadIdIdx: index("campaign_leads_lead_id_idx").on(table.leadId),
+  // Index for filtering by status
+  statusIdx: index("campaign_leads_status_idx").on(table.status),
+}));
+
+export const insertCampaignLeadSchema = createInsertSchema(campaignLeads).omit({
+  id: true,
+  addedAt: true,
+});
+
+export type InsertCampaignLead = z.infer<typeof insertCampaignLeadSchema>;
+export type CampaignLead = typeof campaignLeads.$inferSelect;
+
 // Patient bookings table (for clinic subpages)
 export const patientBookings = pgTable("patient_bookings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -463,10 +509,22 @@ export const sequencesRelations = relations(sequences, ({ one, many }) => ({
   enrollments: many(sequenceEnrollments),
 }));
 
-export const outreachCampaignsRelations = relations(outreachCampaigns, ({ one }) => ({
+export const outreachCampaignsRelations = relations(outreachCampaigns, ({ one, many }) => ({
   clinic: one(clinics, {
     fields: [outreachCampaigns.clinicId],
     references: [clinics.id],
+  }),
+  campaignLeads: many(campaignLeads),
+}));
+
+export const campaignLeadsRelations = relations(campaignLeads, ({ one }) => ({
+  campaign: one(outreachCampaigns, {
+    fields: [campaignLeads.campaignId],
+    references: [outreachCampaigns.id],
+  }),
+  lead: one(leads, {
+    fields: [campaignLeads.leadId],
+    references: [leads.id],
   }),
 }));
 
@@ -494,6 +552,7 @@ export const leadsRelations = relations(leads, ({ one, many }) => ({
     references: [clinics.id],
   }),
   sequenceEnrollments: many(sequenceEnrollments),
+  campaignLeads: many(campaignLeads),
 }));
 
 // Demo access tokens table (for email-gated demo access)

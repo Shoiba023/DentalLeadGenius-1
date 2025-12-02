@@ -8,6 +8,7 @@ import {
   chatbotThreads,
   chatbotMessages,
   outreachCampaigns,
+  campaignLeads,
   patientBookings,
   sequences,
   sequenceSteps,
@@ -30,6 +31,8 @@ import {
   type InsertChatbotMessage,
   type OutreachCampaign,
   type InsertOutreachCampaign,
+  type CampaignLead,
+  type InsertCampaignLead,
   type PatientBooking,
   type InsertPatientBooking,
   type Sequence,
@@ -114,6 +117,15 @@ export interface IStorage {
   getCampaignById(id: string): Promise<OutreachCampaign | undefined>;
   createCampaign(campaign: InsertOutreachCampaign): Promise<OutreachCampaign>;
   updateCampaignByClinic(id: string, clinicId: string, data: Partial<InsertOutreachCampaign> & { totalSent?: number; sentToday?: number }): Promise<OutreachCampaign | undefined>;
+  
+  // Campaign-Leads operations (for automatic lead loading)
+  getCampaignLeads(campaignId: string): Promise<(CampaignLead & { lead: Lead })[]>;
+  addLeadsToCampaign(campaignId: string, leadIds: string[]): Promise<CampaignLead[]>;
+  removeLeadFromCampaign(campaignId: string, leadId: string): Promise<void>;
+  getSyncedLeadsForClinic(clinicId: string): Promise<Lead[]>;
+  autoLoadLeadsToCampaign(campaignId: string, clinicId: string): Promise<{ added: number; skipped: number }>;
+  updateCampaignLeadStatus(id: string, status: string, errorMessage?: string): Promise<void>;
+  markCampaignLeadSent(campaignLeadId: string): Promise<void>;
 
   // Patient booking operations
   createPatientBooking(booking: InsertPatientBooking): Promise<PatientBooking>;
@@ -660,6 +672,125 @@ export class DatabaseStorage implements IStorage {
       )
       .returning();
     return updated;
+  }
+
+  // Campaign-Leads operations (for automatic lead loading)
+  async getCampaignLeads(campaignId: string): Promise<(CampaignLead & { lead: Lead })[]> {
+    const results = await db
+      .select({
+        id: campaignLeads.id,
+        campaignId: campaignLeads.campaignId,
+        leadId: campaignLeads.leadId,
+        status: campaignLeads.status,
+        sentAt: campaignLeads.sentAt,
+        openedAt: campaignLeads.openedAt,
+        clickedAt: campaignLeads.clickedAt,
+        errorMessage: campaignLeads.errorMessage,
+        addedAt: campaignLeads.addedAt,
+        lead: leads,
+      })
+      .from(campaignLeads)
+      .innerJoin(leads, eq(campaignLeads.leadId, leads.id))
+      .where(eq(campaignLeads.campaignId, campaignId))
+      .orderBy(desc(campaignLeads.addedAt));
+    
+    return results.map(r => ({
+      ...r,
+      lead: r.lead,
+    }));
+  }
+
+  async addLeadsToCampaign(campaignId: string, leadIds: string[]): Promise<CampaignLead[]> {
+    if (leadIds.length === 0) return [];
+    
+    const values = leadIds.map(leadId => ({
+      campaignId,
+      leadId,
+      status: "pending" as const,
+    }));
+    
+    const inserted = await db
+      .insert(campaignLeads)
+      .values(values)
+      .onConflictDoNothing()
+      .returning();
+    
+    return inserted;
+  }
+
+  async removeLeadFromCampaign(campaignId: string, leadId: string): Promise<void> {
+    await db
+      .delete(campaignLeads)
+      .where(
+        and(
+          eq(campaignLeads.campaignId, campaignId),
+          eq(campaignLeads.leadId, leadId)
+        )
+      );
+  }
+
+  async getSyncedLeadsForClinic(clinicId: string): Promise<Lead[]> {
+    return await db
+      .select()
+      .from(leads)
+      .where(
+        and(
+          eq(leads.clinicId, clinicId),
+          eq(leads.syncStatus, "synced"),
+          eq(leads.marketingOptIn, true)
+        )
+      )
+      .orderBy(desc(leads.createdAt));
+  }
+
+  async autoLoadLeadsToCampaign(campaignId: string, clinicId: string): Promise<{ added: number; skipped: number }> {
+    // Get all synced leads for this clinic that are campaign-ready
+    const syncedLeads = await this.getSyncedLeadsForClinic(clinicId);
+    
+    // Get existing leads in this campaign to avoid duplicates
+    const existingCampaignLeads = await db
+      .select({ leadId: campaignLeads.leadId })
+      .from(campaignLeads)
+      .where(eq(campaignLeads.campaignId, campaignId));
+    
+    const existingLeadIds = new Set(existingCampaignLeads.map(cl => cl.leadId));
+    
+    // Filter out leads that are already in the campaign
+    const newLeadIds = syncedLeads
+      .filter(lead => !existingLeadIds.has(lead.id))
+      .map(lead => lead.id);
+    
+    if (newLeadIds.length === 0) {
+      return { added: 0, skipped: syncedLeads.length };
+    }
+    
+    // Add the new leads
+    const added = await this.addLeadsToCampaign(campaignId, newLeadIds);
+    
+    return {
+      added: added.length,
+      skipped: existingLeadIds.size,
+    };
+  }
+
+  async updateCampaignLeadStatus(id: string, status: string, errorMessage?: string): Promise<void> {
+    await db
+      .update(campaignLeads)
+      .set({
+        status,
+        errorMessage: errorMessage || null,
+      })
+      .where(eq(campaignLeads.id, id));
+  }
+
+  async markCampaignLeadSent(campaignLeadId: string): Promise<void> {
+    await db
+      .update(campaignLeads)
+      .set({
+        status: "sent",
+        sentAt: new Date(),
+      })
+      .where(eq(campaignLeads.id, campaignLeadId));
   }
 
   // Patient booking operations
@@ -1213,6 +1344,10 @@ export class DatabaseStorage implements IStorage {
           createdAt: leads.createdAt,
           updatedAt: leads.updatedAt,
           lastImportedAt: leads.lastImportedAt,
+          syncStatus: leads.syncStatus,
+          externalSourceId: leads.externalSourceId,
+          syncError: leads.syncError,
+          lastSyncedAt: leads.lastSyncedAt,
           clinicName: clinics.name,
         })
         .from(leads)
@@ -1241,6 +1376,10 @@ export class DatabaseStorage implements IStorage {
           createdAt: leads.createdAt,
           updatedAt: leads.updatedAt,
           lastImportedAt: leads.lastImportedAt,
+          syncStatus: leads.syncStatus,
+          externalSourceId: leads.externalSourceId,
+          syncError: leads.syncError,
+          lastSyncedAt: leads.lastSyncedAt,
           clinicName: clinics.name,
         })
         .from(leads)

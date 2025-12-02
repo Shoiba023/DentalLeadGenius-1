@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Loader2, 
   Sparkles, 
@@ -41,7 +42,13 @@ import {
   Youtube,
   Info,
   Pencil,
-  Calendar
+  Calendar,
+  Users,
+  RefreshCw,
+  X,
+  CheckCircle,
+  AlertCircle,
+  Clock
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 import { format } from "date-fns";
@@ -60,6 +67,28 @@ interface Campaign {
   mediaUrl?: string;
   hashtags?: string;
   createdAt: string;
+}
+
+interface Lead {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  city?: string;
+  status: string;
+  source?: string;
+  syncStatus?: string;
+  marketingOptIn?: boolean;
+}
+
+interface CampaignLead {
+  id: string;
+  campaignId: string;
+  leadId: string;
+  status: string;
+  sentAt?: string;
+  errorMessage?: string;
+  lead: Lead;
 }
 
 const CAMPAIGN_TYPES = [
@@ -135,6 +164,7 @@ export default function AdminOutreach() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<Campaign>>({});
+  const [showLeadsPanel, setShowLeadsPanel] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -164,6 +194,74 @@ export default function AdminOutreach() {
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
     queryKey: ["/api/campaigns"],
     enabled: isAuthenticated,
+  });
+
+  const { data: campaignLeads = [], isLoading: isLoadingLeads, refetch: refetchLeads } = useQuery<CampaignLead[]>({
+    queryKey: ["/api/campaigns", selectedCampaign?.id, "leads"],
+    enabled: !!selectedCampaign?.id && showLeadsPanel,
+  });
+
+  const autoLoadLeadsMutation = useMutation({
+    mutationFn: async (campaignId: string) => {
+      const response = await apiRequest("POST", `/api/campaigns/${campaignId}/auto-load-leads`);
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", selectedCampaign?.id, "leads"] });
+      toast({
+        title: "Leads Loaded",
+        description: data.message,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to Load Leads",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendToLeadsMutation = useMutation({
+    mutationFn: async (campaignId: string) => {
+      const response = await apiRequest("POST", `/api/campaigns/${campaignId}/send-to-leads`);
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", selectedCampaign?.id, "leads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      toast({
+        title: "Campaign Sent",
+        description: data.message,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Send Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeLeadMutation = useMutation({
+    mutationFn: async ({ campaignId, leadId }: { campaignId: string; leadId: string }) => {
+      return await apiRequest("DELETE", `/api/campaigns/${campaignId}/leads/${leadId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", selectedCampaign?.id, "leads"] });
+      toast({
+        title: "Lead Removed",
+        description: "Lead has been removed from the campaign.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Remove Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const createCampaignMutation = useMutation({
@@ -274,8 +372,25 @@ export default function AdminOutreach() {
       subject: campaign.subject || "",
     });
     setIsEditing(false);
+    setShowLeadsPanel(false);
     setIsDetailModalOpen(true);
   };
+
+  const getLeadStatusIcon = (status: string) => {
+    switch (status) {
+      case "sent":
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case "failed":
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
+      case "pending":
+      default:
+        return <Clock className="h-4 w-4 text-yellow-500" />;
+    }
+  };
+
+  const pendingLeadsCount = campaignLeads.filter(cl => cl.status === "pending").length;
+  const sentLeadsCount = campaignLeads.filter(cl => cl.status === "sent").length;
+  const failedLeadsCount = campaignLeads.filter(cl => cl.status === "failed").length;
 
   const handleSaveEdit = () => {
     if (selectedCampaign) {
@@ -796,6 +911,137 @@ export default function AdminOutreach() {
                           <Label className="text-muted-foreground">Daily Limit</Label>
                           <p className="text-lg font-semibold">{selectedCampaign.dailyLimit}</p>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Campaign Leads Section - Only for email campaigns */}
+                    {selectedCampaign.type === "email" && (
+                      <div className="pt-4 border-t">
+                        <div className="flex items-center justify-between mb-3">
+                          <Label className="text-muted-foreground flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            Campaign Leads
+                          </Label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowLeadsPanel(!showLeadsPanel)}
+                            data-testid="button-toggle-leads"
+                          >
+                            {showLeadsPanel ? "Hide" : "Show"} Leads
+                          </Button>
+                        </div>
+
+                        {showLeadsPanel && (
+                          <div className="space-y-3">
+                            {/* Lead Stats */}
+                            <div className="flex items-center gap-4 text-sm">
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3 text-yellow-500" />
+                                {pendingLeadsCount} pending
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <CheckCircle className="h-3 w-3 text-green-500" />
+                                {sentLeadsCount} sent
+                              </span>
+                              {failedLeadsCount > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <AlertCircle className="h-3 w-3 text-red-500" />
+                                  {failedLeadsCount} failed
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => autoLoadLeadsMutation.mutate(selectedCampaign.id)}
+                                disabled={autoLoadLeadsMutation.isPending}
+                                data-testid="button-auto-load-leads"
+                              >
+                                {autoLoadLeadsMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : (
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                )}
+                                Auto-Load Synced Leads
+                              </Button>
+                              
+                              <Button
+                                size="sm"
+                                onClick={() => sendToLeadsMutation.mutate(selectedCampaign.id)}
+                                disabled={sendToLeadsMutation.isPending || pendingLeadsCount === 0}
+                                data-testid="button-send-to-leads"
+                              >
+                                {sendToLeadsMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : (
+                                  <Send className="h-4 w-4 mr-2" />
+                                )}
+                                Send to {pendingLeadsCount} Leads
+                              </Button>
+                            </div>
+
+                            {/* Leads List */}
+                            {isLoadingLeads ? (
+                              <div className="flex justify-center py-4">
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                              </div>
+                            ) : campaignLeads.length === 0 ? (
+                              <div className="text-center py-4 text-muted-foreground text-sm">
+                                <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                <p>No leads linked to this campaign yet.</p>
+                                <p className="text-xs mt-1">Click "Auto-Load Synced Leads" to add leads from your Lead Library.</p>
+                              </div>
+                            ) : (
+                              <ScrollArea className="h-48 rounded-md border">
+                                <div className="p-2 space-y-1">
+                                  {campaignLeads.map((cl) => (
+                                    <div
+                                      key={cl.id}
+                                      className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted"
+                                      data-testid={`campaign-lead-${cl.id}`}
+                                    >
+                                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        {getLeadStatusIcon(cl.status)}
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-medium text-sm truncate">{cl.lead.name}</p>
+                                          <p className="text-xs text-muted-foreground truncate">
+                                            {cl.lead.email || "No email"} 
+                                            {cl.lead.city && ` • ${cl.lead.city}`}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        {cl.status === "sent" && cl.sentAt && (
+                                          <span className="text-xs text-muted-foreground">
+                                            {format(new Date(cl.sentAt), "MMM d")}
+                                          </span>
+                                        )}
+                                        {cl.status === "pending" && (
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-6 w-6"
+                                            onClick={() => removeLeadMutation.mutate({
+                                              campaignId: selectedCampaign.id,
+                                              leadId: cl.leadId
+                                            })}
+                                            data-testid={`button-remove-lead-${cl.id}`}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </ScrollArea>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

@@ -1093,6 +1093,10 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
         marketingOptIn: validatedLead.marketingOptIn || false,
         tags: validatedLead.tags || ["maps-helper"],
         status: validatedLead.status || "new",
+        // DentalMapsHelper sync tracking
+        syncStatus: validatedLead.syncStatus || "synced",
+        externalSourceId: validatedLead.externalSourceId || null,
+        lastSyncedAt: new Date(),
       };
 
       // Use upsert with deduplication
@@ -1199,6 +1203,10 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
             marketingOptIn: validated.marketingOptIn || false,
             tags: validated.tags || ["maps-helper"],
             status: validated.status || "new",
+            // DentalMapsHelper sync tracking
+            syncStatus: validated.syncStatus || "synced",
+            externalSourceId: validated.externalSourceId || null,
+            lastSyncedAt: new Date(),
           };
 
           // Use upsert with deduplication
@@ -2271,6 +2279,243 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
     } catch (error) {
       console.error("Error running campaign:", error);
       res.status(500).json({ message: "Failed to run campaign" });
+    }
+  });
+
+  // ============================================
+  // Campaign-Leads API (DentalMapsHelper Integration)
+  // ============================================
+
+  // Get all leads linked to a campaign
+  app.get("/api/campaigns/:id/leads", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+      
+      const { id } = req.params;
+      
+      // Verify campaign belongs to clinic
+      const campaign = await storage.getCampaignById(id);
+      if (!campaign || campaign.clinicId !== clinicId) {
+        return res.status(404).json({ message: "Campaign not found or access denied" });
+      }
+      
+      const campaignLeads = await storage.getCampaignLeads(id);
+      res.json(campaignLeads);
+    } catch (error) {
+      console.error("Error fetching campaign leads:", error);
+      res.status(500).json({ message: "Failed to fetch campaign leads" });
+    }
+  });
+
+  // Auto-load synced leads into a campaign (DentalMapsHelper integration)
+  app.post("/api/campaigns/:id/auto-load-leads", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+      
+      const { id } = req.params;
+      
+      // Verify campaign belongs to clinic
+      const campaign = await storage.getCampaignById(id);
+      if (!campaign || campaign.clinicId !== clinicId) {
+        return res.status(404).json({ message: "Campaign not found or access denied" });
+      }
+      
+      // Auto-load synced leads from Lead Library
+      const result = await storage.autoLoadLeadsToCampaign(id, clinicId);
+      
+      res.json({
+        success: true,
+        message: `Loaded ${result.added} leads into campaign. ${result.skipped} leads were already in campaign.`,
+        added: result.added,
+        skipped: result.skipped,
+      });
+    } catch (error) {
+      console.error("Error auto-loading leads:", error);
+      res.status(500).json({ message: "Failed to auto-load leads" });
+    }
+  });
+
+  // Manually add specific leads to a campaign
+  app.post("/api/campaigns/:id/leads", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+      
+      const { id } = req.params;
+      const { leadIds } = req.body;
+      
+      if (!Array.isArray(leadIds) || leadIds.length === 0) {
+        return res.status(400).json({ message: "leadIds array is required" });
+      }
+      
+      // Verify campaign belongs to clinic
+      const campaign = await storage.getCampaignById(id);
+      if (!campaign || campaign.clinicId !== clinicId) {
+        return res.status(404).json({ message: "Campaign not found or access denied" });
+      }
+      
+      // Add leads to campaign
+      const added = await storage.addLeadsToCampaign(id, leadIds);
+      
+      res.json({
+        success: true,
+        message: `Added ${added.length} leads to campaign`,
+        added: added.length,
+      });
+    } catch (error) {
+      console.error("Error adding leads to campaign:", error);
+      res.status(500).json({ message: "Failed to add leads to campaign" });
+    }
+  });
+
+  // Remove a lead from a campaign
+  app.delete("/api/campaigns/:id/leads/:leadId", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+      
+      const { id, leadId } = req.params;
+      
+      // Verify campaign belongs to clinic
+      const campaign = await storage.getCampaignById(id);
+      if (!campaign || campaign.clinicId !== clinicId) {
+        return res.status(404).json({ message: "Campaign not found or access denied" });
+      }
+      
+      await storage.removeLeadFromCampaign(id, leadId);
+      
+      res.json({ success: true, message: "Lead removed from campaign" });
+    } catch (error) {
+      console.error("Error removing lead from campaign:", error);
+      res.status(500).json({ message: "Failed to remove lead from campaign" });
+    }
+  });
+
+  // Get synced leads available for campaigns (Lead Library)
+  app.get("/api/leads/synced", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+      
+      const syncedLeads = await storage.getSyncedLeadsForClinic(clinicId);
+      res.json(syncedLeads);
+    } catch (error) {
+      console.error("Error fetching synced leads:", error);
+      res.status(500).json({ message: "Failed to fetch synced leads" });
+    }
+  });
+
+  // Run campaign sending only to linked leads (new optimized endpoint)
+  app.post("/api/campaigns/:id/send-to-leads", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+      
+      const { id } = req.params;
+      
+      const campaign = await storage.getCampaignById(id);
+      if (!campaign || campaign.clinicId !== clinicId) {
+        return res.status(404).json({ message: "Campaign not found or access denied" });
+      }
+      
+      if (campaign.type !== "email") {
+        return res.status(400).json({ message: "Only email campaigns can be sent" });
+      }
+      
+      // Get linked campaign leads that are pending
+      const campaignLeads = await storage.getCampaignLeads(id);
+      const pendingLeads = campaignLeads.filter(cl => cl.status === "pending" && cl.lead.email);
+      
+      if (pendingLeads.length === 0) {
+        return res.status(400).json({ message: "No pending leads to send to. Auto-load leads first." });
+      }
+      
+      // Check daily limit
+      const dailyLimit = campaign.dailyLimit || 50;
+      const currentSentToday = campaign.sentToday || 0;
+      const remainingToday = dailyLimit - currentSentToday;
+      
+      if (remainingToday <= 0) {
+        return res.status(400).json({ 
+          message: "Daily limit reached",
+          sentToday: currentSentToday,
+          dailyLimit
+        });
+      }
+      
+      // Update campaign status
+      await storage.updateCampaignByClinic(id, clinicId, { status: "active" });
+      
+      let successCount = 0;
+      let failCount = 0;
+      let skippedDueToLimit = 0;
+      
+      for (const campaignLead of pendingLeads) {
+        if (successCount >= remainingToday) {
+          skippedDueToLimit++;
+          continue;
+        }
+        
+        const lead = campaignLead.lead;
+        if (!lead.email) continue;
+        
+        const messageHtml = campaign.message.replace(/\n/g, '<br>');
+        
+        const emailResult = await sendEmail({
+          to: lead.email,
+          subject: campaign.subject || `Message from DentalLeadGenius`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <p>${messageHtml}</p>
+              <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 24px 0;">
+              <p style="font-size: 12px; color: #71717a;">
+                You received this email because you are a dental professional in our network.
+                <br>If you no longer wish to receive these emails, reply with "UNSUBSCRIBE".
+              </p>
+            </div>
+          `,
+          text: campaign.message,
+        });
+        
+        if (emailResult.ok) {
+          successCount++;
+          await storage.markCampaignLeadSent(campaignLead.id);
+          
+          // Update lead status
+          if (lead.status === "new") {
+            await storage.updateLead(lead.id, { status: "contacted" });
+          }
+        } else {
+          failCount++;
+          await storage.updateCampaignLeadStatus(campaignLead.id, "failed", emailResult.error);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      const finalStatus = skippedDueToLimit > 0 ? "paused" : (successCount > 0 ? "completed" : "draft");
+      
+      await storage.updateCampaignByClinic(id, clinicId, {
+        totalSent: (campaign.totalSent || 0) + successCount,
+        sentToday: (campaign.sentToday || 0) + successCount,
+        status: finalStatus,
+      });
+      
+      res.json({
+        success: true,
+        message: `Sent to ${successCount} leads`,
+        stats: {
+          totalLeads: pendingLeads.length,
+          sent: successCount,
+          failed: failCount,
+          skippedDueToLimit,
+        },
+      });
+    } catch (error) {
+      console.error("Error sending campaign:", error);
+      res.status(500).json({ message: "Failed to send campaign" });
     }
   });
 
