@@ -85,6 +85,8 @@ export const leads = pgTable("leads", {
   notes: text("notes"),
   googleMapsUrl: text("google_maps_url"), // Primary dedupe key when present
   websiteUrl: text("website_url"),
+  rating: text("rating"), // Google rating (e.g., "4.5", "4.8") from DentalMapsHelper
+  reviewCount: integer("review_count"), // Number of Google reviews
   // Campaign readiness fields
   source: text("source").default("manual"), // maps-helper, manual-import, demo-request, etc.
   marketingOptIn: boolean("marketing_opt_in").default(false),
@@ -136,6 +138,8 @@ export const externalLeadPayloadSchema = z.object({
   country: z.string().max(100, "Country name too long").optional().nullable().default("USA"),
   googleMapsUrl: z.string().url("Invalid Google Maps URL").max(2000).optional().nullable(),
   websiteUrl: z.string().url("Invalid website URL").max(2000).optional().nullable(),
+  rating: z.string().max(10).optional().nullable(), // Google rating (e.g., "4.5")
+  reviewCount: z.number().int().min(0).optional().nullable(), // Number of Google reviews
   notes: z.string().max(5000, "Notes too long").optional().nullable(),
   source: z.string().max(50).optional().default("maps-helper"),
   marketingOptIn: z.boolean().optional().default(false),
