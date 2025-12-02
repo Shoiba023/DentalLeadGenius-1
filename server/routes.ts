@@ -993,6 +993,166 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
     }
   });
 
+  // ========================================
+  // External API Routes (Bearer Token Auth)
+  // ========================================
+  
+  // Helper function to validate Bearer token for external API access
+  const validateImportApiKey = (req: any, res: any): boolean => {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      res.status(401).json({ success: false, message: "Missing or invalid Authorization header. Use: Bearer <API_KEY>" });
+      return false;
+    }
+    
+    const token = authHeader.split(" ")[1];
+    const validApiKey = process.env.IMPORT_API_KEY;
+    
+    if (!validApiKey) {
+      console.error("IMPORT_API_KEY is not configured in environment");
+      res.status(500).json({ success: false, message: "API key not configured on server" });
+      return false;
+    }
+    
+    if (token !== validApiKey) {
+      res.status(403).json({ success: false, message: "Invalid API key" });
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Schema for external lead import
+  const externalLeadSchema = z.object({
+    clinicId: z.string().optional(),
+    name: z.string().min(1, "Name is required"),
+    email: z.string().email().optional().nullable(),
+    phone: z.string().optional().nullable(),
+    city: z.string().optional().nullable(),
+    state: z.string().optional().nullable(),
+    country: z.string().optional().nullable().default("USA"),
+    notes: z.string().optional().nullable(),
+    googleMapsUrl: z.string().url().optional().nullable(),
+    websiteUrl: z.string().url().optional().nullable(),
+    status: z.enum(["new", "contacted", "replied", "demo_booked", "won", "lost"]).optional().default("new"),
+  });
+
+  // POST /api/external/leads/import - Import a single lead (Bearer token auth)
+  app.post("/api/external/leads/import", async (req: any, res) => {
+    try {
+      if (!validateImportApiKey(req, res)) return;
+
+      const validatedLead = externalLeadSchema.parse(req.body);
+      
+      const leadData = {
+        clinicId: validatedLead.clinicId || null,
+        name: validatedLead.name,
+        email: validatedLead.email || null,
+        phone: validatedLead.phone || null,
+        city: validatedLead.city || null,
+        state: validatedLead.state || null,
+        country: validatedLead.country || "USA",
+        notes: validatedLead.notes || null,
+        status: validatedLead.status || "new",
+      };
+
+      const newLead = await storage.createLead(leadData);
+      
+      res.json({ 
+        success: true, 
+        message: "Lead imported successfully",
+        lead: newLead 
+      });
+    } catch (error) {
+      console.error("Error importing lead via external API:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Validation failed",
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to import lead" 
+      });
+    }
+  });
+
+  // POST /api/external/leads/bulk-import - Import multiple leads (Bearer token auth)
+  app.post("/api/external/leads/bulk-import", async (req: any, res) => {
+    try {
+      if (!validateImportApiKey(req, res)) return;
+
+      const { leads } = req.body;
+
+      if (!Array.isArray(leads)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Request body must contain a 'leads' array" 
+        });
+      }
+
+      if (leads.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Leads array cannot be empty" 
+        });
+      }
+
+      // Validate and transform each lead
+      const validatedLeads = [];
+      const errors = [];
+
+      for (let i = 0; i < leads.length; i++) {
+        try {
+          const validated = externalLeadSchema.parse(leads[i]);
+          validatedLeads.push({
+            clinicId: validated.clinicId || null,
+            name: validated.name,
+            email: validated.email || null,
+            phone: validated.phone || null,
+            city: validated.city || null,
+            state: validated.state || null,
+            country: validated.country || "USA",
+            notes: validated.notes || null,
+            status: validated.status || "new",
+          });
+        } catch (err) {
+          if (err instanceof z.ZodError) {
+            errors.push({ index: i, errors: err.errors });
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Validation failed for ${errors.length} lead(s)`,
+          validationErrors: errors,
+          validCount: validatedLeads.length
+        });
+      }
+
+      await storage.importLeads(validatedLeads);
+      
+      res.json({ 
+        success: true, 
+        message: `${validatedLeads.length} lead(s) imported successfully`,
+        count: validatedLeads.length 
+      });
+    } catch (error) {
+      console.error("Error bulk importing leads via external API:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to bulk import leads" 
+      });
+    }
+  });
+
   // Clinic routes
   app.get("/api/clinics", isAuthenticated, async (req, res) => {
     try {
