@@ -1275,6 +1275,114 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
     }
   });
 
+  // Test-only route for running a campaign (development only)
+  if (process.env.NODE_ENV !== "production") {
+    app.post("/api/test/run-campaign/:id", async (req: any, res) => {
+      try {
+        if (!validateImportApiKey(req, res)) return;
+        
+        const { id } = req.params;
+        const { includeAllLeads } = req.query;
+        const campaign = await storage.getCampaignById(id);
+        
+        if (!campaign) {
+          return res.status(404).json({ message: "Campaign not found" });
+        }
+        
+        if (campaign.type !== "email") {
+          return res.status(400).json({ message: "Only email campaigns can be run" });
+        }
+        
+        if (!campaign.message || campaign.message.trim() === "") {
+          return res.status(400).json({ message: "Campaign message is required" });
+        }
+        
+        // Get leads with email addresses
+        const allLeads = await storage.getLeadsWithEmail(campaign.clinicId);
+        
+        // Filter by marketing opt-in unless explicitly including all
+        const leads = includeAllLeads === "true" 
+          ? allLeads 
+          : allLeads.filter(lead => lead.marketingOptIn === true);
+        
+        if (leads.length === 0) {
+          return res.status(400).json({ 
+            message: "No opted-in leads found. Add ?includeAllLeads=true to send to all leads." 
+          });
+        }
+        
+        // Update campaign status to active
+        await storage.updateCampaignByClinic(id, campaign.clinicId, { status: "active" });
+        
+        let successCount = 0;
+        let failCount = 0;
+        const results: Array<{ email: string; success: boolean; error?: string }> = [];
+        
+        // Send emails to each lead (up to daily limit)
+        const dailyLimit = campaign.dailyLimit || 50;
+        
+        for (const lead of leads) {
+          if (!lead.email) continue;
+          if (successCount >= dailyLimit) break;
+          
+          const messageHtml = campaign.message.replace(/\n/g, '<br>');
+          
+          const emailResult = await sendEmail({
+            to: lead.email,
+            subject: campaign.subject || `Message from DentalLeadGenius`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <p>${messageHtml}</p>
+                <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 24px 0;">
+                <p style="font-size: 12px; color: #71717a;">
+                  You received this email because you are a dental professional in our network.
+                  <br>If you no longer wish to receive these emails, reply with "UNSUBSCRIBE".
+                </p>
+              </div>
+            `,
+            text: campaign.message,
+          });
+          
+          if (emailResult.ok) {
+            successCount++;
+            results.push({ email: lead.email, success: true });
+            
+            // Update lead status to contacted
+            if (lead.status === "new") {
+              await storage.updateLead(lead.id, { status: "contacted" });
+            }
+          } else {
+            failCount++;
+            results.push({ email: lead.email, success: false, error: emailResult.error });
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Update campaign stats
+        await storage.updateCampaignByClinic(id, campaign.clinicId, {
+          totalSent: (campaign.totalSent || 0) + successCount,
+          sentToday: (campaign.sentToday || 0) + successCount,
+          status: successCount > 0 ? "completed" : "draft",
+        });
+        
+        res.json({
+          success: true,
+          message: `Campaign sent to ${successCount} leads`,
+          stats: {
+            totalLeads: leads.length,
+            sent: successCount,
+            failed: failCount,
+          },
+          results,
+        });
+      } catch (error) {
+        console.error("Error running test campaign:", error);
+        res.status(500).json({ message: "Failed to run campaign" });
+      }
+    });
+  }
+
   // Test-only route for verifying import functionality (development only)
   if (process.env.NODE_ENV !== "production") {
     app.post("/api/test/import-verification", async (req: any, res) => {
@@ -1997,6 +2105,148 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
     } catch (error) {
       console.error("Error updating campaign:", error);
       res.status(500).json({ message: "Failed to update campaign" });
+    }
+  });
+
+  // Run email campaign - sends emails to leads with valid email addresses
+  // Note: By default sends to all leads. Use ?includeAllLeads=true to include non-opted-in leads
+  app.post("/api/campaigns/:id/run", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+      
+      const { id } = req.params;
+      const { includeAllLeads } = req.query; // Optional: include leads without marketing opt-in
+      
+      const campaign = await storage.getCampaignById(id);
+      
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      if (campaign.clinicId !== clinicId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (campaign.type !== "email") {
+        return res.status(400).json({ message: "Only email campaigns can be run. This is a " + campaign.type + " campaign." });
+      }
+      
+      // Validate campaign has required content
+      if (!campaign.message || campaign.message.trim() === "") {
+        return res.status(400).json({ message: "Campaign message is required" });
+      }
+      
+      // Get leads with email addresses
+      const allLeads = await storage.getLeadsWithEmail(clinicId);
+      
+      // Filter by marketing opt-in unless explicitly including all
+      const leads = includeAllLeads === "true" 
+        ? allLeads 
+        : allLeads.filter(lead => lead.marketingOptIn === true);
+      
+      if (leads.length === 0) {
+        const message = includeAllLeads === "true"
+          ? "No leads with email addresses found"
+          : "No opted-in leads with email addresses found. Add ?includeAllLeads=true to send to all leads.";
+        return res.status(400).json({ message });
+      }
+      
+      // Check daily limit before starting
+      const dailyLimit = campaign.dailyLimit || 50;
+      const currentSentToday = campaign.sentToday || 0;
+      const remainingToday = dailyLimit - currentSentToday;
+      
+      if (remainingToday <= 0) {
+        return res.status(400).json({ 
+          message: "Daily limit reached. Campaign will resume tomorrow.",
+          sentToday: currentSentToday,
+          dailyLimit
+        });
+      }
+      
+      // Update campaign status to active
+      await storage.updateCampaignByClinic(id, clinicId, { status: "active" });
+      
+      let successCount = 0;
+      let failCount = 0;
+      let skippedDueToLimit = 0;
+      const results: Array<{ email: string; success: boolean; error?: string }> = [];
+      
+      // Send emails to each lead (up to daily limit)
+      for (const lead of leads) {
+        if (!lead.email) continue;
+        
+        // Respect daily limit
+        if (successCount >= remainingToday) {
+          skippedDueToLimit++;
+          results.push({ email: lead.email, success: false, error: "Daily limit reached" });
+          continue; // Continue counting skipped, don't break
+        }
+        
+        const messageHtml = campaign.message.replace(/\n/g, '<br>');
+        
+        const emailResult = await sendEmail({
+          to: lead.email,
+          subject: campaign.subject || `Message from DentalLeadGenius`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <p>${messageHtml}</p>
+              <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 24px 0;">
+              <p style="font-size: 12px; color: #71717a;">
+                You received this email because you are a dental professional in our network.
+                <br>If you no longer wish to receive these emails, reply with "UNSUBSCRIBE".
+              </p>
+            </div>
+          `,
+          text: campaign.message,
+        });
+        
+        if (emailResult.ok) {
+          successCount++;
+          results.push({ email: lead.email, success: true });
+          
+          // Update lead status to contacted if it was new (clinic-scoped via lead ownership)
+          if (lead.status === "new" && lead.clinicId === clinicId) {
+            await storage.updateLead(lead.id, { status: "contacted" });
+          }
+        } else {
+          failCount++;
+          results.push({ email: lead.email, success: false, error: emailResult.error });
+        }
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      // Determine final status
+      const pendingLeads = skippedDueToLimit > 0;
+      const finalStatus = pendingLeads ? "paused" : (successCount > 0 ? "completed" : "draft");
+      
+      // Update campaign stats
+      await storage.updateCampaignByClinic(id, clinicId, {
+        totalSent: (campaign.totalSent || 0) + successCount,
+        sentToday: (campaign.sentToday || 0) + successCount,
+        status: finalStatus,
+      });
+      
+      res.json({
+        success: true,
+        message: pendingLeads 
+          ? `Campaign sent to ${successCount} leads. ${skippedDueToLimit} leads pending (daily limit reached).`
+          : `Campaign sent to ${successCount} leads`,
+        stats: {
+          totalLeads: leads.length,
+          sent: successCount,
+          failed: failCount,
+          skippedDueToLimit,
+          dailyLimitRemaining: remainingToday - successCount,
+        },
+        results,
+      });
+    } catch (error) {
+      console.error("Error running campaign:", error);
+      res.status(500).json({ message: "Failed to run campaign" });
     }
   });
 

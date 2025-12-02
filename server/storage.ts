@@ -69,6 +69,7 @@ export interface IStorage {
   // Lead operations (multi-tenant)
   getAllLeads(): Promise<Lead[]>;
   getLeadsByClinic(clinicId: string): Promise<Lead[]>;
+  getLeadsWithEmail(clinicId: string): Promise<Lead[]>;
   createLead(lead: InsertLead): Promise<Lead>;
   importLeads(leads: InsertLead[]): Promise<Lead[]>;
   getLeadById(id: string): Promise<Lead | undefined>;
@@ -112,7 +113,7 @@ export interface IStorage {
   getCampaignsByClinic(clinicId: string): Promise<OutreachCampaign[]>;
   getCampaignById(id: string): Promise<OutreachCampaign | undefined>;
   createCampaign(campaign: InsertOutreachCampaign): Promise<OutreachCampaign>;
-  updateCampaignByClinic(id: string, clinicId: string, data: Partial<InsertOutreachCampaign>): Promise<OutreachCampaign | undefined>;
+  updateCampaignByClinic(id: string, clinicId: string, data: Partial<InsertOutreachCampaign> & { totalSent?: number; sentToday?: number }): Promise<OutreachCampaign | undefined>;
 
   // Patient booking operations
   createPatientBooking(booking: InsertPatientBooking): Promise<PatientBooking>;
@@ -309,6 +310,15 @@ export class DatabaseStorage implements IStorage {
   async getLeadsByClinic(clinicId: string): Promise<Lead[]> {
     return await db.select().from(leads)
       .where(eq(leads.clinicId, clinicId))
+      .orderBy(desc(leads.createdAt));
+  }
+
+  async getLeadsWithEmail(clinicId: string): Promise<Lead[]> {
+    return await db.select().from(leads)
+      .where(and(
+        eq(leads.clinicId, clinicId),
+        sql`${leads.email} IS NOT NULL AND ${leads.email} != ''`
+      ))
       .orderBy(desc(leads.createdAt));
   }
 
@@ -611,7 +621,7 @@ export class DatabaseStorage implements IStorage {
     return campaign;
   }
 
-  async updateCampaignByClinic(id: string, clinicId: string, data: Partial<InsertOutreachCampaign>): Promise<OutreachCampaign | undefined> {
+  async updateCampaignByClinic(id: string, clinicId: string, data: Partial<InsertOutreachCampaign> & { totalSent?: number; sentToday?: number }): Promise<OutreachCampaign | undefined> {
     const [updated] = await db
       .update(outreachCampaigns)
       .set({ ...data, updatedAt: new Date() })
