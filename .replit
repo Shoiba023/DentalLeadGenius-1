@@ -104,4 +104,3 @@ integrations = ["javascript_openai_ai_integrations:1.0.0", "javascript_database:
 [userenv]
 
 [userenv.shared]
-IMPORT_API_KEY = "shoiba-super-secret-import-key-2025"
