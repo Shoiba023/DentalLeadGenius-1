@@ -1054,6 +1054,8 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
         state: validatedLead.state || null,
         country: validatedLead.country || "USA",
         notes: validatedLead.notes || null,
+        googleMapsUrl: validatedLead.googleMapsUrl || null,
+        websiteUrl: validatedLead.websiteUrl || null,
         status: validatedLead.status || "new",
       };
 
@@ -1061,8 +1063,7 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
       
       res.json({ 
         success: true, 
-        message: "Lead imported successfully",
-        lead: newLead 
+        leadId: newLead.id
       });
     } catch (error) {
       console.error("Error importing lead via external API:", error);
@@ -1119,6 +1120,8 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
             state: validated.state || null,
             country: validated.country || "USA",
             notes: validated.notes || null,
+            googleMapsUrl: validated.googleMapsUrl || null,
+            websiteUrl: validated.websiteUrl || null,
             status: validated.status || "new",
           });
         } catch (err) {
@@ -1137,12 +1140,17 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
         });
       }
 
-      await storage.importLeads(validatedLeads);
+      const importedLeads = await storage.importLeads(validatedLeads);
+      
+      // Return array of results with success status and leadId for each
+      const results = importedLeads.map(lead => ({
+        success: true,
+        leadId: lead.id
+      }));
       
       res.json({ 
         success: true, 
-        message: `${validatedLeads.length} lead(s) imported successfully`,
-        count: validatedLeads.length 
+        results
       });
     } catch (error) {
       console.error("Error bulk importing leads via external API:", error);

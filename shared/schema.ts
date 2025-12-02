@@ -80,6 +80,8 @@ export const leads = pgTable("leads", {
   state: text("state"),
   country: text("country").default("USA"),
   notes: text("notes"),
+  googleMapsUrl: text("google_maps_url"),
+  websiteUrl: text("website_url"),
   status: text("status").default("new").notNull(), // new, contacted, replied, demo_booked, won, lost
   contactedAt: timestamp("contacted_at"),
   createdAt: timestamp("created_at").defaultNow(),

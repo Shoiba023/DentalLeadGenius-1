@@ -70,7 +70,7 @@ export interface IStorage {
   getAllLeads(): Promise<Lead[]>;
   getLeadsByClinic(clinicId: string): Promise<Lead[]>;
   createLead(lead: InsertLead): Promise<Lead>;
-  importLeads(leads: InsertLead[]): Promise<void>;
+  importLeads(leads: InsertLead[]): Promise<Lead[]>;
   getLeadById(id: string): Promise<Lead | undefined>;
   getLeadsByEmail(email: string): Promise<Lead[]>;
   updateLeadStatus(id: string, status: string): Promise<void>;
@@ -304,9 +304,10 @@ export class DatabaseStorage implements IStorage {
     return newLead;
   }
 
-  async importLeads(leadsData: InsertLead[]): Promise<void> {
-    if (leadsData.length === 0) return;
-    await db.insert(leads).values(leadsData);
+  async importLeads(leadsData: InsertLead[]): Promise<Lead[]> {
+    if (leadsData.length === 0) return [];
+    const importedLeads = await db.insert(leads).values(leadsData).returning();
+    return importedLeads;
   }
 
   async getLeadById(id: string): Promise<Lead | undefined> {
