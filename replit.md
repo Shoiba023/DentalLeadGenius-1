@@ -125,6 +125,36 @@ This config is imported by both frontend and backend to ensure consistent brandi
 - Email-gated demo request (`/api/send-demo-link`)
 - Patient appointment requests (`/api/patient-bookings`)
 
+### External API (Lead Import)
+
+**Authentication**: Bearer token using `IMPORT_API_KEY` environment variable.
+
+**Endpoints**:
+
+1. `POST /api/external/leads/import` - Import a single lead
+   - Headers: `Authorization: Bearer <IMPORT_API_KEY>`
+   - Body: `{ name, email?, phone?, city?, state?, country?, clinicId?, notes?, status? }`
+   - Response: `{ success: true, message: "Lead imported successfully", lead: {...} }`
+
+2. `POST /api/external/leads/bulk-import` - Import multiple leads
+   - Headers: `Authorization: Bearer <IMPORT_API_KEY>`
+   - Body: `{ leads: [{ name, email?, phone?, city?, state?, country?, clinicId?, notes?, status? }, ...] }`
+   - Response: `{ success: true, message: "X lead(s) imported successfully", count: X }`
+
+**Error Responses**:
+- 401: Missing or invalid Authorization header
+- 403: Invalid API key
+- 400: Validation errors (with detailed error messages)
+- 500: Server error
+
+**Usage Example**:
+```bash
+curl -X POST "https://yourapp.replit.app/api/external/leads/import" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-import-api-key" \
+  -d '{"name":"Smile Dental", "email":"info@smile.com", "city":"New York"}'
+```
+
 ## External Dependencies
 
 **Third-Party Services**:
