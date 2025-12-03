@@ -8,6 +8,7 @@ import express, {
 } from "express";
 
 import { registerRoutes } from "./routes";
+import { startAutomation } from "./automatedOutreach";
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -92,5 +93,15 @@ export default async function runApp(
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Auto-start the outreach automation engine
+    setTimeout(() => {
+      const started = startAutomation();
+      if (started) {
+        log("Automated Outreach Engine started - running 24/7", "automation");
+      } else {
+        log("Automated Outreach Engine already running", "automation");
+      }
+    }, 5000); // Wait 5 seconds for server to fully initialize
   });
 }
