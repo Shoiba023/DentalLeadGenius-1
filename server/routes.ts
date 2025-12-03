@@ -1290,6 +1290,80 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
     }
   });
 
+  // GET /api/external/clinics - Get clinics for DentalMapsHelper mapping (Bearer token auth)
+  app.get("/api/external/clinics", async (req: any, res) => {
+    try {
+      if (!validateImportApiKey(req, res)) return;
+      
+      const allClinics = await storage.getAllClinics();
+      
+      // Return simplified clinic data for mapping
+      const clinicData = allClinics.map(clinic => ({
+        id: clinic.id,
+        name: clinic.name,
+        slug: clinic.slug,
+      }));
+      
+      console.log(`[EXTERNAL API] Clinics endpoint accessed - returned ${clinicData.length} clinics`);
+      
+      res.json({
+        success: true,
+        clinics: clinicData,
+        count: clinicData.length
+      });
+    } catch (error) {
+      console.error("[EXTERNAL API] Error fetching clinics:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to fetch clinics" 
+      });
+    }
+  });
+
+  // POST /api/external/clinics/map-lead - Map a lead to a specific clinic (Bearer token auth)
+  app.post("/api/external/clinics/map-lead", async (req: any, res) => {
+    try {
+      if (!validateImportApiKey(req, res)) return;
+      
+      const { leadId, clinicId } = req.body;
+      
+      if (!leadId || !clinicId) {
+        return res.status(400).json({
+          success: false,
+          message: "Both leadId and clinicId are required"
+        });
+      }
+      
+      // Verify clinic exists
+      const clinic = await storage.getClinicById(clinicId);
+      if (!clinic) {
+        return res.status(404).json({
+          success: false,
+          message: "Clinic not found"
+        });
+      }
+      
+      // Update lead with clinic mapping
+      await storage.updateLead(leadId, { clinicId });
+      
+      console.log(`[EXTERNAL API] Lead ${leadId} mapped to clinic ${clinicId}`);
+      
+      res.json({
+        success: true,
+        message: "Lead mapped to clinic successfully",
+        leadId,
+        clinicId,
+        clinicName: clinic.name
+      });
+    } catch (error) {
+      console.error("[EXTERNAL API] Error mapping lead to clinic:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to map lead to clinic" 
+      });
+    }
+  });
+
   // GET /api/admin/leads/import-stats - Internal admin endpoint for import statistics
   // Protected by session authentication (internal use only)
   app.get("/api/admin/leads/import-stats", isAuthenticated, async (req: any, res) => {
