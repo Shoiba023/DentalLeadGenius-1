@@ -100,6 +100,8 @@ export interface IStorage {
   getClinicById(id: string): Promise<Clinic | undefined>;
   getClinicBySlug(slug: string): Promise<Clinic | undefined>;
   getUserClinics(userId: string): Promise<Clinic[]>;
+  findClinicByGoogleMapsUrl(googleMapsUrl: string): Promise<Clinic | undefined>;
+  findClinicByNameAndLocation(name: string, city?: string, state?: string): Promise<Clinic | undefined>;
 
   // Booking operations
   createBooking(booking: InsertBooking): Promise<Booking>;
@@ -569,7 +571,11 @@ export class DatabaseStorage implements IStorage {
         brandColor: clinics.brandColor,
         ownerId: clinics.ownerId,
         address: clinics.address,
+        city: clinics.city,
+        state: clinics.state,
+        country: clinics.country,
         phone: clinics.phone,
+        email: clinics.email,
         website: clinics.website,
         timezone: clinics.timezone,
         businessHours: clinics.businessHours,
@@ -577,6 +583,8 @@ export class DatabaseStorage implements IStorage {
         emailProvider: clinics.emailProvider,
         smsEnabled: clinics.smsEnabled,
         onboardingCompleted: clinics.onboardingCompleted,
+        externalId: clinics.externalId,
+        googleMapsUrl: clinics.googleMapsUrl,
         createdAt: clinics.createdAt,
         updatedAt: clinics.updatedAt,
       })
@@ -597,6 +605,39 @@ export class DatabaseStorage implements IStorage {
     );
     
     return uniqueClinics;
+  }
+
+  async findClinicByGoogleMapsUrl(googleMapsUrl: string): Promise<Clinic | undefined> {
+    const [clinic] = await db
+      .select()
+      .from(clinics)
+      .where(eq(clinics.googleMapsUrl, googleMapsUrl))
+      .limit(1);
+    return clinic;
+  }
+
+  async findClinicByNameAndLocation(name: string, city?: string, state?: string): Promise<Clinic | undefined> {
+    // Build conditions array
+    const conditions = [eq(clinics.name, name)];
+    
+    // Add city filter if provided
+    if (city) {
+      conditions.push(eq(clinics.city, city));
+    }
+    
+    // Add state filter if provided
+    if (state) {
+      conditions.push(eq(clinics.state, state));
+    }
+    
+    // Query with all conditions combined
+    const [clinic] = await db
+      .select()
+      .from(clinics)
+      .where(and(...conditions))
+      .limit(1);
+    
+    return clinic;
   }
 
   // Booking operations

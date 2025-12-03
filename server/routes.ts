@@ -1320,6 +1320,109 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
     }
   });
 
+  // POST /api/external/clinics/sync - Sync clinics from DentalMapsHelper (Bearer token auth)
+  app.post("/api/external/clinics/sync", async (req: any, res) => {
+    try {
+      if (!validateImportApiKey(req, res)) return;
+      
+      const { clinics: incomingClinics } = req.body;
+      
+      if (!Array.isArray(incomingClinics) || incomingClinics.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "clinics array is required and must not be empty"
+        });
+      }
+      
+      const results: { externalId?: string; clinicId: string; action: string }[] = [];
+      
+      for (const c of incomingClinics) {
+        if (!c.name) {
+          results.push({ externalId: c.externalId, clinicId: "", action: "skipped - missing name" });
+          continue;
+        }
+        
+        try {
+          // 1) Try to find existing clinic by googleMapsUrl or (name, city, state)
+          let existingClinic = null;
+          
+          if (c.googleMapsUrl) {
+            existingClinic = await storage.findClinicByGoogleMapsUrl(c.googleMapsUrl);
+          }
+          
+          if (!existingClinic) {
+            existingClinic = await storage.findClinicByNameAndLocation(c.name, c.city, c.state);
+          }
+          
+          if (existingClinic) {
+            // Build update object only with provided fields to avoid overwriting existing data
+            const updates: Record<string, any> = {};
+            
+            if (c.email !== undefined && c.email !== null) updates.email = c.email;
+            if (c.phone !== undefined && c.phone !== null) updates.phone = c.phone;
+            if (c.websiteUrl !== undefined && c.websiteUrl !== null) updates.website = c.websiteUrl;
+            if (c.googleMapsUrl !== undefined && c.googleMapsUrl !== null) updates.googleMapsUrl = c.googleMapsUrl;
+            if (c.country !== undefined && c.country !== null && c.country !== "") updates.country = c.country;
+            if (c.city !== undefined && c.city !== null && c.city !== "") updates.city = c.city;
+            if (c.state !== undefined && c.state !== null && c.state !== "") updates.state = c.state;
+            if (c.externalId !== undefined && c.externalId !== null) updates.externalId = c.externalId;
+            
+            // Only update if there are changes
+            if (Object.keys(updates).length > 0) {
+              await storage.updateClinic(existingClinic.id, updates);
+            }
+            
+            results.push({ externalId: c.externalId, clinicId: existingClinic.id, action: "updated" });
+          } else {
+            // Create slug from name
+            const slug = c.name
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/(^-|-$)/g, "") + 
+              "-" + Date.now().toString(36);
+            
+            // Insert new clinic
+            const newClinic = await storage.createClinic({
+              name: c.name,
+              slug,
+              city: c.city || null,
+              state: c.state || null,
+              country: c.country || "USA",
+              email: c.email || null,
+              phone: c.phone || null,
+              website: c.websiteUrl || null,
+              googleMapsUrl: c.googleMapsUrl || null,
+              externalId: c.externalId || null,
+            });
+            
+            results.push({ externalId: c.externalId, clinicId: newClinic.id, action: "created" });
+          }
+        } catch (clinicError) {
+          console.error(`[EXTERNAL API] Error processing clinic ${c.name}:`, clinicError);
+          results.push({ externalId: c.externalId, clinicId: "", action: "error" });
+        }
+      }
+      
+      const created = results.filter(r => r.action === "created").length;
+      const updated = results.filter(r => r.action === "updated").length;
+      const failed = results.filter(r => r.action === "error" || r.action.startsWith("skipped")).length;
+      
+      console.log(`[EXTERNAL API] Clinic sync completed: ${created} created, ${updated} updated, ${failed} failed`);
+      
+      res.json({
+        success: true,
+        clinics: results.map(r => ({ externalId: r.externalId, clinicId: r.clinicId })),
+        summary: { created, updated, failed, total: incomingClinics.length }
+      });
+    } catch (error) {
+      console.error("[EXTERNAL API] Error syncing clinics:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to sync clinics" 
+      });
+    }
+  });
+
   // POST /api/external/clinics/map-lead - Map a lead to a specific clinic (Bearer token auth)
   app.post("/api/external/clinics/map-lead", async (req: any, res) => {
     try {
@@ -1546,8 +1649,15 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
     try {
       if (!requireAuth(req, res)) return;
       
-      const clinics = await storage.getAllClinics();
-      res.json(clinics);
+      const allClinics = await storage.getAllClinics();
+      
+      // Return clinics with label format for dropdown
+      const clinicsWithLabels = allClinics.map((c) => ({
+        ...c,
+        label: `${c.name}${c.city ? " — " + c.city : ""}${c.state ? ", " + c.state : ""}`,
+      }));
+      
+      res.json(clinicsWithLabels);
     } catch (error) {
       console.error("Error fetching clinics:", error);
       res.status(500).json({ message: "Failed to fetch clinics" });
