@@ -1071,8 +1071,72 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
     console.log(`[IMPORT API] [${timestamp}] ${action}:`, JSON.stringify(details));
   };
 
+  // Helper: Ensure every lead has a valid clinicId
+  // If clinicId missing → search by name/city/state → create new clinic if not found
+  const ensureClinicId = async (leadData: {
+    clinicId?: string | null;
+    name: string;
+    city?: string | null;
+    state?: string | null;
+    country?: string | null;
+    address?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    websiteUrl?: string | null;
+    googleMapsUrl?: string | null;
+  }): Promise<string> => {
+    // If clinicId already provided, use it
+    if (leadData.clinicId) {
+      return leadData.clinicId;
+    }
+
+    // Search for existing clinic by googleMapsUrl first (most accurate)
+    if (leadData.googleMapsUrl) {
+      const clinicByUrl = await storage.findClinicByGoogleMapsUrl(leadData.googleMapsUrl);
+      if (clinicByUrl) {
+        return clinicByUrl.id;
+      }
+    }
+
+    // Search by name + city + state
+    const clinicByLocation = await storage.findClinicByNameAndLocation(
+      leadData.name,
+      leadData.city || undefined,
+      leadData.state || undefined
+    );
+    if (clinicByLocation) {
+      return clinicByLocation.id;
+    }
+
+    // No match found - create new clinic
+    const slug = leadData.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") + 
+      "-" + Date.now().toString(36);
+
+    const newClinic = await storage.createClinic({
+      name: leadData.name,
+      slug,
+      city: leadData.city || null,
+      state: leadData.state || null,
+      country: leadData.country || "USA",
+      phone: leadData.phone || null,
+      email: leadData.email || null,
+      website: leadData.websiteUrl || null,
+      googleMapsUrl: leadData.googleMapsUrl || null,
+      brandColor: "#2563eb",
+      timezone: "America/New_York",
+      onboardingCompleted: false,
+    });
+
+    console.log(`[IMPORT API] Created new clinic: ${newClinic.name} (${newClinic.id})`);
+    return newClinic.id;
+  };
+
   // POST /api/external/leads/import - Import a single lead (Bearer token auth)
   // Supports deduplication: if lead exists (by googleMapsUrl or email+city), merges data
+  // Auto-maps clinicId: searches existing clinics or creates new one
   app.post("/api/external/leads/import", async (req: any, res) => {
     try {
       if (!validateImportApiKey(req, res)) return;
@@ -1080,8 +1144,22 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
       // Validate with enhanced schema
       const validatedLead = externalLeadPayloadSchema.parse(req.body);
       
+      // Ensure every lead has a valid clinicId (search or create clinic)
+      const clinicId = await ensureClinicId({
+        clinicId: validatedLead.clinicId,
+        name: validatedLead.name,
+        city: validatedLead.city,
+        state: validatedLead.state,
+        country: validatedLead.country,
+        address: validatedLead.address,
+        phone: validatedLead.phone,
+        email: validatedLead.email,
+        websiteUrl: validatedLead.websiteUrl,
+        googleMapsUrl: validatedLead.googleMapsUrl,
+      });
+      
       const leadData = {
-        clinicId: validatedLead.clinicId || null,
+        clinicId, // Always valid - never null
         name: validatedLead.name,
         email: validatedLead.email || null,
         phone: validatedLead.phone || null,
@@ -1092,14 +1170,13 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
         notes: validatedLead.notes || null,
         googleMapsUrl: validatedLead.googleMapsUrl || null,
         websiteUrl: validatedLead.websiteUrl || null,
-        rating: validatedLead.rating || null, // Google rating from DentalMapsHelper
-        reviewCount: validatedLead.reviewCount || null, // Number of Google reviews
+        rating: validatedLead.rating || null,
+        reviewCount: validatedLead.reviewCount || null,
         source: validatedLead.source || "maps-helper",
-        marketingOptIn: validatedLead.marketingOptIn || false,
+        marketingOptIn: validatedLead.marketingOptIn !== false, // Default true
         tags: validatedLead.tags || ["maps-helper"],
-        status: validatedLead.status || "new",
-        // DentalMapsHelper sync tracking
-        syncStatus: validatedLead.syncStatus || "synced",
+        status: "new" as const, // Always start as new
+        syncStatus: "synced" as const, // Always synced from DentalMapsHelper
         externalSourceId: validatedLead.externalSourceId || null,
         lastSyncedAt: new Date(),
       };
@@ -1192,8 +1269,22 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
           // Validate individual lead
           const validated = externalLeadPayloadSchema.parse(leads[i]);
           
+          // Ensure every lead has a valid clinicId (search or create clinic)
+          const clinicId = await ensureClinicId({
+            clinicId: validated.clinicId,
+            name: validated.name,
+            city: validated.city,
+            state: validated.state,
+            country: validated.country,
+            address: validated.address,
+            phone: validated.phone,
+            email: validated.email,
+            websiteUrl: validated.websiteUrl,
+            googleMapsUrl: validated.googleMapsUrl,
+          });
+          
           const leadData = {
-            clinicId: validated.clinicId || null,
+            clinicId, // Always valid - never null
             name: validated.name,
             email: validated.email || null,
             phone: validated.phone || null,
@@ -1204,14 +1295,13 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
             notes: validated.notes || null,
             googleMapsUrl: validated.googleMapsUrl || null,
             websiteUrl: validated.websiteUrl || null,
-            rating: validated.rating || null, // Google rating from DentalMapsHelper
-            reviewCount: validated.reviewCount || null, // Number of Google reviews
+            rating: validated.rating || null,
+            reviewCount: validated.reviewCount || null,
             source: validated.source || "maps-helper",
-            marketingOptIn: validated.marketingOptIn || false,
+            marketingOptIn: validated.marketingOptIn !== false, // Default true
             tags: validated.tags || ["maps-helper"],
-            status: validated.status || "new",
-            // DentalMapsHelper sync tracking
-            syncStatus: validated.syncStatus || "synced",
+            status: "new" as const, // Always start as new
+            syncStatus: "synced" as const, // Always synced from DentalMapsHelper
             externalSourceId: validated.externalSourceId || null,
             lastSyncedAt: new Date(),
           };
@@ -1291,16 +1381,19 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
   });
 
   // GET /api/external/clinics - Get clinics for DentalMapsHelper mapping (Bearer token auth)
+  // Returns: name, city, state, clinicId for dropdown display
   app.get("/api/external/clinics", async (req: any, res) => {
     try {
       if (!validateImportApiKey(req, res)) return;
       
       const allClinics = await storage.getAllClinics();
       
-      // Return simplified clinic data for mapping
+      // Return clinic data with location for mapping and dropdown display
       const clinicData = allClinics.map(clinic => ({
-        id: clinic.id,
+        clinicId: clinic.id,
         name: clinic.name,
+        city: clinic.city || null,
+        state: clinic.state || null,
         slug: clinic.slug,
       }));
       

@@ -54,7 +54,20 @@ This integration facilitates automated lead syncing from DentalMapsHelper to the
 - **Sync Tracking**: syncStatus, externalSourceId, lastSyncedAt, source
 - **Campaign Readiness**: marketingOptIn flag for filtering eligible leads
 
-The Lead Library UI displays rating with star icon, review count, source badge, and sync status. The Campaign Hub allows auto-loading synced leads into campaigns with one click, filtering by syncStatus="synced" and marketingOptIn=true. Security ensures clinic context and ownership.
+**Auto Clinic Mapping**: Every lead automatically gets a valid clinicId:
+1. If clinicId provided → uses it directly
+2. If no clinicId → searches existing clinics by googleMapsUrl or name+city+state
+3. If no match found → creates new clinic from lead data
+
+**API Endpoints** (Bearer token: `IMPORT_API_KEY`):
+- `POST /api/external/leads/import` - Single lead import with auto clinic mapping
+- `POST /api/external/leads/bulk-import` - Bulk import with auto clinic mapping
+- `POST /api/external/clinics/sync` - Sync clinics from DentalMapsHelper
+- `GET /api/external/clinics` - Returns clinics with clinicId, name, city, state
+
+**Defaults for new leads**: syncStatus="synced", status="new", marketingOptIn=true
+
+The Lead Library UI displays rating with star icon, review count, source badge, and sync status. The Campaign Hub allows auto-loading synced leads into campaigns with one click, filtering by syncStatus="synced" and marketingOptIn=true. Campaign creation requires clinic selection (validated frontend and backend). Security ensures clinic context and ownership.
 
 ## External Dependencies
 
