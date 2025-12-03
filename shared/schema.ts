@@ -193,7 +193,11 @@ export const clinics = pgTable("clinics", {
   ownerId: varchar("owner_id").references(() => users.id),
   // Onboarding fields
   address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  country: text("country").default("USA"),
   phone: text("phone"),
+  email: text("email"),
   website: text("website"),
   timezone: text("timezone").default("America/New_York"),
   businessHours: text("business_hours"),
@@ -202,6 +206,9 @@ export const clinics = pgTable("clinics", {
   emailProvider: text("email_provider"), // gmail, resend, sendgrid
   smsEnabled: boolean("sms_enabled").default(false),
   onboardingCompleted: boolean("onboarding_completed").default(false),
+  // DentalMapsHelper sync fields
+  externalId: text("external_id"),
+  googleMapsUrl: text("google_maps_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

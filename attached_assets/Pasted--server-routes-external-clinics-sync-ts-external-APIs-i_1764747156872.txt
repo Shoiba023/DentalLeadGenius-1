@@ -1,0 +1,297 @@
+
+// server/routes/external-clinics-sync.ts  (یا جہاں آپ کے external APIs ہیں)
+
+import { z } from "zod";
+import { db } from "../db";                // اپنے project کے مطابق import
+import { clinics } from "../db/schema";    // clinics table
+
+import { and, eq, or } from "drizzle-orm";
+
+const incomingClinicSchema = z.object({
+  externalId: z.string().optional(),    // DentalMapsHelper side ID
+  name: z.string(),
+  city: z.string().optional().default(""),
+  state: z.string().optional().default(""),
+  country: z.string().optional().default(""),
+  email: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  websiteUrl: z.string().optional().nullable(),
+  googleMapsUrl: z.string().optional().nullable(),
+});
+
+const syncPayloadSchema = z.object({
+  clinics: z.array(incomingClinicSchema),
+});
+
+app.post("/api/external/clinics/sync", async (req, res) => {
+  const { clinics: incomingClinics } = syncPayloadSchema.parse(req.body);
+
+  const result: { externalId?: string; clinicId: string }[] = [];
+
+  for (const c of incomingClinics) {
+    // 1) existing clinic تلاش کریں
+    const existing = await db
+      .select()
+      .from(clinics)
+      .where(
+        or(
+          // اگر googleMapsUrl ہو تو اس سے match کریں
+          c.googleMapsUrl
+            ? eq(clinics.googleMapsUrl, c.googleMapsUrl)
+            : undefined,
+          // ورنہ name + city + state سے
+          and(
+            eq(clinics.name, c.name),
+            eq(clinics.city, c.city),
+            eq(clinics.state, c.state)
+          )
+        )
+      )
+      .limit(1);
+
+    let clinicId: string;
+
+    if (existing.length) {
+      const found = existing[0];
+      clinicId = found.id;
+
+      // تھوڑی info update کر دیں
+      await db
+        .update(clinics)
+        .set({
+          email: c.email ?? found.email,
+          phone: c.phone ?? found.phone,
+          websiteUrl: c.websiteUrl ?? found.websiteUrl,
+          googleMapsUrl: c.googleMapsUrl ?? found.googleMapsUrl,
+          country: c.country || found.country || "USA",
+          updatedAt: new Date(),
+        })
+        .where(eq(clinics.id, clinicId));
+    } else {
+      // نیا clinic insert کریں
+      const [inserted] = await db
+        .insert(clinics)
+        .values({
+          name: c.name,
+          city: c.city,
+          state: c.state,
+          country: c.country || "USA",
+          email: c.email ?? null,
+          phone: c.phone ?? null,
+          websiteUrl: c.websiteUrl ?? null,
+          googleMapsUrl: c.googleMapsUrl ?? null,
+          externalId: c.externalId ?? null, // اگر آپ نے column add کیا ہو
+        })
+        .returning({ id: clinics.id });
+
+      clinicId = inserted.id;
+    }
+
+    result.push({ externalId: c.externalId, clinicId });
+  }
+
+  return res.json({ clinics: result });
+});
+
+/api/clinics کو simple list بنانے کیلئے (drop-down والا)
+
+// server/routes/clinics.ts
+
+app.get("/api/clinics", async (req, res) => {
+  // مان رہے ہیں کہ user authenticated ہے – اسی logic کو reuse کریں جو پہلے تھا
+  const rows = await db
+    .select({
+      id: clinics.id,
+      name: clinics.name,
+      city: clinics.city,
+      state: clinics.state,
+      country: clinics.country,
+    })
+    .from(clinics)
+    .orderBy(clinics.name);
+
+  return res.json({
+    clinics: rows.map((c) => ({
+      id: c.id,
+      label: `${c.name}${c.city ? " — " + c.city : ""}${
+        c.state ? ", " + c.state : ""
+      }`,
+    })),
+  });
+});
+
+> اگر clinics table میں externalId, googleMapsUrl, country وغیرہ نہیں ہیں تو Replit Agent سے کہیں schema.ts میں نئے columns add کرے، مگر existing data نہ delete کرے۔
+
+
+
+
+---
+
+2️⃣ DentalLeadGenius Agent کیلئے prompt
+
+(یہی text copy کر کے وہیں paste کر دیں)
+
+Prompt for DentalLeadGenius Agent (English رکھ رہے ہیں تاکہ وہ صحیح سمجھے):
+
+> We have two Replit apps:
+– DentalMapsHelper (collects dental leads & clinics)
+– DentalLeadGenius (main dashboard, campaigns, lead management).
+
+Goal:
+When DentalMapsHelper syncs data, all real clinics should be created/updated in DentalLeadGenius and appear in the “Select Clinic” dropdown on /dashboard/outreach (Campaign Hub).
+Right now the dropdown only shows test clinics.
+
+Tasks (DentalLeadGenius side):
+
+1. Add a new POST endpoint /api/external/clinics/sync:
+
+Accept JSON body:
+
+{
+  "clinics": [
+    {
+      "externalId": "string (optional)",
+      "name": "Smile Dental Clinic",
+      "city": "Calgary",
+      "state": "AB",
+      "country": "Canada",
+      "email": "info@clinic.com",
+      "phone": "+1 555-123-4567",
+      "websiteUrl": "https://example.com",
+      "googleMapsUrl": "https://maps.google.com/..."
+    }
+  ]
+}
+
+For each clinic:
+
+Try to find an existing clinic by googleMapsUrl if present, otherwise by (name, city, state).
+
+If found, update contact details (email, phone, websiteUrl, country, googleMapsUrl).
+
+If not found, insert a new row in the clinics table.
+
+
+Return JSON:
+
+{
+  "clinics": [
+    { "externalId": "…", "clinicId": "…" }
+  ]
+}
+
+Use our existing Drizzle clinics table from schema.ts. If needed, add optional columns like externalId, googleMapsUrl, country, but do not remove or rename existing fields.
+
+
+
+2. Update /api/clinics endpoint:
+
+It should read from the clinics table and return all clinics sorted by name.
+
+Response shape:
+
+{
+  "clinics": [
+    { "id": "…", "label": "Smile Dental Clinic — Calgary, AB" }
+  ]
+}
+
+This is what the “Select Clinic” dropdown on /dashboard/outreach should use.
+
+
+
+3. Wire the Campaign form:
+
+In the Campaign Creation form, keep the existing “Select Clinic” dropdown but make sure it calls /api/clinics (not hard-coded test data).
+
+When the user selects a clinic and clicks Create Campaign, include clinicId in the request body for the campaign creation endpoint and validate it.
+
+
+
+4. Testing:
+
+Temporarily call /api/external/clinics/sync with one sample clinic using the Console (or a small script) and confirm:
+
+1. The clinic row exists in the clinics table.
+
+
+2. It appears in the Select Clinic dropdown.
+
+
+3. Campaign can be created using that clinic without any 400 errors.
+
+
+
+
+
+
+Please keep changes focused only on: – new /api/external/clinics/sync
+– updating /api/clinics
+– wiring the Campaign form to use these endpoints.
+Do not change unrelated tables, lead schema, or UI layouts.
+
+
+
+
+---
+
+3️⃣ DentalMapsHelper Agent کیلئے prompt
+
+اب Helper کو بتانا ہے کہ وہ نئی API کو call کرے، تاکہ clinics خود بخود Genius میں بن جائیں۔
+
+Prompt for DentalMapsHelper Agent:
+
+> We now have a new endpoint in DentalLeadGenius:
+POST https://dentalleadgenius.com/api/external/clinics/sync
+
+Your job:
+
+1. Whenever you sync leads to DentalLeadGenius, first send all unique clinics you know about to this endpoint.
+
+A “clinic” is defined by name + city + state (and googleMapsUrl if available).
+
+
+
+2. Build a list of unique clinics from your internal data:
+
+Fields to send for each clinic:
+
+externalId: your internal clinic ID (so you can map later).
+
+name
+
+city
+
+state
+
+country (USA or Canada, etc.)
+
+email (if known)
+
+phone (if known)
+
+websiteUrl (if known)
+
+googleMapsUrl (if known)
+
+
+
+
+3. Call POST /api/external/clinics/sync with:
+
+{ "clinics": [ { …clinic fields… } ] }
+
+
+4. Store the response mapping { externalId, clinicId } in your own database so that:
+
+When you send individual leads to DentalLeadGenius, you can attach the correct clinicId for each lead.
+
+
+
+5. Make sure to retry or log errors if the sync fails, and never create duplicate clinics on your side for the same location.
+
+
+
+The result we want: – Every time you import or sync clinics/leads, DentalLeadGenius’s clinics table is updated, and those clinics appear automatically in the Select Clinic dropdown on /dashboard/outreach.
+
+
