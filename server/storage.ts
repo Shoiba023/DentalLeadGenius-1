@@ -51,7 +51,7 @@ import {
   type InsertOnboardingEmailLog,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, or, isNull, sql } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -730,12 +730,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSyncedLeadsForClinic(clinicId: string): Promise<Lead[]> {
+    // Get all synced leads that are campaign-ready:
+    // 1. Leads belonging to this clinic, OR
+    // 2. Global leads (no clinicId) from DentalMapsHelper available to all clinics
     return await db
       .select()
       .from(leads)
       .where(
         and(
-          eq(leads.clinicId, clinicId),
+          or(
+            eq(leads.clinicId, clinicId),
+            isNull(leads.clinicId)
+          ),
           eq(leads.syncStatus, "synced"),
           eq(leads.marketingOptIn, true)
         )
@@ -1348,6 +1354,8 @@ export class DatabaseStorage implements IStorage {
           externalSourceId: leads.externalSourceId,
           syncError: leads.syncError,
           lastSyncedAt: leads.lastSyncedAt,
+          rating: leads.rating,
+          reviewCount: leads.reviewCount,
           clinicName: clinics.name,
         })
         .from(leads)
@@ -1380,6 +1388,8 @@ export class DatabaseStorage implements IStorage {
           externalSourceId: leads.externalSourceId,
           syncError: leads.syncError,
           lastSyncedAt: leads.lastSyncedAt,
+          rating: leads.rating,
+          reviewCount: leads.reviewCount,
           clinicName: clinics.name,
         })
         .from(leads)
