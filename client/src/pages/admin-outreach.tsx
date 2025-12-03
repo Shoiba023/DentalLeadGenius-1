@@ -91,6 +91,13 @@ interface CampaignLead {
   lead: Lead;
 }
 
+interface Clinic {
+  id: string;
+  name: string;
+  city?: string;
+  state?: string;
+}
+
 const CAMPAIGN_TYPES = [
   { value: "email", label: "Email", icon: Mail, category: "traditional" },
   { value: "sms", label: "SMS", icon: Phone, category: "traditional" },
@@ -176,6 +183,7 @@ export default function AdminOutreach() {
     targetUrl: "",
     mediaUrl: "",
     hashtags: "",
+    clinicId: "",
   });
 
   useEffect(() => {
@@ -193,6 +201,11 @@ export default function AdminOutreach() {
 
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
     queryKey: ["/api/campaigns"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: clinics = [], isLoading: isLoadingClinics } = useQuery<Clinic[]>({
+    queryKey: ["/api/clinics"],
     enabled: isAuthenticated,
   });
 
@@ -284,6 +297,7 @@ export default function AdminOutreach() {
         targetUrl: "",
         mediaUrl: "",
         hashtags: "",
+        clinicId: "",
       });
     },
     onError: (error: Error) => {
@@ -458,6 +472,28 @@ export default function AdminOutreach() {
                   required
                   data-testid="input-campaign-name"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="clinicId">Select Clinic *</Label>
+                <Select
+                  value={formData.clinicId}
+                  onValueChange={(val) =>
+                    setFormData((prev) => ({ ...prev, clinicId: val }))
+                  }
+                  required
+                >
+                  <SelectTrigger data-testid="select-clinic-id">
+                    <SelectValue placeholder={isLoadingClinics ? "Loading clinics..." : "Select a clinic"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clinics.map((clinic) => (
+                      <SelectItem key={clinic.id} value={clinic.id}>
+                        {clinic.name}{clinic.city || clinic.state ? ` (${[clinic.city, clinic.state].filter(Boolean).join(", ")})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

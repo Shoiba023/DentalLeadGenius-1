@@ -2137,9 +2137,19 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
 
   app.post("/api/campaigns", async (req: any, res) => {
     try {
-      const clinicId = await requireClinicContext(req, res);
-      if (!clinicId) return;
-      if (!await requireAdminRole(req, res)) return;
+      if (!requireAuth(req, res)) return;
+      
+      // Require clinicId from request body
+      const { clinicId } = req.body;
+      if (!clinicId) {
+        return res.status(400).json({ message: "clinicId is required" });
+      }
+      
+      // Verify clinic exists
+      const clinic = await storage.getClinicById(clinicId);
+      if (!clinic) {
+        return res.status(404).json({ message: "Clinic not found" });
+      }
       
       const campaignData = { ...req.body, clinicId };
       const campaign = await storage.createCampaign(campaignData);
