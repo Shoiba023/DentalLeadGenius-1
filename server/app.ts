@@ -94,7 +94,9 @@ export default async function runApp(
   }, () => {
     log(`serving on port ${port}`);
     
-    // Auto-start the outreach automation engine
+    // PAUSED: Outreach automation disabled until email provider is confirmed working
+    // To re-enable, uncomment the following block after confirming SMTP/email delivery
+    /*
     setTimeout(() => {
       const started = startAutomation();
       if (started) {
@@ -103,5 +105,7 @@ export default async function runApp(
         log("Automated Outreach Engine already running", "automation");
       }
     }, 5000); // Wait 5 seconds for server to fully initialize
+    */
+    log("Outreach automation PAUSED - waiting for email provider confirmation", "automation");
   });
 }
