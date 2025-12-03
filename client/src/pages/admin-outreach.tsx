@@ -361,6 +361,14 @@ export default function AdminOutreach() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.clinicId) {
+      toast({
+        title: "Clinic Required",
+        description: "Please select a clinic before creating a campaign.",
+        variant: "destructive",
+      });
+      return;
+    }
     createCampaignMutation.mutate(formData);
   };
 

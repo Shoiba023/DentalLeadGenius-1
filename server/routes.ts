@@ -1542,8 +1542,10 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
   }
 
   // Clinic routes
-  app.get("/api/clinics", isAuthenticated, async (req, res) => {
+  app.get("/api/clinics", async (req: any, res) => {
     try {
+      if (!requireAuth(req, res)) return;
+      
       const clinics = await storage.getAllClinics();
       res.json(clinics);
     } catch (error) {
