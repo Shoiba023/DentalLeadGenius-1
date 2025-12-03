@@ -1381,23 +1381,23 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
   });
 
   // GET /api/external/clinics - Get clinics for DentalMapsHelper mapping (Bearer token auth)
-  // Returns: name, city, state, clinicId for dropdown display
+  // Returns ONLY clinics that have at least 1 synced lead (no test data)
   app.get("/api/external/clinics", async (req: any, res) => {
     try {
       if (!validateImportApiKey(req, res)) return;
       
-      const allClinics = await storage.getAllClinics();
+      // Only return clinics that have synced leads - no test data
+      const clinicsWithLeads = await storage.getClinicsWithSyncedLeads();
       
-      // Return clinic data with location for mapping and dropdown display
-      const clinicData = allClinics.map(clinic => ({
+      // Return clinic data with location for dropdown display
+      const clinicData = clinicsWithLeads.map(clinic => ({
         clinicId: clinic.id,
         name: clinic.name,
         city: clinic.city || null,
         state: clinic.state || null,
-        slug: clinic.slug,
       }));
       
-      console.log(`[EXTERNAL API] Clinics endpoint accessed - returned ${clinicData.length} clinics`);
+      console.log(`[EXTERNAL API] Clinics endpoint - returned ${clinicData.length} clinics with synced leads`);
       
       res.json({
         success: true,

@@ -95,6 +95,7 @@ export interface IStorage {
 
   // Clinic operations
   getAllClinics(): Promise<Clinic[]>;
+  getClinicsWithSyncedLeads(): Promise<Clinic[]>;
   createClinic(clinic: InsertClinic): Promise<Clinic>;
   updateClinic(id: string, data: Partial<InsertClinic>): Promise<Clinic>;
   getClinicById(id: string): Promise<Clinic | undefined>;
@@ -534,6 +535,36 @@ export class DatabaseStorage implements IStorage {
   // Clinic operations
   async getAllClinics(): Promise<Clinic[]> {
     return await db.select().from(clinics).orderBy(desc(clinics.createdAt));
+  }
+
+  async getClinicsWithSyncedLeads(): Promise<Clinic[]> {
+    // Get distinct clinic IDs that have at least one synced lead
+    const clinicIdsWithLeads = await db
+      .selectDistinct({ clinicId: leads.clinicId })
+      .from(leads)
+      .where(eq(leads.syncStatus, "synced"));
+    
+    if (clinicIdsWithLeads.length === 0) {
+      return [];
+    }
+    
+    // Filter out null clinicIds and get the actual clinic records
+    const validClinicIds = clinicIdsWithLeads
+      .map(row => row.clinicId)
+      .filter((id): id is string => id !== null);
+    
+    if (validClinicIds.length === 0) {
+      return [];
+    }
+    
+    // Fetch the clinic records for these IDs
+    const result = await db
+      .select()
+      .from(clinics)
+      .where(sql`${clinics.id} IN (${sql.join(validClinicIds.map(id => sql`${id}`), sql`, `)})`)
+      .orderBy(clinics.name);
+    
+    return result;
   }
 
   async createClinic(clinic: InsertClinic): Promise<Clinic> {
