@@ -1380,6 +1380,110 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
     }
   });
 
+  // POST /api/external/clinics/leads/sync - Alias for bulk-import (DentalMapsHelper format)
+  // This endpoint matches the format expected by DentalMapsHelper
+  app.post("/api/external/clinics/leads/sync", async (req: any, res) => {
+    const startTime = Date.now();
+    
+    try {
+      if (!validateImportApiKey(req, res)) return;
+
+      const { leads } = req.body;
+
+      if (!Array.isArray(leads)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Request body must contain a 'leads' array" 
+        });
+      }
+
+      if (leads.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Leads array cannot be empty" 
+        });
+      }
+
+      let created = 0;
+      let existing = 0;
+      let failed = 0;
+
+      for (let i = 0; i < leads.length; i++) {
+        try {
+          const validated = externalLeadPayloadSchema.parse(leads[i]);
+          
+          // Ensure every lead has a valid clinicId
+          const clinicId = await ensureClinicId({
+            clinicId: validated.clinicId,
+            name: validated.name,
+            city: validated.city,
+            state: validated.state,
+            country: validated.country,
+            address: validated.address,
+            phone: validated.phone,
+            email: validated.email,
+            websiteUrl: validated.websiteUrl,
+            googleMapsUrl: validated.googleMapsUrl,
+          });
+          
+          const leadData = {
+            clinicId,
+            name: validated.name,
+            email: validated.email || null,
+            phone: validated.phone || null,
+            address: validated.address || null,
+            city: validated.city || null,
+            state: validated.state || null,
+            country: validated.country || "USA",
+            notes: validated.notes || null,
+            googleMapsUrl: validated.googleMapsUrl || null,
+            websiteUrl: validated.websiteUrl || null,
+            rating: validated.rating || null,
+            reviewCount: validated.reviewCount || null,
+            source: validated.source || "maps-helper",
+            marketingOptIn: validated.marketingOptIn !== false,
+            tags: validated.tags || ["maps-helper"],
+            status: "new" as const,
+            syncStatus: "synced" as const,
+            externalSourceId: validated.externalSourceId || null,
+            lastSyncedAt: new Date(),
+          };
+
+          const result = await storage.upsertLeadByDedupe(leadData);
+          
+          if (result.existing) {
+            existing++;
+          } else {
+            created++;
+          }
+          
+        } catch (err) {
+          failed++;
+          console.error(`[SYNC API] Lead ${i} failed:`, err instanceof Error ? err.message : "Unknown");
+        }
+      }
+
+      const duration = Date.now() - startTime;
+      
+      console.log(`[SYNC API] Leads sync: ${created} created, ${existing} updated, ${failed} failed in ${duration}ms`);
+      
+      res.json({ 
+        success: failed === 0,
+        message: `${created} leads created, ${existing} updated`,
+        created,
+        existing,
+        failed,
+        totalProcessed: leads.length
+      });
+    } catch (error) {
+      console.error("[SYNC API] Error in leads sync:", error instanceof Error ? error.message : "Unknown");
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to sync leads" 
+      });
+    }
+  });
+
   // GET /api/external/clinics - Get clinics for DentalMapsHelper mapping (Bearer token auth)
   // Returns ONLY clinics that have at least 1 synced lead (no test data)
   app.get("/api/external/clinics", async (req: any, res) => {
