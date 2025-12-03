@@ -44,6 +44,34 @@ The `server/nurtureCampaign.ts` service automates 3-step follow-up sequences for
 ### Booking Tracking Service
 The `server/bookingTracking.ts` service focuses on campaign attribution and lead conversion tracking for patient bookings. It records booking sources and links bookings to campaigns and leads, providing analytics for clinics and campaigns.
 
+### Automated Outreach Engine
+The `server/automatedOutreach.ts` service automatically turns synced dental leads into gently paced email campaigns:
+
+**Auto-Campaign Creation**: For every clinic with synced leads but no active email campaign, automatically creates:
+- Campaign Name: `"Auto Outreach – <Clinic Name>"`
+- Type: Email
+- Status: Active
+- Subject: Professional demo/consultation offer
+- Message: Value proposition with clear CTA and unsubscribe footer
+
+**Hourly Lead Enrollment**: Every 10 minutes (or on manual trigger):
+- Enrolls up to 10 new leads per clinic per cycle
+- Only targets leads with: status="new", valid email, marketingOptIn=true
+- Skips leads already in any campaign
+
+**Email Send Pacing**:
+- Max 10 emails per campaign per 10-minute cycle
+- Respects campaign `dailyLimit` (default 50)
+- 500ms delay between sends
+- Never spams the same lead twice
+
+**API Endpoints** (Authenticated):
+- `GET /api/automation/status` - Full automation status with stats
+- `GET /api/automation/summary` - User-friendly summary
+- `POST /api/automation/start` - Start automation engine
+- `POST /api/automation/stop` - Stop automation engine
+- `POST /api/automation/run-now` - Run one cycle immediately
+
 ### External API (Lead Import)
 A production-grade API allows idempotent lead imports from external tools like DentalMapsHelper. It supports single and bulk imports, using bearer token authentication and deduplication strategies based on `googleMapsUrl` or `email + city + country`.
 

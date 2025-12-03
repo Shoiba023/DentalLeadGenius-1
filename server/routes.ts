@@ -32,6 +32,13 @@ import {
   LEAD_STATUSES,
   LEAD_TAGS,
 } from "./leadSegmentation";
+import {
+  startAutomation,
+  stopAutomation,
+  runAutomationCycle,
+  getAutomationStatus,
+  getOutreachSummary,
+} from "./automatedOutreach";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -5395,6 +5402,78 @@ Continue Setup: {{dashboardUrl}}/onboarding`,
     } catch (error) {
       console.error("Error seeding onboarding emails:", error);
       res.status(500).json({ message: "Failed to seed onboarding emails" });
+    }
+  });
+
+  // ========================================
+  // Automated Outreach Engine API Routes
+  // ========================================
+
+  // Get automation status
+  app.get("/api/automation/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const status = await getAutomationStatus();
+      res.json(status);
+    } catch (error) {
+      console.error("Error getting automation status:", error);
+      res.status(500).json({ message: "Failed to get automation status" });
+    }
+  });
+
+  // Get outreach summary (user-friendly)
+  app.get("/api/automation/summary", isAuthenticated, async (req: any, res) => {
+    try {
+      const summary = await getOutreachSummary();
+      res.json(summary);
+    } catch (error) {
+      console.error("Error getting outreach summary:", error);
+      res.status(500).json({ message: "Failed to get outreach summary" });
+    }
+  });
+
+  // Start automation engine
+  app.post("/api/automation/start", isAuthenticated, async (req: any, res) => {
+    try {
+      const started = startAutomation();
+      if (started) {
+        res.json({ success: true, message: "Automation engine started" });
+      } else {
+        res.json({ success: false, message: "Automation already running" });
+      }
+    } catch (error) {
+      console.error("Error starting automation:", error);
+      res.status(500).json({ message: "Failed to start automation" });
+    }
+  });
+
+  // Stop automation engine
+  app.post("/api/automation/stop", isAuthenticated, async (req: any, res) => {
+    try {
+      const stopped = stopAutomation();
+      if (stopped) {
+        res.json({ success: true, message: "Automation engine stopped" });
+      } else {
+        res.json({ success: false, message: "Automation not running" });
+      }
+    } catch (error) {
+      console.error("Error stopping automation:", error);
+      res.status(500).json({ message: "Failed to stop automation" });
+    }
+  });
+
+  // Run one cycle manually (for testing or immediate action)
+  app.post("/api/automation/run-now", isAuthenticated, async (req: any, res) => {
+    try {
+      console.log("[API] Running automation cycle manually...");
+      const result = await runAutomationCycle();
+      res.json({
+        success: true,
+        message: `Cycle complete: ${result.campaignsCreated} campaigns created, ${result.leadsEnrolled} leads enrolled, ${result.emailsSent} emails sent`,
+        ...result,
+      });
+    } catch (error) {
+      console.error("Error running automation cycle:", error);
+      res.status(500).json({ message: "Failed to run automation cycle" });
     }
   });
 
