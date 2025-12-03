@@ -25,9 +25,9 @@ DentalLeadGenius helps dental clinics like yours:
 - Automate patient follow-ups
 - Book more appointments with AI chatbots
 
-I'd love to show you how it works in a quick 15-minute demo.
+Click here to access your instant DentalLeadGenius demo: ${SITE_URL}/demo
 
-Would you be open to a brief call this week?
+See for yourself how our AI-powered platform can transform your practice in just minutes.
 
 Best regards,
 The DentalLeadGenius Team

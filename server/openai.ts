@@ -1,6 +1,6 @@
 // Referenced from javascript_openai_ai_integrations blueprint
 import OpenAI from "openai";
-import { SITE_NAME, SITE_TAGLINE } from "@shared/config";
+import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@shared/config";
 
 // This is using Replit's AI Integrations service, which provides OpenAI-compatible API access without requiring your own OpenAI API key.
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
@@ -191,21 +191,24 @@ export async function generateDemoResponse(
 }
 
 export async function generateOutreachDraft(type: "email" | "sms" | "whatsapp"): Promise<{ subject?: string; message: string }> {
+  const DEMO_URL = `${SITE_URL}/demo`;
   let prompt: string;
   
   if (type === "email") {
     prompt = `Generate a professional, personalized email for a dental clinic lead generation campaign. Include a compelling subject line and a 3-paragraph email body that:
 1. Introduces DentalLeadGenius as a lead generation platform
 2. Highlights key benefits (AI automation, 10x more leads, patient chatbots)
-3. Includes a clear call-to-action to get instant demo access (NOT to schedule - we provide instant access)
+3. Includes a clear call-to-action with this EXACT demo link: ${DEMO_URL}
+
+IMPORTANT: You MUST include this line in the email: "Click here to access your instant DentalLeadGenius demo: ${DEMO_URL}"
 
 Format as JSON with "subject" and "message" fields.`;
   } else if (type === "sms") {
-    prompt = `Generate a concise, friendly SMS message (under 160 characters) for a dental clinic lead generation campaign. Mention DentalLeadGenius and include a call-to-action to get instant demo access.
+    prompt = `Generate a concise, friendly SMS message (under 160 characters) for a dental clinic lead generation campaign. Mention DentalLeadGenius and include the demo link: ${DEMO_URL}
 
 Format as JSON with just a "message" field.`;
   } else {
-    prompt = `Generate a friendly, conversational WhatsApp message (under 250 characters) for a dental clinic lead generation campaign. The tone should be more casual than email but still professional. Mention DentalLeadGenius benefits and include a call-to-action to get instant demo access. 
+    prompt = `Generate a friendly, conversational WhatsApp message (under 250 characters) for a dental clinic lead generation campaign. The tone should be more casual than email but still professional. Mention DentalLeadGenius benefits and include the demo link: ${DEMO_URL}
 
 IMPORTANT: Do NOT include any emojis, emoticons, or special unicode symbols whatsoever. Use plain text only.
 
