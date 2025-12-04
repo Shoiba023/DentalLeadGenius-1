@@ -61,76 +61,66 @@ export async function trackAnalyticsEvent(event: InsertAnalyticsEvent): Promise<
 
 /**
  * Update session metrics based on event
+ * Uses upsert pattern to handle race conditions
  */
 async function updateSessionMetrics(event: InsertAnalyticsEvent): Promise<void> {
   try {
-    const existing = await db
-      .select()
-      .from(sessionMetrics)
-      .where(eq(sessionMetrics.sessionId, event.sessionId))
-      .limit(1);
-
     const now = new Date();
+    const sessionId = event.sessionId;
 
-    if (existing.length === 0) {
-      // Create new session
-      await db.insert(sessionMetrics).values({
-        sessionId: event.sessionId,
-        userId: event.userId,
-        clinicId: event.clinicId,
-        variant: event.variant,
-        firstPageView: now,
-        lastActivity: now,
-        pageViews: event.eventType === "page_view" ? 1 : 0,
-        maxScrollDepth: event.eventType === "scroll_depth" ? (event.metadata?.depth as number || 0) : 0,
-        ctaClicks: event.eventType === "cta_click" ? 1 : 0,
-        demoStarted: event.eventType === "demo_started",
-        demoCompleted: event.eventType === "demo_completed",
-        city: event.city,
-        country: event.country,
-        deviceType: event.deviceType,
-        referrer: event.referrer,
-        landingPage: event.path,
-      });
-    } else {
-      // Update existing session
-      const session = existing[0];
-      const updates: Partial<InsertSessionMetric> = {
-        lastActivity: now,
-        exitPage: event.path,
-      };
-
-      if (event.eventType === "page_view") {
-        updates.pageViews = (session.pageViews || 0) + 1;
-      }
-      if (event.eventType === "scroll_depth") {
-        const depth = event.metadata?.depth as number || 0;
-        if (depth > (session.maxScrollDepth || 0)) {
-          updates.maxScrollDepth = depth;
-        }
-      }
-      if (event.eventType === "cta_click") {
-        updates.ctaClicks = (session.ctaClicks || 0) + 1;
-      }
-      if (event.eventType === "demo_started") {
-        updates.demoStarted = true;
-      }
-      if (event.eventType === "demo_completed") {
-        updates.demoCompleted = true;
-      }
-
-      // Calculate session duration
-      const duration = Math.floor((now.getTime() - new Date(session.firstPageView).getTime()) / 1000);
-      updates.sessionDuration = duration;
-      
-      // Check for bounce (single page, <30s)
-      updates.bounced = session.pageViews === 1 && duration < 30;
-
-      await db
-        .update(sessionMetrics)
-        .set(updates)
-        .where(eq(sessionMetrics.sessionId, event.sessionId));
-    }
+    // Use PostgreSQL upsert (ON CONFLICT DO UPDATE) to handle race conditions
+    await db.execute(sql`
+      INSERT INTO session_metrics (
+        session_id, user_id, clinic_id, variant, 
+        first_page_view, last_activity, page_views, 
+        max_scroll_depth, cta_clicks, demo_started, demo_completed,
+        city, country, device_type, referrer, landing_page
+      ) VALUES (
+        ${sessionId}, 
+        ${event.userId || null}, 
+        ${event.clinicId || null}, 
+        ${event.variant || null},
+        ${now}, 
+        ${now}, 
+        ${event.eventType === "page_view" ? 1 : 0},
+        ${event.eventType === "scroll_depth" ? (event.metadata?.depth as number || 0) : 0},
+        ${event.eventType === "cta_click" ? 1 : 0},
+        ${event.eventType === "demo_started"},
+        ${event.eventType === "demo_completed"},
+        ${event.city || null},
+        ${event.country || null},
+        ${event.deviceType || null},
+        ${event.referrer || null},
+        ${event.path || null}
+      )
+      ON CONFLICT (session_id) DO UPDATE SET
+        last_activity = ${now},
+        exit_page = ${event.path || null},
+        page_views = CASE 
+          WHEN ${event.eventType} = 'page_view' 
+          THEN session_metrics.page_views + 1 
+          ELSE session_metrics.page_views 
+        END,
+        max_scroll_depth = CASE 
+          WHEN ${event.eventType} = 'scroll_depth' AND ${event.metadata?.depth as number || 0} > session_metrics.max_scroll_depth 
+          THEN ${event.metadata?.depth as number || 0}
+          ELSE session_metrics.max_scroll_depth 
+        END,
+        cta_clicks = CASE 
+          WHEN ${event.eventType} = 'cta_click' 
+          THEN session_metrics.cta_clicks + 1 
+          ELSE session_metrics.cta_clicks 
+        END,
+        demo_started = session_metrics.demo_started OR ${event.eventType === "demo_started"},
+        demo_completed = session_metrics.demo_completed OR ${event.eventType === "demo_completed"},
+        session_duration = EXTRACT(EPOCH FROM (${now}::timestamp - session_metrics.first_page_view))::integer,
+        bounced = CASE 
+          WHEN session_metrics.page_views = 1 
+            AND EXTRACT(EPOCH FROM (${now}::timestamp - session_metrics.first_page_view)) < 30 
+          THEN true 
+          ELSE false 
+        END
+    `);
   } catch (error) {
     console.error("[Analytics] Error updating session metrics:", error);
   }
