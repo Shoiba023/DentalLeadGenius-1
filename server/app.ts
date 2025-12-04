@@ -9,6 +9,7 @@ import express, {
 
 import { registerRoutes } from "./routes";
 import { startAutomation } from "./automatedOutreach";
+import { startMarketingSync } from "./marketingSync";
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -103,5 +104,15 @@ export default async function runApp(
         log("Automated Outreach Engine already running", "automation");
       }
     }, 5000); // Wait 5 seconds for server to fully initialize
+    
+    // Auto-start the marketing sync engine (10 clinics every 10 minutes with 72-hour cooldown)
+    setTimeout(() => {
+      const result = startMarketingSync();
+      if (result.success) {
+        log("Marketing Sync Engine started - sending to 10 clinics every 10 minutes", "marketing-sync");
+      } else {
+        log(`Marketing Sync Engine: ${result.message}`, "marketing-sync");
+      }
+    }, 10000); // Wait 10 seconds to ensure database is ready
   });
 }

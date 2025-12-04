@@ -72,6 +72,40 @@ The `server/automatedOutreach.ts` service automatically turns synced dental lead
 - `POST /api/automation/stop` - Stop automation engine
 - `POST /api/automation/run-now` - Run one cycle immediately
 
+### Marketing Sync Engine (24/7 Autonomous Outreach)
+The `server/marketingSync.ts` service provides fully autonomous email outreach that operates 24/7 without manual intervention:
+
+**Configuration**:
+- **Clinics per cycle**: 10 (max clinics processed every cycle)
+- **Cycle interval**: 10 minutes
+- **Cooldown period**: 72 hours per clinic (prevents email fatigue)
+- **Demo link**: Automatically included in every email
+
+**AI-Powered Email Generation**:
+- Uses GPT-4o to generate personalized, professional outreach emails
+- Personalizes content using clinic name, location, and lead data
+- Includes fallback template if AI generation fails
+- Every email includes demo link: `https://dental-lead-genius-1-shoibaali10.replit.app/demo`
+
+**Cooldown Enforcement**:
+- Tracks `lastEmailedAt` timestamp on clinics table
+- Only selects clinics that haven't been emailed in the last 72 hours
+- Prevents over-emailing and maintains professional cadence
+
+**Outreach Logging**:
+- All email sends logged to `outreach_logs` table
+- Tracks: clinicId, leadId, cycleId, recipientEmail, subject, status, errors
+- Provides full audit trail for compliance and analytics
+
+**Auto-Start**: Engine starts automatically 10 seconds after server initialization
+
+**API Endpoints** (Authenticated):
+- `GET /api/marketing-sync/status` - Engine status and configuration
+- `GET /api/marketing-sync/statistics` - Detailed outreach statistics
+- `POST /api/marketing-sync/start` - Start the engine
+- `POST /api/marketing-sync/stop` - Stop the engine
+- `POST /api/marketing-sync/run-now` - Trigger manual cycle
+
 ### External API (Lead Import)
 A production-grade API allows idempotent lead imports from external tools like DentalMapsHelper. It supports single and bulk imports, using bearer token authentication and deduplication strategies based on `googleMapsUrl` or `email + city + country`.
 

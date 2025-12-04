@@ -39,6 +39,13 @@ import {
   getAutomationStatus,
   getOutreachSummary,
 } from "./automatedOutreach";
+import {
+  startMarketingSync,
+  stopMarketingSync,
+  getMarketingSyncStatus,
+  runManualCycle,
+  getOutreachStatistics,
+} from "./marketingSync";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -5562,6 +5569,70 @@ Continue Setup: {{dashboardUrl}}/onboarding`,
     } catch (error) {
       console.error("Error running automation cycle:", error);
       res.status(500).json({ message: "Failed to run automation cycle" });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MARKETING SYNC ENGINE ENDPOINTS (24/7 Autonomous Email Outreach)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Get marketing sync engine status
+  app.get("/api/marketing-sync/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const status = getMarketingSyncStatus();
+      res.json(status);
+    } catch (error) {
+      console.error("Error getting marketing sync status:", error);
+      res.status(500).json({ message: "Failed to get marketing sync status" });
+    }
+  });
+
+  // Get detailed outreach statistics
+  app.get("/api/marketing-sync/statistics", isAuthenticated, async (req: any, res) => {
+    try {
+      const stats = await getOutreachStatistics();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error getting outreach statistics:", error);
+      res.status(500).json({ message: "Failed to get outreach statistics" });
+    }
+  });
+
+  // Start marketing sync engine
+  app.post("/api/marketing-sync/start", isAuthenticated, async (req: any, res) => {
+    try {
+      const result = startMarketingSync();
+      res.json(result);
+    } catch (error) {
+      console.error("Error starting marketing sync:", error);
+      res.status(500).json({ message: "Failed to start marketing sync engine" });
+    }
+  });
+
+  // Stop marketing sync engine
+  app.post("/api/marketing-sync/stop", isAuthenticated, async (req: any, res) => {
+    try {
+      const result = stopMarketingSync();
+      res.json(result);
+    } catch (error) {
+      console.error("Error stopping marketing sync:", error);
+      res.status(500).json({ message: "Failed to stop marketing sync engine" });
+    }
+  });
+
+  // Run a single marketing sync cycle manually
+  app.post("/api/marketing-sync/run-now", isAuthenticated, async (req: any, res) => {
+    try {
+      console.log("[API] Running marketing sync cycle manually...");
+      const result = await runManualCycle();
+      res.json({
+        success: true,
+        message: `Cycle complete: ${result.clinicsProcessed} clinics processed, ${result.emailsSent} emails sent`,
+        ...result,
+      });
+    } catch (error) {
+      console.error("Error running marketing sync cycle:", error);
+      res.status(500).json({ message: "Failed to run marketing sync cycle" });
     }
   });
 
