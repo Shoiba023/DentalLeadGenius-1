@@ -85,7 +85,7 @@ export function DemoRequestForm({ onSuccess, className }: DemoRequestFormProps) 
               Thank you!
             </h3>
             <p className="text-muted-foreground max-w-sm" data-testid="text-demo-success-message">
-              Your demo request is received. Our team will contact you soon.
+              Your demo request is received. Check your email for instant access to the demo.
             </p>
             <Button
               variant="outline"
@@ -103,9 +103,9 @@ export function DemoRequestForm({ onSuccess, className }: DemoRequestFormProps) 
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle data-testid="text-demo-form-title">Book a Demo</CardTitle>
+        <CardTitle data-testid="text-demo-form-title">Get Instant Demo Access</CardTitle>
         <CardDescription>
-          Fill out the form below and our team will contact you to schedule a personalized demo.
+          Fill out the form below and get instant access to our personalized AI demo.
         </CardDescription>
       </CardHeader>
       <CardContent>

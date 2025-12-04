@@ -109,11 +109,11 @@ export default function Landing() {
               />
             </Link>
             
-            <Button asChild data-testid="button-book-demo-header">
-              <a href="#book-demo">
-                <Calendar className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Book a Free Demo</span>
-                <span className="sm:hidden">Book Demo</span>
+            <Button asChild data-testid="button-access-demo-header">
+              <a href="#access-demo">
+                <Sparkles className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Access Free Demo</span>
+                <span className="sm:hidden">Free Demo</span>
               </a>
             </Button>
           </div>
@@ -239,16 +239,16 @@ export default function Landing() {
                 size="lg"
                 className="gap-2 px-8 sm:px-10 py-6 sm:py-7 text-base sm:text-lg font-semibold shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-shadow"
                 asChild
-                data-testid="button-book-demo-hero"
-                onClick={() => handleCTAClick("hero-cta", "Book a Free Demo")}
+                data-testid="button-access-demo-hero"
+                onClick={() => handleCTAClick("hero-cta", "Access Free Demo")}
               >
-                <a href="#book-demo">
-                  <Calendar className="h-5 w-5" />
-                  Book a Free Demo
+                <a href="#access-demo">
+                  <Sparkles className="h-5 w-5" />
+                  Access Free Demo
                 </a>
               </Button>
               <p className="mt-4 sm:mt-5 text-xs sm:text-sm text-muted-foreground">
-                No credit card required • Free 15-minute consultation
+                No credit card required • See AI in action instantly
               </p>
             </motion.div>
           </div>
@@ -421,9 +421,9 @@ export default function Landing() {
               {[
                 {
                   step: "1",
-                  title: "Book Your Demo",
-                  description: "Schedule a free 15-minute call with our team.",
-                  micro: "We'll show you exactly how DentalLeadGenius works for your specific clinic type and patient volume."
+                  title: "Access the Demo",
+                  description: "Click to instantly see AI in action.",
+                  micro: "No waiting, no forms — just click and experience exactly how DentalLeadGenius works for dental clinics."
                 },
                 {
                   step: "2",
@@ -464,15 +464,15 @@ export default function Landing() {
                 size="lg"
                 className="gap-2 px-8 sm:px-10 py-6 text-base sm:text-lg font-semibold shadow-lg shadow-primary/25"
                 asChild
-                data-testid="button-book-demo-mid"
+                data-testid="button-access-demo-mid"
               >
-                <a href="#book-demo">
-                  <Calendar className="h-5 w-5" />
-                  Book a Free Demo
+                <a href="#access-demo">
+                  <Sparkles className="h-5 w-5" />
+                  Access Free Demo
                 </a>
               </Button>
               <p className="mt-3 sm:mt-4 text-xs sm:text-sm text-muted-foreground">
-                Full setup done for you • Live in 48 hours
+                See AI in action • Full setup done for you
               </p>
             </div>
           </div>
@@ -686,7 +686,7 @@ export default function Landing() {
                   How quickly can I get started?
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground pb-4 text-sm sm:text-base">
-                  Book your demo today → we configure everything → <span className="font-medium text-foreground">live within 48 hours</span>.
+                  Access the demo today → we configure everything → <span className="font-medium text-foreground">live within 48 hours</span>.
                 </AccordionContent>
               </AccordionItem>
 
@@ -717,15 +717,15 @@ export default function Landing() {
           ENHANCED: Maximum conversion polish,
           clearer micro-text, better spacing
           ============================================ */}
-      <section id="book-demo" className="py-16 sm:py-20 md:py-28 bg-gradient-to-b from-primary/5 to-primary/10">
+      <section id="access-demo" className="py-16 sm:py-20 md:py-28 bg-gradient-to-b from-primary/5 to-primary/10">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold mb-4 sm:mb-6 leading-tight">
               Ready To Stop Losing Patients?
             </h2>
             <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed">
-              Book a free 15-minute demo. See exactly how many patients you're losing 
-              — and how DentalLeadGenius can capture them automatically.
+              Access the free demo now. See exactly how DentalLeadGenius captures patients 
+              and converts every lead automatically — no commitment required.
             </p>
 
             <div className="flex flex-col items-center gap-4 sm:gap-5 mb-6 sm:mb-8">
@@ -733,11 +733,11 @@ export default function Landing() {
                 size="lg"
                 className="gap-2 px-10 sm:px-12 py-6 sm:py-7 text-base sm:text-lg font-semibold shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-all w-full sm:w-auto"
                 asChild
-                data-testid="button-book-demo-final"
+                data-testid="button-access-demo-final"
               >
                 <Link href="/demo">
-                  <Calendar className="h-5 w-5" />
-                  Book a Free Demo
+                  <Sparkles className="h-5 w-5" />
+                  Access Free Demo
                 </Link>
               </Button>
             </div>
@@ -749,27 +749,12 @@ export default function Landing() {
               </span>
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-primary" />
-                Free 15-minute consultation
+                Instant access to AI demo
               </span>
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-primary" />
                 No obligation
               </span>
-            </div>
-
-            {/* Quick contact option */}
-            <div className="mt-10 sm:mt-12 pt-8 sm:pt-10 border-t border-border/50">
-              <p className="text-sm text-muted-foreground mb-3 sm:mb-4">
-                Prefer to talk to someone right away?
-              </p>
-              <a 
-                href="tel:+12505742162" 
-                className="inline-flex items-center gap-2 text-primary hover:underline font-medium text-sm sm:text-base"
-                data-testid="link-phone-cta"
-              >
-                <Phone className="h-4 w-4" />
-                Call us: (250) 574-2162
-              </a>
             </div>
           </div>
         </div>

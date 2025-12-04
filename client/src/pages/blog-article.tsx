@@ -289,7 +289,7 @@ export default function BlogArticlePage() {
                   <Link href="/login">Log in</Link>
                 </Button>
                 <Button asChild>
-                  <Link href="/demo">Book a Demo</Link>
+                  <Link href="/demo">Access Demo</Link>
                 </Button>
               </div>
             </div>
@@ -420,9 +420,9 @@ export default function BlogArticlePage() {
                   </div>
                 </div>
                 
-                <Button asChild data-testid="button-book-demo-article">
+                <Button asChild data-testid="button-access-demo-article">
                   <Link href="/demo">
-                    Book Your Free AI Demo <ArrowRight className="h-4 w-4 ml-2" />
+                    Access Free AI Demo <ArrowRight className="h-4 w-4 ml-2" />
                   </Link>
                 </Button>
               </div>
@@ -457,7 +457,7 @@ export default function BlogArticlePage() {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button size="lg" asChild>
-                    <Link href="/demo">Book Your Free AI Demo</Link>
+                    <Link href="/demo">Access Free AI Demo</Link>
                   </Button>
                   <Button size="lg" variant="outline" asChild>
                     <Link href="/pricing">View Pricing</Link>

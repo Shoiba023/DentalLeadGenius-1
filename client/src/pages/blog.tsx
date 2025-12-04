@@ -184,7 +184,7 @@ export default function Blog() {
                   <Link href="/login">Log in</Link>
                 </Button>
                 <Button asChild data-testid="button-get-started-blog">
-                  <Link href="/demo">Book a Demo</Link>
+                  <Link href="/demo">Access Demo</Link>
                 </Button>
               </div>
             </div>
@@ -266,7 +266,7 @@ export default function Blog() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button size="lg" asChild data-testid="button-cta-demo">
-                  <Link href="/demo">Book Your Free AI Demo</Link>
+                  <Link href="/demo">Access Free AI Demo</Link>
                 </Button>
                 <Button size="lg" variant="outline" asChild>
                   <Link href="/pricing">View Pricing</Link>

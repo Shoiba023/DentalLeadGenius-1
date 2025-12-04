@@ -217,7 +217,7 @@ export default function Contact() {
                       </div>
                       <h3 className="text-xl font-semibold">Message Sent!</h3>
                       <p className="text-muted-foreground">
-                        Thank you for reaching out. Our team will contact you shortly.
+                        Thank you for reaching out. We'll get back to you within 24 hours.
                       </p>
                       <Button 
                         variant="outline" 

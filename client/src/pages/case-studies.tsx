@@ -47,7 +47,7 @@ export default function CaseStudies() {
       clinicName: "BrightSmiles Family Dentistry",
       location: "Vancouver, BC",
       challenge: "BrightSmiles was experiencing a low response rate for new patient inquiries. Leads were going cold because follow-up emails were delayed, and the team lacked a systematic approach to nurturing potential patients through the decision-making process.",
-      solution: "We deployed our AI lead nurturing workflow that automatically engages new inquiries within minutes. The system sends personalized follow-up sequences, answers common questions via chatbot, and schedules consultation calls at optimal times based on lead behavior.",
+      solution: "We deployed our AI lead nurturing workflow that automatically engages new inquiries within minutes. The system sends personalized follow-up sequences, answers common questions via chatbot, and follows up at optimal times based on lead behavior.",
       results: [
         { metric: "35%", label: "More New Patient Consultations", icon: Users },
         { metric: "50%", label: "Faster Lead Response Time", icon: Clock },
@@ -470,7 +470,7 @@ export default function CaseStudies() {
               <Button size="lg" asChild data-testid="button-cta-demo">
                 <Link href="/demo">
                   <Play className="h-5 w-5 mr-2" />
-                  Book Your Free Demo
+                  Access Free Demo
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild data-testid="button-cta-pricing">

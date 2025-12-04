@@ -99,13 +99,13 @@ The best part? You can see exactly how it works before committing.
 
 ## Take the Next Step
 
-Ready to stop losing patients to missed calls and slow follow-ups? [Book a free demo](/demo) to see how an AI receptionist can transform your practice.
+Ready to stop losing patients to missed calls and slow follow-ups? [Access our free demo](/demo) to see how an AI receptionist can transform your practice.
 
 Still have questions about [pricing](/pricing) or want to explore all the [features](/#features)? We're here to help.
 
 **Stop losing patients. Let AI convert every lead for you.**
 
-[Book Your Free AI Demo →](/demo)
+[Access Free AI Demo →](/demo)
     `
   },
   {
@@ -265,13 +265,13 @@ The most successful dental practices don't rely on a single strategy—they buil
 3. Implement 2-3 new strategies this quarter
 4. Track results and optimize continuously
 
-Ready to accelerate your lead generation with AI? [Book a free demo](/demo) to see how DentalLeadGenius can transform your patient acquisition.
+Ready to accelerate your lead generation with AI? [Access our free demo](/demo) to see how DentalLeadGenius can transform your patient acquisition.
 
 [View our pricing plans →](/pricing)
 
 **Stop struggling with lead generation. Let AI do the heavy lifting.**
 
-[Book Your Free AI Demo →](/demo)
+[Access Free AI Demo →](/demo)
     `
   },
   {
@@ -442,13 +442,13 @@ Ready to reduce your no-shows? Start with these steps:
 
 Every day you wait is another day of empty chairs and lost revenue. Modern automation makes this problem entirely solvable.
 
-[Book a demo](/demo) to see how AI-powered patient communication can transform your practice's no-show rate.
+[Access the demo](/demo) to see how AI-powered patient communication can transform your practice's no-show rate.
 
 Explore our [pricing options](/pricing) or learn about all our [features](/#features).
 
 **Stop losing production to no-shows. Let AI keep your chairs full.**
 
-[Book Your Free AI Demo →](/demo)
+[Access Free AI Demo →](/demo)
     `
   },
   {
@@ -640,13 +640,13 @@ Start improving your website today:
 
 Your website should be your best salesperson—working 24/7 to convert visitors into patients. With the right optimization and AI-powered engagement, you can transform those 97 lost visitors into booked appointments.
 
-[Book a demo](/demo) to see how AI chat can increase your website conversions.
+[Access the demo](/demo) to see how AI chat can increase your website conversions.
 
 Check out our [pricing](/pricing) or explore all [features](/#features).
 
 **Stop watching potential patients leave. Start converting them.**
 
-[Book Your Free AI Demo →](/demo)
+[Access Free AI Demo →](/demo)
     `
   },
   {
@@ -856,13 +856,13 @@ Review monthly. Double down on what works, cut what doesn't.
 
 The practices seeing the best returns in 2025 are those leveraging AI to multiply their marketing effectiveness. Every dollar invested goes further with intelligent automation.
 
-[Book a demo](/demo) to see how AI can transform your marketing ROI.
+[Access the demo](/demo) to see how AI can transform your marketing ROI.
 
 View our transparent [pricing](/pricing) or explore all [features](/#features).
 
 **Stop guessing with your marketing budget. Start optimizing it.**
 
-[Book Your Free AI Demo →](/demo)
+[Access Free AI Demo →](/demo)
     `
   },
   {
@@ -1119,13 +1119,13 @@ Start reclaiming lost patients today:
 
 Your inactive patient list is a goldmine waiting to be tapped. With the right approach—especially AI-powered automation—you can turn dormant relationships into consistent revenue.
 
-[Book a demo](/demo) to see how AI can automate your patient reactivation.
+[Access the demo](/demo) to see how AI can automate your patient reactivation.
 
 Check our [pricing](/pricing) or explore all [features](/#features).
 
 **Stop leaving money on the table. Start reactivating patients today.**
 
-[Book Your Free AI Demo →](/demo)
+[Access Free AI Demo →](/demo)
     `
   },
   {
@@ -1409,13 +1409,13 @@ Ready to save 20+ hours every week? Here's your action plan:
 
 Automation isn't the future—it's the present. Every week you wait is time and money lost.
 
-[Book a demo](/demo) to see how AI-powered automation can transform your practice.
+[Access the demo](/demo) to see how AI-powered automation can transform your practice.
 
 View our [pricing](/pricing) or explore all [features](/#features).
 
 **Stop working harder. Start working smarter.**
 
-[Book Your Free AI Demo →](/demo)
+[Access Free AI Demo →](/demo)
     `
   },
   {
@@ -1730,7 +1730,7 @@ Check our [pricing](/pricing) or explore all [features](/#features).
 
 **Start dominating local search. Attract more patients organically.**
 
-[Book Your Free AI Demo →](/demo)
+[Access Free AI Demo →](/demo)
     `
   }
 ];

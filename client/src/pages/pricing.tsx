@@ -26,7 +26,8 @@ import {
   Star,
   ArrowRight,
   CheckCircle2,
-  X
+  X,
+  Sparkles
 } from "lucide-react";
 import logoFull from "@/assets/logo/logo-full.png";
 import { SITE_NAME, SUPPORT_EMAIL } from "@shared/config";
@@ -536,20 +537,20 @@ export default function PricingPage() {
                 Not Sure Which Plan Is Right?
               </h2>
               <p className="text-lg text-muted-foreground mb-8">
-                Book a free 15-minute consultation. We'll analyze your practice and recommend the best fit.
+                Access our free demo to see the AI in action. We'll help you find the perfect fit.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button size="lg" asChild data-testid="button-book-demo">
+                <Button size="lg" asChild data-testid="button-access-demo">
                   <Link href="/demo">
-                    <Calendar className="w-5 h-5 mr-2" />
-                    Book Free Consultation
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    Access Free Demo
                   </Link>
                 </Button>
                 <Button size="lg" variant="outline" asChild data-testid="button-contact">
                   <a href={`mailto:${SUPPORT_EMAIL}`}>
                     <MessageSquare className="w-5 h-5 mr-2" />
-                    Talk to Sales
+                    Questions? Email Us
                   </a>
                 </Button>
               </div>

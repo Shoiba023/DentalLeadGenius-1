@@ -453,13 +453,13 @@ export default function About() {
             </h2>
             <p className="text-lg text-muted-foreground mb-8">
               Join hundreds of dental clinics already growing with AI-powered automation. 
-              Schedule a free demo and see the difference for yourself.
+              Access the free demo and see the difference for yourself.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" asChild data-testid="button-cta-demo">
                 <Link href="/demo">
                   <Play className="h-5 w-5 mr-2" />
-                  Book Your Free Demo
+                  Access Free Demo
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild data-testid="button-cta-pricing">
