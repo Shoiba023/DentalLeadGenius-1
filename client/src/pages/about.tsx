@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Footer } from "@/components/footer";
-import { Menu, X, Play, Target, Lightbulb, Heart, Shield, CheckCircle2, Zap, Clock, Lock, Users, Sparkles, Building2 } from "lucide-react";
+import { Menu, X, Play, Target, Lightbulb, Heart, Shield, CheckCircle2, Zap, Clock, Lock, Users, Sparkles, Building2, User } from "lucide-react";
 import { useState } from "react";
 import logoFull from "@/assets/logo/logo-full.png";
 
@@ -29,13 +29,11 @@ export default function About() {
     {
       name: "Mohammad Ali",
       title: "AI Automation Strategist & Dental Growth Specialist",
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
       bio: "With over 5 years of experience in business administration and digital marketing, Mohammad has pioneered AI workflow engineering solutions for healthcare practices. His expertise in lead generation strategy and AI pipeline development has helped numerous dental clinics transform their patient acquisition processes. Mohammad's vision for DentalLeadGenius stems from his deep understanding of how technology can bridge the gap between dental practices and potential patients, creating seamless communication channels that convert leads into loyal patients."
     },
     {
       name: "Shoiba Ali",
       title: "AI Automation Strategist & Dental Growth Specialist",
-      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop&crop=face",
       bio: "Shoiba brings 5+ years of expertise in business administration and clinic automation to DentalLeadGenius. Her background in patient communication optimization and AI-driven marketing strategies has been instrumental in developing systems that truly understand dental practice needs. Shoiba's focus on creating ethical, results-driven automation ensures that every clinic using DentalLeadGenius sees measurable improvements in patient engagement and conversion rates while maintaining the personal touch that healthcare demands."
     }
   ];
@@ -44,20 +42,17 @@ export default function About() {
     {
       name: "Alex Chen",
       role: "AI Automation Engineer",
-      image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face",
-      bio: "Specializes in building intelligent chatbot systems and automation pipelines that seamlessly integrate with dental practice management software."
+      bio: "Alex specializes in building intelligent chatbot systems and automation pipelines that seamlessly integrate with dental practice management software. With a strong background in machine learning and natural language processing, Alex ensures our AI solutions deliver accurate, helpful responses to patient inquiries around the clock."
     },
     {
       name: "Sarah Mitchell",
       role: "Outreach & Lead Specialist",
-      image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop&crop=face",
-      bio: "Expert in multi-channel marketing strategies, helping clinics maximize their patient acquisition through targeted email, SMS, and social campaigns."
+      bio: "Sarah is an expert in multi-channel marketing strategies, helping clinics maximize their patient acquisition through targeted email, SMS, and social campaigns. Her data-driven approach to lead nurturing has helped dozens of practices achieve record-breaking conversion rates."
     },
     {
       name: "David Thompson",
       role: "Client Success Manager",
-      image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=400&fit=crop&crop=face",
-      bio: "Dedicated to ensuring every clinic achieves their growth goals with personalized onboarding, training, and ongoing strategic support."
+      bio: "David is dedicated to ensuring every clinic achieves their growth goals with personalized onboarding, training, and ongoing strategic support. His hands-on approach and deep understanding of dental practice operations make him an invaluable partner for our clients."
     }
   ];
 
@@ -321,23 +316,20 @@ export default function About() {
                 <motion.div key={founder.name} variants={fadeInUp}>
                   <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-300">
                     <CardContent className="p-8">
-                      <div className="flex flex-col items-center text-center mb-6">
-                        <div className="w-32 h-32 rounded-full overflow-hidden mb-4 ring-4 ring-primary/10">
-                          <img 
-                            src={founder.image} 
-                            alt={founder.name}
-                            className="w-full h-full object-cover"
-                            data-testid={`img-founder-${index + 1}`}
-                          />
+                      <div className="flex items-start gap-4 mb-6">
+                        <div className="flex-shrink-0 w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="h-7 w-7 text-primary" />
                         </div>
-                        <h3 className="text-xl font-bold" data-testid={`text-founder-name-${index + 1}`}>
-                          {founder.name}
-                        </h3>
-                        <p className="text-sm text-primary font-medium mt-1" data-testid={`text-founder-title-${index + 1}`}>
-                          {founder.title}
-                        </p>
+                        <div>
+                          <h3 className="text-xl font-bold" data-testid={`text-founder-name-${index + 1}`}>
+                            {founder.name}
+                          </h3>
+                          <p className="text-sm text-primary font-medium mt-1" data-testid={`text-founder-title-${index + 1}`}>
+                            {founder.title}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-muted-foreground leading-relaxed text-sm" data-testid={`text-founder-bio-${index + 1}`}>
+                      <p className="text-muted-foreground leading-relaxed" data-testid={`text-founder-bio-${index + 1}`}>
                         {founder.bio}
                       </p>
                     </CardContent>
@@ -374,23 +366,22 @@ export default function About() {
             <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
               {teamMembers.map((member, index) => (
                 <motion.div key={member.name} variants={fadeInUp}>
-                  <Card className="h-full text-center hover:shadow-lg transition-shadow duration-300">
+                  <Card className="h-full hover:shadow-lg transition-shadow duration-300">
                     <CardContent className="p-6">
-                      <div className="w-24 h-24 rounded-full overflow-hidden mx-auto mb-4 ring-4 ring-muted">
-                        <img 
-                          src={member.image} 
-                          alt={member.name}
-                          className="w-full h-full object-cover"
-                          data-testid={`img-team-${index + 1}`}
-                        />
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                          <User className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold" data-testid={`text-team-name-${index + 1}`}>
+                            {member.name}
+                          </h3>
+                          <p className="text-sm text-primary font-medium" data-testid={`text-team-role-${index + 1}`}>
+                            {member.role}
+                          </p>
+                        </div>
                       </div>
-                      <h3 className="text-lg font-semibold" data-testid={`text-team-name-${index + 1}`}>
-                        {member.name}
-                      </h3>
-                      <p className="text-sm text-primary font-medium mb-3" data-testid={`text-team-role-${index + 1}`}>
-                        {member.role}
-                      </p>
-                      <p className="text-sm text-muted-foreground" data-testid={`text-team-bio-${index + 1}`}>
+                      <p className="text-sm text-muted-foreground leading-relaxed" data-testid={`text-team-bio-${index + 1}`}>
                         {member.bio}
                       </p>
                     </CardContent>
