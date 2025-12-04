@@ -5637,20 +5637,33 @@ Continue Setup: {{dashboardUrl}}/onboarding`,
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // ANALYTICS TRACKING ENDPOINTS
+  // ANALYTICS TRACKING ENDPOINTS (Comprehensive Analytics Engine)
   // ═══════════════════════════════════════════════════════════════════════════
 
   // Track analytics events (public - for landing page tracking)
   app.post("/api/analytics/track", async (req, res) => {
     try {
-      const { trackEvent } = await import("./analytics");
+      const { trackAnalyticsEvent } = await import("./analyticsService");
       const event = req.body;
       
-      if (!event.type || !event.sessionId) {
-        return res.status(400).json({ message: "Missing required fields" });
+      if (!event.eventType || !event.sessionId) {
+        return res.status(400).json({ message: "Missing required fields: eventType and sessionId" });
       }
       
-      trackEvent(event);
+      await trackAnalyticsEvent({
+        sessionId: event.sessionId,
+        eventType: event.eventType || event.type,
+        variant: event.variant,
+        path: event.path,
+        referrer: event.referrer,
+        metadata: event.metadata,
+        city: event.city,
+        country: event.country,
+        deviceType: event.deviceType,
+        browser: event.browser,
+        userId: event.userId,
+        clinicId: event.clinicId
+      });
       res.json({ success: true });
     } catch (error) {
       console.error("Error tracking analytics event:", error);
@@ -5658,39 +5671,231 @@ Continue Setup: {{dashboardUrl}}/onboarding`,
     }
   });
 
-  // Get analytics summary (authenticated)
-  app.get("/api/analytics/summary", isAuthenticated, async (req: any, res) => {
+  // Track heatmap click events (public)
+  app.post("/api/analytics/heatmap", async (req, res) => {
     try {
-      const { getAnalyticsSummary } = await import("./analytics");
-      const summary = getAnalyticsSummary();
+      const { trackHeatmapEvent } = await import("./analyticsService");
+      const { sessionId, path, x, y, elementId, elementType } = req.body;
+      
+      if (!sessionId || !path || x === undefined || y === undefined) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      await trackHeatmapEvent({ sessionId, path, x, y, elementId, elementType });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error tracking heatmap event:", error);
+      res.status(500).json({ message: "Failed to track heatmap event" });
+    }
+  });
+
+  // Get comprehensive dashboard summary (authenticated)
+  app.get("/api/analytics/dashboard", isAuthenticated, async (req: any, res) => {
+    try {
+      const { getDashboardSummary } = await import("./analyticsService");
+      const clinicId = req.session?.selectedClinicId;
+      const summary = await getDashboardSummary(clinicId);
       res.json(summary);
     } catch (error) {
-      console.error("Error getting analytics summary:", error);
-      res.status(500).json({ message: "Failed to get analytics summary" });
+      console.error("Error getting dashboard summary:", error);
+      res.status(500).json({ message: "Failed to get dashboard summary" });
     }
   });
 
-  // Get full analytics export (authenticated)
-  app.get("/api/analytics/export", isAuthenticated, async (req: any, res) => {
+  // Get A/B test variant performance (authenticated)
+  app.get("/api/analytics/variants", isAuthenticated, async (req: any, res) => {
     try {
-      const { exportAnalyticsData } = await import("./analytics");
-      const data = exportAnalyticsData();
-      res.json(data);
+      const { getVariantPerformance } = await import("./analyticsService");
+      const { startDate, endDate } = req.query;
+      const variants = await getVariantPerformance(
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      res.json(variants);
     } catch (error) {
-      console.error("Error exporting analytics:", error);
-      res.status(500).json({ message: "Failed to export analytics" });
+      console.error("Error getting variant performance:", error);
+      res.status(500).json({ message: "Failed to get variant performance" });
     }
   });
 
-  // Get funnel stats (authenticated)
+  // Get conversion funnel stats (authenticated)
   app.get("/api/analytics/funnel", isAuthenticated, async (req: any, res) => {
     try {
-      const { getFunnelStats } = await import("./analytics");
-      const funnel = getFunnelStats();
+      const { getFunnelStats } = await import("./analyticsService");
+      const { startDate, endDate } = req.query;
+      const clinicId = req.session?.selectedClinicId;
+      const funnel = await getFunnelStats(
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined,
+        clinicId
+      );
       res.json(funnel);
     } catch (error) {
       console.error("Error getting funnel stats:", error);
       res.status(500).json({ message: "Failed to get funnel stats" });
+    }
+  });
+
+  // Get city-based performance (authenticated)
+  app.get("/api/analytics/cities", isAuthenticated, async (req: any, res) => {
+    try {
+      const { getCityPerformance } = await import("./analyticsService");
+      const { limit, startDate, endDate } = req.query;
+      const cities = await getCityPerformance(
+        limit ? parseInt(limit as string) : 20,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      res.json(cities);
+    } catch (error) {
+      console.error("Error getting city performance:", error);
+      res.status(500).json({ message: "Failed to get city performance" });
+    }
+  });
+
+  // Get email campaign stats (authenticated)
+  app.get("/api/analytics/email", isAuthenticated, async (req: any, res) => {
+    try {
+      const { getEmailStats } = await import("./analyticsService");
+      const { campaignId, startDate, endDate } = req.query;
+      const stats = await getEmailStats(
+        campaignId as string,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      res.json(stats);
+    } catch (error) {
+      console.error("Error getting email stats:", error);
+      res.status(500).json({ message: "Failed to get email stats" });
+    }
+  });
+
+  // Get SMS campaign stats (authenticated)
+  app.get("/api/analytics/sms", isAuthenticated, async (req: any, res) => {
+    try {
+      const { getSmsStats } = await import("./analyticsService");
+      const { campaignId, startDate, endDate } = req.query;
+      const stats = await getSmsStats(
+        campaignId as string,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      res.json(stats);
+    } catch (error) {
+      console.error("Error getting SMS stats:", error);
+      res.status(500).json({ message: "Failed to get SMS stats" });
+    }
+  });
+
+  // Get lead score distribution (authenticated)
+  app.get("/api/analytics/lead-scores", isAuthenticated, async (req: any, res) => {
+    try {
+      const { getLeadScoreDistribution } = await import("./analyticsService");
+      const clinicId = req.session?.selectedClinicId;
+      const distribution = await getLeadScoreDistribution(clinicId);
+      res.json(distribution);
+    } catch (error) {
+      console.error("Error getting lead score distribution:", error);
+      res.status(500).json({ message: "Failed to get lead score distribution" });
+    }
+  });
+
+  // Calculate lead score for a specific lead (authenticated)
+  app.post("/api/analytics/lead-scores/:leadId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { calculateLeadScore } = await import("./analyticsService");
+      const { leadId } = req.params;
+      const score = await calculateLeadScore(leadId);
+      if (!score) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      res.json(score);
+    } catch (error) {
+      console.error("Error calculating lead score:", error);
+      res.status(500).json({ message: "Failed to calculate lead score" });
+    }
+  });
+
+  // Get heatmap data for a specific page (authenticated)
+  app.get("/api/analytics/heatmap/:path", isAuthenticated, async (req: any, res) => {
+    try {
+      const { getHeatmapData } = await import("./analyticsService");
+      const { path } = req.params;
+      const { startDate, endDate } = req.query;
+      const data = await getHeatmapData(
+        decodeURIComponent(path),
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      res.json(data);
+    } catch (error) {
+      console.error("Error getting heatmap data:", error);
+      res.status(500).json({ message: "Failed to get heatmap data" });
+    }
+  });
+
+  // Get CTA click performance (authenticated)
+  app.get("/api/analytics/cta", isAuthenticated, async (req: any, res) => {
+    try {
+      const { getCTAPerformance } = await import("./analyticsService");
+      const { startDate, endDate } = req.query;
+      const ctaStats = await getCTAPerformance(
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      res.json(ctaStats);
+    } catch (error) {
+      console.error("Error getting CTA performance:", error);
+      res.status(500).json({ message: "Failed to get CTA performance" });
+    }
+  });
+
+  // Get scroll depth stats (authenticated)
+  app.get("/api/analytics/scroll-depth", isAuthenticated, async (req: any, res) => {
+    try {
+      const { getScrollDepthStats } = await import("./analyticsService");
+      const { startDate, endDate } = req.query;
+      const scrollStats = await getScrollDepthStats(
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      res.json(scrollStats);
+    } catch (error) {
+      console.error("Error getting scroll depth stats:", error);
+      res.status(500).json({ message: "Failed to get scroll depth stats" });
+    }
+  });
+
+  // Get daily trends for charting (authenticated)
+  app.get("/api/analytics/trends", isAuthenticated, async (req: any, res) => {
+    try {
+      const { getDailyTrends } = await import("./analyticsService");
+      const { days } = req.query;
+      const clinicId = req.session?.selectedClinicId;
+      const trends = await getDailyTrends(
+        days ? parseInt(days as string) : 30,
+        clinicId
+      );
+      res.json(trends);
+    } catch (error) {
+      console.error("Error getting daily trends:", error);
+      res.status(500).json({ message: "Failed to get daily trends" });
+    }
+  });
+
+  // Generate daily snapshot (admin only)
+  app.post("/api/analytics/snapshot", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const { generateDailySnapshot } = await import("./analyticsService");
+      const { date } = req.body;
+      await generateDailySnapshot(date ? new Date(date) : new Date());
+      res.json({ success: true, message: "Daily snapshot generated" });
+    } catch (error) {
+      console.error("Error generating daily snapshot:", error);
+      res.status(500).json({ message: "Failed to generate daily snapshot" });
     }
   });
 

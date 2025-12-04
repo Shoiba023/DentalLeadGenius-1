@@ -165,13 +165,17 @@ export async function trackEvent(
 ): Promise<void> {
   const variant = getAssignedVariant();
   
-  const event: AnalyticsEvent = {
-    type,
+  // Use eventType for new API format
+  const event = {
+    eventType: type,
     variant: variant.id,
     metadata,
     timestamp: Date.now(),
     sessionId: getSessionId(),
-    path: typeof window !== "undefined" ? window.location.pathname : "/"
+    path: typeof window !== "undefined" ? window.location.pathname : "/",
+    referrer: typeof document !== "undefined" ? document.referrer : undefined,
+    deviceType: getDeviceType(),
+    browser: getBrowserName()
   };
   
   // Log to console in development
@@ -190,6 +194,30 @@ export async function trackEvent(
     // Silently fail - analytics shouldn't break the app
     console.warn("[Analytics] Failed to track event:", error);
   }
+}
+
+/**
+ * Detect device type
+ */
+function getDeviceType(): string {
+  if (typeof window === "undefined") return "unknown";
+  const ua = navigator.userAgent;
+  if (/tablet|ipad/i.test(ua)) return "tablet";
+  if (/mobile|android|iphone/i.test(ua)) return "mobile";
+  return "desktop";
+}
+
+/**
+ * Detect browser name
+ */
+function getBrowserName(): string {
+  if (typeof window === "undefined") return "unknown";
+  const ua = navigator.userAgent;
+  if (ua.includes("Chrome") && !ua.includes("Edge")) return "Chrome";
+  if (ua.includes("Safari") && !ua.includes("Chrome")) return "Safari";
+  if (ua.includes("Firefox")) return "Firefox";
+  if (ua.includes("Edge")) return "Edge";
+  return "Other";
 }
 
 /**

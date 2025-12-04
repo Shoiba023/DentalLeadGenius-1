@@ -753,3 +753,270 @@ export const onboardingEmailLogsRelations = relations(onboardingEmailLogs, ({ on
     references: [onboardingEmails.id],
   }),
 }));
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ANALYTICS TABLES - Comprehensive tracking for growth engine
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Analytics Events - Raw event tracking for all user interactions
+export const analyticsEvents = pgTable("analytics_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  clinicId: varchar("clinic_id").references(() => clinics.id),
+  eventType: varchar("event_type").notNull(), // page_view, cta_click, scroll_depth, hero_viewed, demo_started, etc.
+  variant: varchar("variant"), // A/B test variant (A, B, C, D, E, F)
+  path: varchar("path"), // URL path
+  referrer: varchar("referrer"), // Traffic source
+  metadata: jsonb("metadata").$type<Record<string, string | number | boolean>>(), // Flexible event data
+  city: varchar("city"),
+  country: varchar("country"),
+  deviceType: varchar("device_type"), // desktop, mobile, tablet
+  browser: varchar("browser"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  sessionIdx: index("analytics_events_session_idx").on(table.sessionId),
+  eventTypeIdx: index("analytics_events_type_idx").on(table.eventType),
+  variantIdx: index("analytics_events_variant_idx").on(table.variant),
+  createdAtIdx: index("analytics_events_created_at_idx").on(table.createdAt),
+  clinicIdIdx: index("analytics_events_clinic_id_idx").on(table.clinicId),
+  cityIdx: index("analytics_events_city_idx").on(table.city),
+}));
+
+export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAnalyticsEvent = z.infer<typeof insertAnalyticsEventSchema>;
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+
+// Session Metrics - Aggregated session-level data
+export const sessionMetrics = pgTable("session_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().unique(),
+  userId: varchar("user_id").references(() => users.id),
+  clinicId: varchar("clinic_id").references(() => clinics.id),
+  variant: varchar("variant"), // A/B variant assigned
+  firstPageView: timestamp("first_page_view").notNull(),
+  lastActivity: timestamp("last_activity").notNull(),
+  pageViews: integer("page_views").default(0).notNull(),
+  maxScrollDepth: integer("max_scroll_depth").default(0).notNull(), // 0-100
+  ctaClicks: integer("cta_clicks").default(0).notNull(),
+  demoStarted: boolean("demo_started").default(false).notNull(),
+  demoCompleted: boolean("demo_completed").default(false).notNull(),
+  leadCreated: boolean("lead_created").default(false).notNull(),
+  leadId: varchar("lead_id").references(() => leads.id),
+  city: varchar("city"),
+  country: varchar("country"),
+  deviceType: varchar("device_type"),
+  referrer: varchar("referrer"),
+  landingPage: varchar("landing_page"),
+  exitPage: varchar("exit_page"),
+  sessionDuration: integer("session_duration"), // in seconds
+  bounced: boolean("bounced").default(false).notNull(), // Single page, <30s
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  sessionIdIdx: index("session_metrics_session_id_idx").on(table.sessionId),
+  variantIdx: index("session_metrics_variant_idx").on(table.variant),
+  cityIdx: index("session_metrics_city_idx").on(table.city),
+  createdAtIdx: index("session_metrics_created_at_idx").on(table.createdAt),
+  demoCompletedIdx: index("session_metrics_demo_completed_idx").on(table.demoCompleted),
+}));
+
+export const insertSessionMetricSchema = createInsertSchema(sessionMetrics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSessionMetric = z.infer<typeof insertSessionMetricSchema>;
+export type SessionMetric = typeof sessionMetrics.$inferSelect;
+
+// Lead Scores - AI-powered lead quality scoring
+export const leadScores = pgTable("lead_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").notNull().references(() => leads.id),
+  clinicId: varchar("clinic_id").references(() => clinics.id),
+  overallScore: integer("overall_score").notNull(), // 0-100
+  category: varchar("category").notNull(), // hot, warm, cold
+  engagementScore: integer("engagement_score").default(0).notNull(), // Based on email opens, clicks
+  behaviorScore: integer("behavior_score").default(0).notNull(), // Based on website interactions
+  profileScore: integer("profile_score").default(0).notNull(), // Based on lead data completeness
+  recencyScore: integer("recency_score").default(0).notNull(), // Based on last activity
+  factors: jsonb("factors").$type<{
+    hasEmail: boolean;
+    hasPhone: boolean;
+    hasWebsite: boolean;
+    googleRating: number | null;
+    reviewCount: number | null;
+    emailOpens: number;
+    emailClicks: number;
+    lastActivity: string;
+    demoRequested: boolean;
+  }>(),
+  scoredAt: timestamp("scored_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  leadIdIdx: uniqueIndex("lead_scores_lead_id_unique").on(table.leadId),
+  categoryIdx: index("lead_scores_category_idx").on(table.category),
+  overallScoreIdx: index("lead_scores_overall_score_idx").on(table.overallScore),
+  clinicIdIdx: index("lead_scores_clinic_id_idx").on(table.clinicId),
+}));
+
+export const insertLeadScoreSchema = createInsertSchema(leadScores).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  scoredAt: true,
+});
+
+export type InsertLeadScore = z.infer<typeof insertLeadScoreSchema>;
+export type LeadScore = typeof leadScores.$inferSelect;
+
+// Message Events - Track email and SMS engagement
+export const messageEvents = pgTable("message_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  messageType: varchar("message_type").notNull(), // email, sms, messenger
+  campaignId: varchar("campaign_id").references(() => outreachCampaigns.id),
+  leadId: varchar("lead_id").references(() => leads.id),
+  clinicId: varchar("clinic_id").references(() => clinics.id),
+  eventType: varchar("event_type").notNull(), // sent, delivered, opened, clicked, replied, bounced, unsubscribed
+  subject: text("subject"),
+  messageId: varchar("message_id"), // External message ID (Resend, Twilio)
+  metadata: jsonb("metadata").$type<Record<string, string | number | boolean>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  messageTypeIdx: index("message_events_type_idx").on(table.messageType),
+  eventTypeIdx: index("message_events_event_type_idx").on(table.eventType),
+  campaignIdIdx: index("message_events_campaign_id_idx").on(table.campaignId),
+  leadIdIdx: index("message_events_lead_id_idx").on(table.leadId),
+  createdAtIdx: index("message_events_created_at_idx").on(table.createdAt),
+}));
+
+export const insertMessageEventSchema = createInsertSchema(messageEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMessageEvent = z.infer<typeof insertMessageEventSchema>;
+export type MessageEvent = typeof messageEvents.$inferSelect;
+
+// Daily Analytics Snapshots - Pre-aggregated daily stats for fast dashboard loading
+export const dailyAnalytics = pgTable("daily_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  date: timestamp("date").notNull(),
+  clinicId: varchar("clinic_id").references(() => clinics.id),
+  // Traffic metrics
+  pageViews: integer("page_views").default(0).notNull(),
+  uniqueVisitors: integer("unique_visitors").default(0).notNull(),
+  bounceRate: integer("bounce_rate").default(0).notNull(), // 0-100
+  avgSessionDuration: integer("avg_session_duration").default(0).notNull(), // seconds
+  // Engagement metrics
+  ctaClicks: integer("cta_clicks").default(0).notNull(),
+  avgScrollDepth: integer("avg_scroll_depth").default(0).notNull(), // 0-100
+  // Conversion metrics
+  demoStarts: integer("demo_starts").default(0).notNull(),
+  demoCompletes: integer("demo_completes").default(0).notNull(),
+  leadsCreated: integer("leads_created").default(0).notNull(),
+  // Email metrics
+  emailsSent: integer("emails_sent").default(0).notNull(),
+  emailsOpened: integer("emails_opened").default(0).notNull(),
+  emailsClicked: integer("emails_clicked").default(0).notNull(),
+  // SMS metrics
+  smsSent: integer("sms_sent").default(0).notNull(),
+  smsReplied: integer("sms_replied").default(0).notNull(),
+  // A/B test data
+  variantStats: jsonb("variant_stats").$type<Record<string, { views: number; clicks: number; conversions: number }>>(),
+  // City performance
+  cityStats: jsonb("city_stats").$type<Record<string, { views: number; conversions: number }>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  dateIdx: index("daily_analytics_date_idx").on(table.date),
+  clinicIdIdx: index("daily_analytics_clinic_id_idx").on(table.clinicId),
+  dateClinicIdx: uniqueIndex("daily_analytics_date_clinic_unique").on(table.date, table.clinicId),
+}));
+
+export const insertDailyAnalyticsSchema = createInsertSchema(dailyAnalytics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertDailyAnalytics = z.infer<typeof insertDailyAnalyticsSchema>;
+export type DailyAnalytics = typeof dailyAnalytics.$inferSelect;
+
+// Heatmap Data - Track click positions for heatmap visualization
+export const heatmapEvents = pgTable("heatmap_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull(),
+  path: varchar("path").notNull(),
+  x: integer("x").notNull(), // X coordinate (percentage 0-100)
+  y: integer("y").notNull(), // Y coordinate (percentage 0-100)
+  elementId: varchar("element_id"), // Clicked element ID
+  elementType: varchar("element_type"), // button, link, image, etc.
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  pathIdx: index("heatmap_events_path_idx").on(table.path),
+  createdAtIdx: index("heatmap_events_created_at_idx").on(table.createdAt),
+}));
+
+export const insertHeatmapEventSchema = createInsertSchema(heatmapEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertHeatmapEvent = z.infer<typeof insertHeatmapEventSchema>;
+export type HeatmapEvent = typeof heatmapEvents.$inferSelect;
+
+// Analytics Relations
+export const analyticsEventsRelations = relations(analyticsEvents, ({ one }) => ({
+  user: one(users, {
+    fields: [analyticsEvents.userId],
+    references: [users.id],
+  }),
+  clinic: one(clinics, {
+    fields: [analyticsEvents.clinicId],
+    references: [clinics.id],
+  }),
+}));
+
+export const sessionMetricsRelations = relations(sessionMetrics, ({ one }) => ({
+  user: one(users, {
+    fields: [sessionMetrics.userId],
+    references: [users.id],
+  }),
+  clinic: one(clinics, {
+    fields: [sessionMetrics.clinicId],
+    references: [clinics.id],
+  }),
+  lead: one(leads, {
+    fields: [sessionMetrics.leadId],
+    references: [leads.id],
+  }),
+}));
+
+export const leadScoresRelations = relations(leadScores, ({ one }) => ({
+  lead: one(leads, {
+    fields: [leadScores.leadId],
+    references: [leads.id],
+  }),
+  clinic: one(clinics, {
+    fields: [leadScores.clinicId],
+    references: [clinics.id],
+  }),
+}));
+
+export const messageEventsRelations = relations(messageEvents, ({ one }) => ({
+  campaign: one(outreachCampaigns, {
+    fields: [messageEvents.campaignId],
+    references: [outreachCampaigns.id],
+  }),
+  lead: one(leads, {
+    fields: [messageEvents.leadId],
+    references: [leads.id],
+  }),
+  clinic: one(clinics, {
+    fields: [messageEvents.clinicId],
+    references: [clinics.id],
+  }),
+}));

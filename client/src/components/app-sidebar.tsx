@@ -1,4 +1,4 @@
-import { Home, Users, Send, Building2, BarChart3, LogOut, Calendar, Clock, UserPlus, Rocket } from "lucide-react";
+import { Home, Users, Send, Building2, BarChart3, LogOut, Calendar, Clock, UserPlus, Rocket, LineChart } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -55,6 +55,11 @@ const adminMenuItems = [
     url: "/dashboard/users",
     icon: UserPlus,
   },
+  {
+    title: "Growth Analytics",
+    url: "/dashboard/analytics",
+    icon: LineChart,
+  },
 ];
 
 const clinicMenuItems = [
@@ -82,6 +87,11 @@ const clinicMenuItems = [
     title: "Patient Bookings",
     url: "/dashboard/patient-bookings",
     icon: Calendar,
+  },
+  {
+    title: "Growth Analytics",
+    url: "/dashboard/analytics",
+    icon: LineChart,
   },
 ];
 

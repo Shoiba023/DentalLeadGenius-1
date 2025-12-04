@@ -34,6 +34,7 @@ import Blog from "@/pages/blog";
 import BlogArticle from "@/pages/blog-article";
 import About from "@/pages/about";
 import CaseStudies from "@/pages/case-studies";
+import AnalyticsDashboard from "@/pages/analytics-dashboard";
 
 function DashboardHome() {
   const { user } = useAuth();
@@ -158,6 +159,7 @@ function Router() {
               <Route path="/dashboard/clinics/:id" component={AdminClinicDashboard} />
               <Route path="/dashboard/patient-bookings" component={AdminPatientBookings} />
               <Route path="/dashboard/users" component={AdminUsers} />
+              <Route path="/dashboard/analytics" component={AnalyticsDashboard} />
               <Route path="/dashboard/onboarding" component={Onboarding} />
               <Route path="/demo" component={Demo} />
               <Route component={NotFound} />
