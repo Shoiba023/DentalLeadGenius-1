@@ -1,6 +1,6 @@
-import { MessageSquare, Users, Building2, BarChart3, Phone, Calendar, Play, Menu, X, Mail } from "lucide-react";
+import { MessageSquare, Users, Building2, BarChart3, Phone, Calendar, Play, Menu, X, Mail, HelpCircle, ChevronRight, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChatbotWidget } from "@/components/chatbot-widget";
 import { DemoRequestForm } from "@/components/demo-request-form";
 import { useState } from "react";
@@ -11,6 +11,12 @@ import logoFull from "@/assets/logo/logo-full.png";
 import logoIcon from "@/assets/logo/icon.png";
 import { SITE_NAME } from "@shared/config";
 import { Footer } from "@/components/footer";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export default function Landing() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -328,6 +334,257 @@ export default function Landing() {
                 </CardContent>
               </Card>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Preview Section */}
+      <section id="pricing" className="py-24 bg-muted/30">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4" data-testid="text-pricing-headline">
+              Simple, Transparent Pricing
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Choose the plan that fits your clinic. Start growing today with AI-powered lead generation.
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <Card className="hover-elevate" data-testid="card-pricing-essential">
+              <CardHeader className="text-center pb-2">
+                <CardTitle className="text-xl">Essential</CardTitle>
+                <CardDescription>Perfect for single clinics</CardDescription>
+              </CardHeader>
+              <CardContent className="text-center space-y-4">
+                <div>
+                  <span className="text-4xl font-bold">$199</span>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li>1 Clinic</li>
+                  <li>AI Sales Chatbot</li>
+                  <li>Email Campaigns</li>
+                  <li>Lead Management</li>
+                </ul>
+              </CardContent>
+            </Card>
+            
+            <Card className="hover-elevate border-primary relative" data-testid="card-pricing-growth">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
+                  Most Popular
+                </span>
+              </div>
+              <CardHeader className="text-center pb-2">
+                <CardTitle className="text-xl">Growth</CardTitle>
+                <CardDescription>For growing practices</CardDescription>
+              </CardHeader>
+              <CardContent className="text-center space-y-4">
+                <div>
+                  <span className="text-4xl font-bold text-primary">$349</span>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li>Up to 3 Clinics</li>
+                  <li>Everything in Essential</li>
+                  <li>Multi-Channel Outreach</li>
+                  <li>Priority Support</li>
+                </ul>
+              </CardContent>
+            </Card>
+            
+            <Card className="hover-elevate" data-testid="card-pricing-elite">
+              <CardHeader className="text-center pb-2">
+                <CardTitle className="text-xl">Elite</CardTitle>
+                <CardDescription>Enterprise solution</CardDescription>
+              </CardHeader>
+              <CardContent className="text-center space-y-4">
+                <div>
+                  <span className="text-4xl font-bold">$599</span>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li>Unlimited Clinics</li>
+                  <li>Everything in Growth</li>
+                  <li>White-Label Branding</li>
+                  <li>Dedicated Account Manager</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div className="text-center mt-10">
+            <Button size="lg" asChild data-testid="button-view-pricing">
+              <Link href="/pricing">
+                View Full Pricing Details
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section id="faq" className="py-24">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 mb-4">
+              <HelpCircle className="h-6 w-6 text-primary" />
+            </div>
+            <h2 className="text-4xl font-bold mb-4" data-testid="text-faq-headline">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Everything you need to know about DentalLeadGenius
+            </p>
+          </div>
+
+          <div className="max-w-3xl mx-auto">
+            <Accordion type="single" collapsible className="space-y-4">
+              <AccordionItem value="item-1" className="border rounded-lg px-6" data-testid="faq-item-1">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline">
+                  What is DentalLeadGenius?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  DentalLeadGenius is an AI-powered automation platform designed exclusively for dental clinics. It generates patient leads, sends automated email campaigns, answers patient questions, and boosts appointment bookings 24/7.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-2" className="border rounded-lg px-6" data-testid="faq-item-2">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline">
+                  How does DentalLeadGenius help my clinic?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  Our AI system works like a smart, always-available receptionist — responding instantly, following up with patients, and converting leads into booked appointments automatically.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-3" className="border rounded-lg px-6" data-testid="faq-item-3">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline">
+                  Do I need technical skills to use it?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  No. DentalLeadGenius is 100% beginner-friendly. You simply start your campaign and the AI handles the rest.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-4" className="border rounded-lg px-6" data-testid="faq-item-4">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline">
+                  How many patients can this system bring?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  Most clinics see 3x to 10x more leads depending on city and demand.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-5" className="border rounded-lg px-6" data-testid="faq-item-5">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline">
+                  Is this software safe and secure?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  Yes. All data is encrypted and never shared. Clinics retain full control over their information.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-6" className="border rounded-lg px-6" data-testid="faq-item-6">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline">
+                  Does DentalLeadGenius replace my staff?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  No. It supports your staff by handling repetitive tasks like email replies, FAQs, and follow-ups.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-7" className="border rounded-lg px-6" data-testid="faq-item-7">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline">
+                  Can I customize the emails and campaigns?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  Yes. Emails, automations, and templates are fully customizable.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-8" className="border rounded-lg px-6" data-testid="faq-item-8">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline">
+                  Do I need to install anything?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  No installation required. The system is fully web-based and works on mobile, tablet, and desktop.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-9" className="border rounded-lg px-6" data-testid="faq-item-9">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline">
+                  Does it work for multi-location clinics?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  Yes. You can manage multiple branches and their leads independently.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-10" className="border rounded-lg px-6" data-testid="faq-item-10">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline">
+                  How fast can I see results?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  Clinics start receiving leads within 24–48 hours.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-11" className="border rounded-lg px-6" data-testid="faq-item-11">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline">
+                  What is the cost?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  <p className="mb-3">We offer flexible pricing plans starting from $199/month for single clinics up to $599/month for enterprise solutions with unlimited clinics.</p>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href="#pricing">
+                      View Pricing Plans Above
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </a>
+                  </Button>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-12" className="border rounded-lg px-6" data-testid="faq-item-12">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline">
+                  How do I get support?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  <p className="mb-4">Our team is here to help you succeed. Reach out anytime:</p>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Phone className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-foreground">Phone:</span>
+                        <a href="tel:+12505742162" className="ml-2 text-primary hover:underline">250-574-2162</a>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Mail className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-foreground">Email:</span>
+                        <a href="mailto:info@dentalleadgenius.com" className="ml-2 text-primary hover:underline">info@dentalleadgenius.com</a>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Globe className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-foreground">Website:</span>
+                        <a href="https://smartai-partners.io" target="_blank" rel="noopener noreferrer" className="ml-2 text-primary hover:underline">smartai-partners.io</a>
+                      </div>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         </div>
       </section>
