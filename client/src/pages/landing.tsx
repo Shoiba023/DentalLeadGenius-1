@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { 
   Calendar, 
   Phone, 
@@ -28,6 +29,15 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  getAssignedVariant,
+  trackHeroViewed,
+  trackHeroClicked,
+  trackPageView,
+  trackCTAClick,
+  initScrollTracking,
+  type HeadlineVariant
+} from "@/lib/abTesting";
 
 /**
  * LANDING PAGE - CONVERSION FOCUSED (POLISHED VERSION)
@@ -56,6 +66,30 @@ import {
  */
 
 export default function Landing() {
+  const [variant, setVariant] = useState<HeadlineVariant | null>(null);
+
+  useEffect(() => {
+    // Get assigned A/B test variant
+    const assignedVariant = getAssignedVariant();
+    setVariant(assignedVariant);
+
+    // Track page view and hero variant impression
+    trackPageView();
+    trackHeroViewed();
+
+    // Initialize scroll depth tracking
+    const cleanup = initScrollTracking();
+    return cleanup;
+  }, []);
+
+  // CTA click handler with tracking
+  const handleCTAClick = (ctaId: string, ctaText: string) => {
+    trackCTAClick(ctaId, ctaText);
+    if (ctaId.includes("hero")) {
+      trackHeroClicked(ctaText);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* ============================================
@@ -104,22 +138,46 @@ export default function Landing() {
               transition={{ duration: 0.5 }}
               className="space-y-6 sm:space-y-8"
             >
-              {/* Main H1 Headline - Enhanced typography */}
+              {/* Main H1 Headline - A/B Tested with 6 Variants */}
               <h1
                 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-[1.1] tracking-tight"
                 data-testid="text-hero-headline"
+                data-variant={variant?.id || "A"}
               >
-                Stop Losing Patients — <br className="hidden sm:block" />
-                <span className="text-primary bg-gradient-to-r from-primary to-primary/80 bg-clip-text">
-                  Let AI Convert Every Lead For You
-                </span>
+                {variant ? (
+                  <>
+                    {variant.headline.split(" — ").length > 1 ? (
+                      <>
+                        {variant.headline.split(" — ")[0]} — <br className="hidden sm:block" />
+                        <span className="text-primary bg-gradient-to-r from-primary to-primary/80 bg-clip-text">
+                          {variant.headline.split(" — ")[1]}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-primary bg-gradient-to-r from-primary to-primary/80 bg-clip-text">
+                        {variant.headline}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    Stop Losing Patients — <br className="hidden sm:block" />
+                    <span className="text-primary bg-gradient-to-r from-primary to-primary/80 bg-clip-text">
+                      Let AI Convert Every Lead For You
+                    </span>
+                  </>
+                )}
               </h1>
 
-              {/* Subheadline - Improved readability */}
+              {/* Subheadline - A/B Tested */}
               <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed px-2">
-                DentalLeadGenius is your clinic's 24/7 AI receptionist that instantly replies to patients, 
-                follows up every lead, and turns missed calls into booked appointments — 
-                <span className="font-semibold text-foreground"> without hiring extra staff.</span>
+                {variant?.subheadline || (
+                  <>
+                    DentalLeadGenius is your clinic's 24/7 AI receptionist that instantly replies to patients, 
+                    follows up every lead, and turns missed calls into booked appointments — 
+                    <span className="font-semibold text-foreground"> without hiring extra staff.</span>
+                  </>
+                )}
               </p>
 
               {/* Micro-trust text */}
@@ -170,7 +228,7 @@ export default function Landing() {
               ))}
             </motion.div>
 
-            {/* Primary CTA - Enhanced prominence */}
+            {/* Primary CTA - Enhanced prominence with A/B tracking */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -182,6 +240,7 @@ export default function Landing() {
                 className="gap-2 px-8 sm:px-10 py-6 sm:py-7 text-base sm:text-lg font-semibold shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-shadow"
                 asChild
                 data-testid="button-book-demo-hero"
+                onClick={() => handleCTAClick("hero-cta", "Book a Free Demo")}
               >
                 <a href="#book-demo">
                   <Calendar className="h-5 w-5" />

@@ -5636,6 +5636,64 @@ Continue Setup: {{dashboardUrl}}/onboarding`,
     }
   });
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ANALYTICS TRACKING ENDPOINTS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Track analytics events (public - for landing page tracking)
+  app.post("/api/analytics/track", async (req, res) => {
+    try {
+      const { trackEvent } = await import("./analytics");
+      const event = req.body;
+      
+      if (!event.type || !event.sessionId) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      trackEvent(event);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error tracking analytics event:", error);
+      res.status(500).json({ message: "Failed to track event" });
+    }
+  });
+
+  // Get analytics summary (authenticated)
+  app.get("/api/analytics/summary", isAuthenticated, async (req: any, res) => {
+    try {
+      const { getAnalyticsSummary } = await import("./analytics");
+      const summary = getAnalyticsSummary();
+      res.json(summary);
+    } catch (error) {
+      console.error("Error getting analytics summary:", error);
+      res.status(500).json({ message: "Failed to get analytics summary" });
+    }
+  });
+
+  // Get full analytics export (authenticated)
+  app.get("/api/analytics/export", isAuthenticated, async (req: any, res) => {
+    try {
+      const { exportAnalyticsData } = await import("./analytics");
+      const data = exportAnalyticsData();
+      res.json(data);
+    } catch (error) {
+      console.error("Error exporting analytics:", error);
+      res.status(500).json({ message: "Failed to export analytics" });
+    }
+  });
+
+  // Get funnel stats (authenticated)
+  app.get("/api/analytics/funnel", isAuthenticated, async (req: any, res) => {
+    try {
+      const { getFunnelStats } = await import("./analytics");
+      const funnel = getFunnelStats();
+      res.json(funnel);
+    } catch (error) {
+      console.error("Error getting funnel stats:", error);
+      res.status(500).json({ message: "Failed to get funnel stats" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
