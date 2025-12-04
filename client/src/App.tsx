@@ -27,6 +27,9 @@ import AdminUsers from "@/pages/admin-users";
 import ClinicPage from "@/pages/clinic-page";
 import Onboarding from "@/pages/onboarding";
 import PublicOnboarding from "@/pages/public-onboarding";
+import PrivacyPolicy from "@/pages/privacy-policy";
+import TermsOfService from "@/pages/terms-of-service";
+import Security from "@/pages/security";
 
 function DashboardHome() {
   const { user } = useAuth();
@@ -68,9 +71,12 @@ function Router() {
   const isClinicRoute = location.startsWith("/clinic/");
   const isPublicOnboardingRoute = location === "/onboarding" || location.startsWith("/onboarding");
   const isContactRoute = location === "/contact" || location.startsWith("/contact");
+  const isPrivacyRoute = location === "/privacy-policy";
+  const isTermsRoute = location === "/terms-of-service";
+  const isSecurityRoute = location === "/security";
   
   // Public routes - always show without sidebar (for both authenticated and unauthenticated users)
-  const isPublicRoute = isLandingRoute || isDemoRoute || isLoginRoute || isSignupRoute || isPricingRoute || isPaymentRoute || isClinicRoute || isPublicOnboardingRoute || isContactRoute;
+  const isPublicRoute = isLandingRoute || isDemoRoute || isLoginRoute || isSignupRoute || isPricingRoute || isPaymentRoute || isClinicRoute || isPublicOnboardingRoute || isContactRoute || isPrivacyRoute || isTermsRoute || isSecurityRoute;
   
   if (isPublicRoute) {
     return (
@@ -83,6 +89,9 @@ function Router() {
         <Route path="/payment/success" component={PaymentSuccess} />
         <Route path="/onboarding" component={PublicOnboarding} />
         <Route path="/contact" component={Contact} />
+        <Route path="/privacy-policy" component={PrivacyPolicy} />
+        <Route path="/terms-of-service" component={TermsOfService} />
+        <Route path="/security" component={Security} />
         <Route path="/clinic/:slug" component={ClinicPage} />
         <Route component={NotFound} />
       </Switch>
@@ -101,6 +110,9 @@ function Router() {
         <Route path="/payment/success" component={PaymentSuccess} />
         <Route path="/onboarding" component={PublicOnboarding} />
         <Route path="/contact" component={Contact} />
+        <Route path="/privacy-policy" component={PrivacyPolicy} />
+        <Route path="/terms-of-service" component={TermsOfService} />
+        <Route path="/security" component={Security} />
         <Route path="/clinic/:slug" component={ClinicPage} />
         <Route component={NotFound} />
       </Switch>

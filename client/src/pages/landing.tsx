@@ -1,4 +1,4 @@
-import { MessageSquare, Users, Building2, BarChart3, Phone, Calendar, Play, Menu, X, Mail, HelpCircle, ChevronRight, Globe } from "lucide-react";
+import { MessageSquare, Users, Building2, BarChart3, Phone, Calendar, Play, Menu, X, Mail, HelpCircle, ChevronRight, Globe, ShieldCheck, BadgeCheck, CheckCircle2, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChatbotWidget } from "@/components/chatbot-widget";
@@ -333,6 +333,45 @@ export default function Landing() {
                   <p className="text-sm text-muted-foreground">AI Assistance</p>
                 </CardContent>
               </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Badges Section */}
+      <section className="py-16 bg-primary/5">
+        <div className="container mx-auto px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+            <div className="flex flex-col items-center text-center p-4">
+              <div className="h-14 w-14 rounded-full bg-green-500/10 flex items-center justify-center mb-3">
+                <ShieldCheck className="h-7 w-7 text-green-600" />
+              </div>
+              <h4 className="font-semibold text-sm mb-1">Secure & Encrypted</h4>
+              <p className="text-xs text-muted-foreground">256-bit SSL Protection</p>
+            </div>
+            
+            <div className="flex flex-col items-center text-center p-4">
+              <div className="h-14 w-14 rounded-full bg-blue-500/10 flex items-center justify-center mb-3">
+                <BadgeCheck className="h-7 w-7 text-blue-600" />
+              </div>
+              <h4 className="font-semibold text-sm mb-1">30-Day Money-Back</h4>
+              <p className="text-xs text-muted-foreground">Full Refund Guarantee</p>
+            </div>
+            
+            <div className="flex flex-col items-center text-center p-4">
+              <div className="h-14 w-14 rounded-full bg-purple-500/10 flex items-center justify-center mb-3">
+                <CheckCircle2 className="h-7 w-7 text-purple-600" />
+              </div>
+              <h4 className="font-semibold text-sm mb-1">Trusted by 500+</h4>
+              <p className="text-xs text-muted-foreground">Dental Clinics</p>
+            </div>
+            
+            <div className="flex flex-col items-center text-center p-4">
+              <div className="h-14 w-14 rounded-full bg-orange-500/10 flex items-center justify-center mb-3">
+                <MailCheck className="h-7 w-7 text-orange-600" />
+              </div>
+              <h4 className="font-semibold text-sm mb-1">Verified Domain</h4>
+              <p className="text-xs text-muted-foreground">Email Delivery</p>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Phone, Mail, Globe, Headphones } from "lucide-react";
+import { Phone, Mail, Globe, Headphones, Shield, FileText, Lock } from "lucide-react";
 import logoFull from "@/assets/logo/logo-full.png";
 import { SITE_NAME } from "@shared/config";
 
@@ -9,7 +9,7 @@ export function Footer() {
   return (
     <footer className="border-t bg-muted/30">
       <div className="container mx-auto px-6 py-12">
-        <div className="grid md:grid-cols-4 gap-8">
+        <div className="grid md:grid-cols-5 gap-8">
           <div className="md:col-span-1">
             <Link href="/">
               <img 
@@ -54,6 +54,30 @@ export function Footer() {
           </div>
 
           <div>
+            <h4 className="font-semibold mb-4">Legal</h4>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link href="/privacy-policy" className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5">
+                  <Shield className="h-3.5 w-3.5" />
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms-of-service" className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5" />
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link href="/security" className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5">
+                  <Lock className="h-3.5 w-3.5" />
+                  Security & Compliance
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          <div>
             <h4 className="font-semibold mb-4">Resources</h4>
             <ul className="space-y-2 text-sm">
               <li>
@@ -80,18 +104,8 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Contact Information</h4>
+            <h4 className="font-semibold mb-4">Contact Us</h4>
             <ul className="space-y-3 text-sm">
-              <li className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-primary" />
-                <a 
-                  href="tel:+12505742162" 
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  data-testid="footer-phone"
-                >
-                  +1 (250) 574-2162
-                </a>
-              </li>
               <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-primary" />
                 <a 
@@ -100,6 +114,16 @@ export function Footer() {
                   data-testid="footer-email"
                 >
                   info@dentalleadgenius.com
+                </a>
+              </li>
+              <li className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-primary" />
+                <a 
+                  href="tel:+12505742162" 
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  data-testid="footer-phone"
+                >
+                  +1 (250) 574-2162
                 </a>
               </li>
               <li className="flex items-center gap-2">
@@ -134,9 +158,13 @@ export function Footer() {
           <p className="text-sm text-muted-foreground">
             &copy; {currentYear} {SITE_NAME}. All rights reserved.
           </p>
-          <p className="text-xs text-muted-foreground">
-            Helping dental clinics grow with AI-powered lead generation.
-          </p>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
+            <Link href="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+            <span>|</span>
+            <Link href="/terms-of-service" className="hover:text-foreground transition-colors">Terms of Service</Link>
+            <span>|</span>
+            <Link href="/security" className="hover:text-foreground transition-colors">Security & Compliance</Link>
+          </div>
         </div>
       </div>
     </footer>
