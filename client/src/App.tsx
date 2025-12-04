@@ -33,6 +33,7 @@ import Security from "@/pages/security";
 import Blog from "@/pages/blog";
 import BlogArticle from "@/pages/blog-article";
 import About from "@/pages/about";
+import CaseStudies from "@/pages/case-studies";
 
 function DashboardHome() {
   const { user } = useAuth();
@@ -79,9 +80,10 @@ function Router() {
   const isSecurityRoute = location === "/security";
   const isBlogRoute = location === "/blog" || location.startsWith("/blog/");
   const isAboutRoute = location === "/about";
+  const isCaseStudiesRoute = location === "/case-studies";
   
   // Public routes - always show without sidebar (for both authenticated and unauthenticated users)
-  const isPublicRoute = isLandingRoute || isDemoRoute || isLoginRoute || isSignupRoute || isPricingRoute || isPaymentRoute || isClinicRoute || isPublicOnboardingRoute || isContactRoute || isPrivacyRoute || isTermsRoute || isSecurityRoute || isBlogRoute || isAboutRoute;
+  const isPublicRoute = isLandingRoute || isDemoRoute || isLoginRoute || isSignupRoute || isPricingRoute || isPaymentRoute || isClinicRoute || isPublicOnboardingRoute || isContactRoute || isPrivacyRoute || isTermsRoute || isSecurityRoute || isBlogRoute || isAboutRoute || isCaseStudiesRoute;
   
   if (isPublicRoute) {
     return (
@@ -100,6 +102,7 @@ function Router() {
         <Route path="/blog" component={Blog} />
         <Route path="/blog/:slug" component={BlogArticle} />
         <Route path="/about" component={About} />
+        <Route path="/case-studies" component={CaseStudies} />
         <Route path="/clinic/:slug" component={ClinicPage} />
         <Route component={NotFound} />
       </Switch>
@@ -124,6 +127,7 @@ function Router() {
         <Route path="/blog" component={Blog} />
         <Route path="/blog/:slug" component={BlogArticle} />
         <Route path="/about" component={About} />
+        <Route path="/case-studies" component={CaseStudies} />
         <Route path="/clinic/:slug" component={ClinicPage} />
         <Route component={NotFound} />
       </Switch>
