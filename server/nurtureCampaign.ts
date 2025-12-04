@@ -19,11 +19,13 @@ import {
 } from "./leadSegmentation";
 import type { Lead, Clinic, OutreachCampaign } from "@shared/schema";
 
-// Nurture sequence step definitions
+// 5-Day Nurture Sequence Step Definitions
 export const NURTURE_STEPS = {
   STEP_1: { day: 0, name: "welcome", subject: "Welcome to {clinic_name} - Let's Get Started" },
-  STEP_2: { day: 2, name: "value_prop", subject: "How {clinic_name} is Transforming Dental Practices" },
-  STEP_3: { day: 5, name: "demo_cta", subject: "Ready to See {clinic_name} in Action?" },
+  STEP_2: { day: 1, name: "social_proof", subject: "Why 500+ Dental Practices Trust {clinic_name}" },
+  STEP_3: { day: 2, name: "features", subject: "3 Features That Transform Dental Lead Management" },
+  STEP_4: { day: 3, name: "case_study", subject: "How Dr. Smith Increased Bookings by 40%" },
+  STEP_5: { day: 4, name: "final_cta", subject: "Your Free Demo Expires Tomorrow - {clinic_name}" },
 } as const;
 
 export type NurtureStep = keyof typeof NURTURE_STEPS;
@@ -90,47 +92,40 @@ The ${clinicName} Team`,
       
     case "STEP_2":
       return {
-        subject: `How ${clinicName} is Transforming Dental Practices`,
+        subject: `Why 500+ Dental Practices Trust ${clinicName}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #1e40af;">Hi ${firstName},</h2>
-            <p>I wanted to follow up on my last email and share how ${clinicName} is helping dental practices thrive.</p>
-            <h3 style="color: #374151;">Our Key Features:</h3>
-            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
-              <p><strong>AI-Powered Lead Generation</strong><br/>
-              Our smart targeting finds ideal patients in your area automatically.</p>
+            <p>Yesterday I introduced you to ${clinicName}. Today, I wanted to share why over 500 dental practices already trust us.</p>
+            
+            <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 15px; margin: 20px 0;">
+              <p style="font-style: italic; margin: 0;">"We saw a 45% increase in new patient bookings within the first month. The AI chatbot handles inquiries 24/7, and our staff can focus on patient care."</p>
+              <p style="margin: 10px 0 0 0; font-weight: bold;">- Dr. Sarah Johnson, Smile Dental Care</p>
             </div>
-            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
-              <p><strong>Automated Follow-Ups</strong><br/>
-              Never let a lead go cold with intelligent, personalized nurture sequences.</p>
+            
+            <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 15px; margin: 20px 0;">
+              <p style="font-style: italic; margin: 0;">"The automated follow-ups alone saved us 15 hours per week. Our conversion rate doubled."</p>
+              <p style="margin: 10px 0 0 0; font-weight: bold;">- Dr. Michael Chen, Premier Dental Group</p>
             </div>
-            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
-              <p><strong>24/7 Patient Chatbot</strong><br/>
-              Answer patient questions and book appointments even while you sleep.</p>
-            </div>
-            <p>Would you like to see how these features could work for your practice?</p>
-            <p><a href="${ctaUrl}" style="display: inline-block; background: #1e40af; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none;">Book a Demo</a></p>
+            
+            <p>Want to see similar results? I'd love to show you exactly how we can help.</p>
+            <p><a href="${ctaUrl}" style="display: inline-block; background: #1e40af; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none;">Schedule Your Demo</a></p>
             <p>Best regards,<br/><strong>The ${clinicName} Team</strong></p>
           </div>
         `,
         text: `Hi ${firstName},
 
-I wanted to follow up on my last email and share how ${clinicName} is helping dental practices thrive.
+Yesterday I introduced you to ${clinicName}. Today, I wanted to share why over 500 dental practices already trust us.
 
-Our Key Features:
+"We saw a 45% increase in new patient bookings within the first month. The AI chatbot handles inquiries 24/7, and our staff can focus on patient care."
+- Dr. Sarah Johnson, Smile Dental Care
 
-AI-Powered Lead Generation
-Our smart targeting finds ideal patients in your area automatically.
+"The automated follow-ups alone saved us 15 hours per week. Our conversion rate doubled."
+- Dr. Michael Chen, Premier Dental Group
 
-Automated Follow-Ups
-Never let a lead go cold with intelligent, personalized nurture sequences.
+Want to see similar results? I'd love to show you exactly how we can help.
 
-24/7 Patient Chatbot
-Answer patient questions and book appointments even while you sleep.
-
-Would you like to see how these features could work for your practice?
-
-Book a Demo: ${ctaUrl}
+Schedule Your Demo: ${ctaUrl}
 
 Best regards,
 The ${clinicName} Team`,
@@ -138,39 +133,161 @@ The ${clinicName} Team`,
       
     case "STEP_3":
       return {
-        subject: `Ready to See ${clinicName} in Action?`,
+        subject: `3 Features That Transform Dental Lead Management`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #1e40af;">Hi ${firstName},</h2>
-            <p>This is my final follow-up, and I wanted to make sure you had a chance to see what ${clinicName} can do for your practice.</p>
-            <p style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">
-              <strong>Practices using our platform see:</strong><br/>
-              ✓ 40% increase in patient bookings<br/>
-              ✓ 50% reduction in no-shows<br/>
-              ✓ 3x faster lead response times
-            </p>
-            <p>I'd love to show you exactly how we can help you achieve similar results. Our demo takes just 15 minutes.</p>
-            <p style="text-align: center; margin: 25px 0;">
+            <p>I wanted to highlight 3 powerful features that set ${clinicName} apart:</p>
+            
+            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 15px 0;">
+              <h3 style="color: #1e40af; margin-top: 0;">1. AI-Powered Lead Generation</h3>
+              <p>Our smart targeting uses machine learning to find ideal patients in your area. We analyze demographics, search patterns, and intent signals to deliver high-quality leads to your practice.</p>
+            </div>
+            
+            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 15px 0;">
+              <h3 style="color: #1e40af; margin-top: 0;">2. Automated Follow-Up Sequences</h3>
+              <p>Never let a lead go cold again. Our intelligent nurture sequences automatically send personalized messages at the perfect time, converting inquiries into booked appointments.</p>
+            </div>
+            
+            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 15px 0;">
+              <h3 style="color: #1e40af; margin-top: 0;">3. 24/7 AI Patient Chatbot</h3>
+              <p>Answer patient questions, schedule appointments, and capture leads around the clock. Your virtual assistant never sleeps, ensuring you never miss an opportunity.</p>
+            </div>
+            
+            <p>Want to see these features in action?</p>
+            <p><a href="${ctaUrl}" style="display: inline-block; background: #1e40af; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none;">Book Your Demo</a></p>
+            <p>Best regards,<br/><strong>The ${clinicName} Team</strong></p>
+          </div>
+        `,
+        text: `Hi ${firstName},
+
+I wanted to highlight 3 powerful features that set ${clinicName} apart:
+
+1. AI-Powered Lead Generation
+Our smart targeting uses machine learning to find ideal patients in your area. We analyze demographics, search patterns, and intent signals to deliver high-quality leads to your practice.
+
+2. Automated Follow-Up Sequences
+Never let a lead go cold again. Our intelligent nurture sequences automatically send personalized messages at the perfect time, converting inquiries into booked appointments.
+
+3. 24/7 AI Patient Chatbot
+Answer patient questions, schedule appointments, and capture leads around the clock. Your virtual assistant never sleeps, ensuring you never miss an opportunity.
+
+Want to see these features in action?
+
+Book Your Demo: ${ctaUrl}
+
+Best regards,
+The ${clinicName} Team`,
+      };
+      
+    case "STEP_4":
+      return {
+        subject: `How Dr. Smith Increased Bookings by 40%`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #1e40af;">Hi ${firstName},</h2>
+            <p>Today I want to share a real success story from one of our clients.</p>
+            
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="color: #1e40af; margin-top: 0;">Case Study: Bright Smile Dental</h3>
+              
+              <p><strong>The Challenge:</strong><br/>
+              Dr. Smith's practice was struggling with inconsistent lead flow and a 30% no-show rate. Her team spent hours each week on manual follow-ups with minimal results.</p>
+              
+              <p><strong>The Solution:</strong><br/>
+              After implementing ${clinicName}, the practice automated their entire lead nurture process and added 24/7 chatbot support.</p>
+              
+              <p><strong>The Results (in 90 days):</strong></p>
+              <ul>
+                <li>40% increase in new patient bookings</li>
+                <li>No-show rate dropped to 12%</li>
+                <li>Staff saved 20 hours per week</li>
+                <li>ROI: 8x on their investment</li>
+              </ul>
+            </div>
+            
+            <p>Want to achieve similar results? Let me show you exactly how we can transform your practice.</p>
+            <p style="text-align: center;">
               <a href="${ctaUrl}" style="display: inline-block; background: #1e40af; color: white; padding: 15px 30px; border-radius: 6px; text-decoration: none; font-weight: bold;">Schedule Your Free Demo</a>
             </p>
-            <p>If you're not interested right now, no worries! Just reply to let me know and I won't follow up again.</p>
+            <p>Best regards,<br/><strong>The ${clinicName} Team</strong></p>
+          </div>
+        `,
+        text: `Hi ${firstName},
+
+Today I want to share a real success story from one of our clients.
+
+Case Study: Bright Smile Dental
+
+The Challenge:
+Dr. Smith's practice was struggling with inconsistent lead flow and a 30% no-show rate. Her team spent hours each week on manual follow-ups with minimal results.
+
+The Solution:
+After implementing ${clinicName}, the practice automated their entire lead nurture process and added 24/7 chatbot support.
+
+The Results (in 90 days):
+- 40% increase in new patient bookings
+- No-show rate dropped to 12%
+- Staff saved 20 hours per week
+- ROI: 8x on their investment
+
+Want to achieve similar results? Let me show you exactly how we can transform your practice.
+
+Schedule Your Free Demo: ${ctaUrl}
+
+Best regards,
+The ${clinicName} Team`,
+      };
+      
+    case "STEP_5":
+      return {
+        subject: `Your Free Demo Expires Tomorrow - Don't Miss Out`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #1e40af;">Hi ${firstName},</h2>
+            <p>This is my final message, and I didn't want you to miss this opportunity.</p>
+            
+            <div style="background: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+              <p style="font-weight: bold; color: #92400e; margin: 0;">Your exclusive demo offer expires tomorrow!</p>
+            </div>
+            
+            <p>Over the past few days, I've shared how ${clinicName} helps dental practices:</p>
+            <ul>
+              <li>Generate 40%+ more patient bookings</li>
+              <li>Reduce no-shows by up to 50%</li>
+              <li>Save 15-20 hours per week on manual follow-ups</li>
+              <li>Never miss a lead with 24/7 AI chatbot support</li>
+            </ul>
+            
+            <p><strong>Our 15-minute demo will show you exactly how to implement these results in your practice.</strong></p>
+            
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="${ctaUrl}" style="display: inline-block; background: #dc2626; color: white; padding: 18px 36px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">Claim Your Free Demo Now</a>
+            </p>
+            
+            <p style="color: #6b7280; font-size: 14px;">If now isn't the right time, no worries! Reply to this email and let me know when might be better.</p>
+            
             <p>Wishing you success,<br/><strong>The ${clinicName} Team</strong></p>
           </div>
         `,
         text: `Hi ${firstName},
 
-This is my final follow-up, and I wanted to make sure you had a chance to see what ${clinicName} can do for your practice.
+This is my final message, and I didn't want you to miss this opportunity.
 
-Practices using our platform see:
-✓ 40% increase in patient bookings
-✓ 50% reduction in no-shows
-✓ 3x faster lead response times
+Your exclusive demo offer expires tomorrow!
 
-I'd love to show you exactly how we can help you achieve similar results. Our demo takes just 15 minutes.
+Over the past few days, I've shared how ${clinicName} helps dental practices:
 
-Schedule Your Free Demo: ${ctaUrl}
+- Generate 40%+ more patient bookings
+- Reduce no-shows by up to 50%
+- Save 15-20 hours per week on manual follow-ups
+- Never miss a lead with 24/7 AI chatbot support
 
-If you're not interested right now, no worries! Just reply to let me know and I won't follow up again.
+Our 15-minute demo will show you exactly how to implement these results in your practice.
+
+Claim Your Free Demo Now: ${ctaUrl}
+
+If now isn't the right time, no worries! Reply to this email and let me know when might be better.
 
 Wishing you success,
 The ${clinicName} Team`,
@@ -228,9 +345,11 @@ export function calculateNextStep(lead: Lead): NurtureStep | null {
   const completedStep1 = tags.includes("nurture_step_1_sent");
   const completedStep2 = tags.includes("nurture_step_2_sent");
   const completedStep3 = tags.includes("nurture_step_3_sent");
+  const completedStep4 = tags.includes("nurture_step_4_sent");
+  const completedStep5 = tags.includes("nurture_step_5_sent");
   
-  // Already completed the sequence
-  if (completedStep3 || hasTag(lead, LEAD_TAGS.NURTURE_COMPLETE)) {
+  // Already completed the full 5-day sequence
+  if (completedStep5 || hasTag(lead, LEAD_TAGS.NURTURE_COMPLETE)) {
     return null;
   }
   
@@ -240,10 +359,12 @@ export function calculateNextStep(lead: Lead): NurtureStep | null {
     return null;
   }
   
-  // Determine next step
+  // Determine next step in 5-day sequence
   if (!completedStep1) return "STEP_1";
   if (!completedStep2) return "STEP_2";
   if (!completedStep3) return "STEP_3";
+  if (!completedStep4) return "STEP_4";
+  if (!completedStep5) return "STEP_5";
   
   return null;
 }
@@ -276,11 +397,16 @@ export function isReadyForNextStep(lead: Lead, step: NurtureStep): boolean {
  * Mark a step as completed for a lead
  */
 export async function markStepCompleted(leadId: string, step: NurtureStep): Promise<void> {
-  const tagName = `nurture_step_${step === "STEP_1" ? 1 : step === "STEP_2" ? 2 : 3}_sent`;
+  // Map step to number for tag
+  const stepNumber = step === "STEP_1" ? 1 : 
+                     step === "STEP_2" ? 2 : 
+                     step === "STEP_3" ? 3 : 
+                     step === "STEP_4" ? 4 : 5;
+  const tagName = `nurture_step_${stepNumber}_sent`;
   await addTag(leadId, tagName);
   
-  // If this was step 3, mark nurture as complete
-  if (step === "STEP_3") {
+  // If this was step 5 (final step), mark nurture as complete
+  if (step === "STEP_5") {
     await addTag(leadId, LEAD_TAGS.NURTURE_COMPLETE);
   }
 }
