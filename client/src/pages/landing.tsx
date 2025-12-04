@@ -47,6 +47,11 @@ export default function Landing() {
                 <a href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                   Testimonials
                 </a>
+                <Link href="/blog">
+                  <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                    Blog
+                  </span>
+                </Link>
                 <Link href="/demo">
                   <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                     Demo
@@ -97,6 +102,11 @@ export default function Landing() {
                 <a href="#testimonials" className="text-sm" onClick={() => setMobileMenuOpen(false)}>
                   Testimonials
                 </a>
+                <Link href="/blog">
+                  <span className="text-sm cursor-pointer" onClick={() => setMobileMenuOpen(false)}>
+                    Blog
+                  </span>
+                </Link>
                 <Link href="/demo">
                   <span className="text-sm cursor-pointer" onClick={() => setMobileMenuOpen(false)}>
                     Demo

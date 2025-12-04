@@ -30,6 +30,8 @@ import PublicOnboarding from "@/pages/public-onboarding";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import TermsOfService from "@/pages/terms-of-service";
 import Security from "@/pages/security";
+import Blog from "@/pages/blog";
+import BlogArticle from "@/pages/blog-article";
 
 function DashboardHome() {
   const { user } = useAuth();
@@ -74,9 +76,10 @@ function Router() {
   const isPrivacyRoute = location === "/privacy-policy";
   const isTermsRoute = location === "/terms-of-service";
   const isSecurityRoute = location === "/security";
+  const isBlogRoute = location === "/blog" || location.startsWith("/blog/");
   
   // Public routes - always show without sidebar (for both authenticated and unauthenticated users)
-  const isPublicRoute = isLandingRoute || isDemoRoute || isLoginRoute || isSignupRoute || isPricingRoute || isPaymentRoute || isClinicRoute || isPublicOnboardingRoute || isContactRoute || isPrivacyRoute || isTermsRoute || isSecurityRoute;
+  const isPublicRoute = isLandingRoute || isDemoRoute || isLoginRoute || isSignupRoute || isPricingRoute || isPaymentRoute || isClinicRoute || isPublicOnboardingRoute || isContactRoute || isPrivacyRoute || isTermsRoute || isSecurityRoute || isBlogRoute;
   
   if (isPublicRoute) {
     return (
@@ -92,6 +95,8 @@ function Router() {
         <Route path="/privacy-policy" component={PrivacyPolicy} />
         <Route path="/terms-of-service" component={TermsOfService} />
         <Route path="/security" component={Security} />
+        <Route path="/blog" component={Blog} />
+        <Route path="/blog/:slug" component={BlogArticle} />
         <Route path="/clinic/:slug" component={ClinicPage} />
         <Route component={NotFound} />
       </Switch>
@@ -113,6 +118,8 @@ function Router() {
         <Route path="/privacy-policy" component={PrivacyPolicy} />
         <Route path="/terms-of-service" component={TermsOfService} />
         <Route path="/security" component={Security} />
+        <Route path="/blog" component={Blog} />
+        <Route path="/blog/:slug" component={BlogArticle} />
         <Route path="/clinic/:slug" component={ClinicPage} />
         <Route component={NotFound} />
       </Switch>
