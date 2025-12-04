@@ -7,8 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
 import logoFull from "@/assets/logo/logo-full.png";
+import { FormAlert, FormError } from "@/components/ui/form-error";
+import { loginFormSchema, validateForm } from "@/lib/formValidation";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -16,6 +18,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: { email: string; password: string }) => {
