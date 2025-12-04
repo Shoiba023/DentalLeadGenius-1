@@ -1,0 +1,186 @@
+You are the Genius Architect of DentalLeadGenius + DentalMapsHelper.
+Your new mission is to transform the entire platform into a complete, high-conversion marketing and sales engine.
+
+You will create and integrate ALL ITEMS BELOW into the existing system without breaking any current features.
+
+========================================================
+🔥 PART 1 — Create a Full 10-Step Dentist Sales Funnel
+========================================================
+
+Produce a complete funnel structure with:
+
+1. Lead Capture Page (Already exists → enhance if needed)
+2. Pain-Point Awareness Section
+3. Solution Introduction
+4. ROI Proof + Case Studies
+5. Trust Builders (HIPAA, Clinics Served, Testimonials)
+6. Demo Booking Page
+7. Post-Booking Confirmation Page
+8. No-Show Prevention System
+9. Follow-up Re-activation Funnel
+10. Long-term retention messaging
+
+For each stage:
+- Generate professional copy
+- Define the CTA
+- Define automation triggers
+- Prepare integrations with emails, SMS, and CRM
+
+Do NOT remove the current landing page.  
+Enhance it and add missing funnel pages in a clean architecture.
+
+========================================================
+🔥 PART 2 — Build a 5-Day Email Nurture Automation
+========================================================
+
+Create 5 emails with:
+
+• Day 1 — Pain awareness + missed revenue  
+• Day 2 — ROI Story + case study  
+• Day 3 — Demonstration of AI receptionist  
+• Day 4 — Social proof + trust  
+• Day 5 — Strong CTA, urgency, limited-time offer  
+
+Each email must include:
+
+- Compelling subject line
+- High-impact opening hook
+- Benefits in financial language
+- CTA to “Book a Free Demo”
+- Add them into the existing email automation engine
+
+Add metadata:
+emailType, sendDelay, triggeredByLeadStatus = "new"
+
+========================================================
+🔥 PART 3 — Create Messenger & SMS Follow-Up Scripts
+========================================================
+
+Create templates for:
+
+1. Instant “We received your info” message
+2. 10-minute follow-up
+3. 24-hour reminder
+4. 72-hour re-activation
+5. 7-day re-activation
+
+Each message must be:
+- Short  
+- Conversational  
+- CTA-focused  
+- Personalized using lead.firstname  
+
+Integrate with the existing SMS/Messenger sending endpoints.
+
+========================================================
+🔥 PART 4 — High-Converting Demo Booking Script
+========================================================
+
+Create a script for the human-run demo call:
+
+1. Opening rapport  
+2. Pain discovery questions  
+3. ROI demonstration  
+4. Screenshare flow  
+5. Objection handling  
+6. Close: “Let’s set up your clinic onboarding now.”  
+
+Provide:
+- Full script  
+- Short script  
+- Bullet script  
+- Objection handles for: “too expensive”, “we already use software”, “we’re busy”, “send me info first”
+
+Store this script inside a new file:
+docs/demo-script.md
+
+========================================================
+🔥 PART 5 — AI Voice Agent Script
+========================================================
+
+Create a full AI voice agent flow:
+
+• Greeting  
+• Purpose identification  
+• Appointment scheduling script  
+• Qualification questions  
+• No-show recovery script  
+• Handling: “send info”, “too busy”, “call later”  
+• Fallback to human support  
+
+Store final script in:
+docs/ai-voice-agent.md
+
+========================================================
+🔥 PART 6 — Professional Pricing Page Rewrite
+========================================================
+
+Create a full pricing section with:
+
+• 3-Tier packages:
+  - Starter  
+  - Growth  
+  - Elite  
+
+Include:
+- Monthly pricing  
+- What is included  
+- ROI statement  
+- FAQ under each tier  
+- “Compare Plans” table  
+
+Enhance visual polish for conversion.
+
+Add page:
+client/src/pages/pricing.tsx
+
+========================================================
+🔥 PART 7 — A/B Test Variants for Hero Headline
+========================================================
+
+Create at least **6 headline variations** optimized for:
+
+• High urgency  
+• High revenue impact  
+• Simplicity  
+• Emotional triggering  
+
+Examples variations:
+- Pain-based
+- ROI-based
+- AI power-based
+- Human-free workflow-based
+- Time-saving-based
+
+Implement A/B testing logic:
+- Randomize between variants A–F
+- Track CTR, scroll depth, demo clicks
+- Add event tags: hero_variant_viewed, hero_variant_clicked
+
+========================================================
+🔥 PART 8 — Implementation Requirements
+========================================================
+
+DO ALL OF THE FOLLOWING:
+
+✔ Generate all text content (emails, scripts, pricing, SMS, funnel pages)  
+✔ Create new frontend pages and components where needed  
+✔ Integrate funnel triggers with backend automation  
+✔ Add tracking events for analytics  
+✔ Maintain current system integrity  
+✔ Provide a summary of each completed component  
+✔ After implementing, output a file-tree showing all new files added  
+
+========================================================
+FINAL GOAL
+========================================================
+
+Transform DentalLeadGenius into a complete growth engine:
+- Automated lead nurturing
+- AI follow-up
+- High-converting funnel
+- Professional pricing model
+- Improved demo bookings
+- A/B tested conversions
+
+Proceed with implementation now.
