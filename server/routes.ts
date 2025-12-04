@@ -620,6 +620,94 @@ ${SITE_NAME} - AI-Powered Lead Generation for Dental Clinics`;
     }
   });
   
+  // ============================================================================
+  // CONTACT FORM - Public Contact Us form
+  // ============================================================================
+  const contactFormSchema = z.object({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    clinicName: z.string().min(2, "Clinic name must be at least 2 characters"),
+    email: z.string().email("Please enter a valid email address"),
+    phone: z.string().min(10, "Please enter a valid phone number"),
+    message: z.string().min(10, "Message must be at least 10 characters"),
+  });
+
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const data = contactFormSchema.parse(req.body);
+      const timestamp = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
+
+      // Send notification email to support
+      const notificationHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f5; padding: 40px 20px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <tr>
+      <td style="padding: 30px; text-align: center; background: #18181b; border-radius: 12px 12px 0 0;">
+        <h1 style="margin: 0; color: #fff; font-size: 24px;">${SITE_NAME}</h1>
+        <p style="margin: 8px 0 0; color: #a1a1aa; font-size: 14px;">Contact Form Submission</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 30px;">
+        <h2 style="margin: 0 0 20px; font-size: 18px; color: #18181b;">New Contact Message</h2>
+        <table width="100%" style="border-collapse: collapse;">
+          <tr><td style="padding: 8px 12px; border: 1px solid #e4e4e7; font-weight: 600; background: #f9fafb;">Name</td><td style="padding: 8px 12px; border: 1px solid #e4e4e7;">${data.name}</td></tr>
+          <tr><td style="padding: 8px 12px; border: 1px solid #e4e4e7; font-weight: 600; background: #f9fafb;">Clinic Name</td><td style="padding: 8px 12px; border: 1px solid #e4e4e7;">${data.clinicName}</td></tr>
+          <tr><td style="padding: 8px 12px; border: 1px solid #e4e4e7; font-weight: 600; background: #f9fafb;">Email</td><td style="padding: 8px 12px; border: 1px solid #e4e4e7;">${data.email}</td></tr>
+          <tr><td style="padding: 8px 12px; border: 1px solid #e4e4e7; font-weight: 600; background: #f9fafb;">Phone</td><td style="padding: 8px 12px; border: 1px solid #e4e4e7;">${data.phone}</td></tr>
+          <tr><td style="padding: 8px 12px; border: 1px solid #e4e4e7; font-weight: 600; background: #f9fafb;">Message</td><td style="padding: 8px 12px; border: 1px solid #e4e4e7;">${data.message}</td></tr>
+        </table>
+        <div style="padding: 16px; background: #f4f4f5; border-radius: 8px; margin-top: 20px;">
+          <p style="margin: 0; font-size: 13px; color: #71717a;"><strong>Submitted At:</strong> ${timestamp}</p>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 20px 30px; text-align: center; border-top: 1px solid #e4e4e7; background: #fafafa; border-radius: 0 0 12px 12px;">
+        <p style="margin: 0; font-size: 12px; color: #a1a1aa;">Automated notification from ${SITE_NAME} Contact Form</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+      const notificationText = `New Contact Form Submission
+
+Name: ${data.name}
+Clinic Name: ${data.clinicName}
+Email: ${data.email}
+Phone: ${data.phone}
+Message: ${data.message}
+
+Submitted At: ${timestamp}`;
+
+      // Send email notification
+      const emailResult = await sendEmail({
+        to: "info@dentalleadgenius.com",
+        subject: `Contact Form: ${data.name} from ${data.clinicName}`,
+        html: notificationHtml,
+        text: notificationText,
+      });
+
+      if (emailResult.ok) {
+        console.log(`Contact form submitted: ${data.email} from ${data.clinicName}`);
+        res.json({ ok: true, message: "Message sent successfully" });
+      } else {
+        console.error("Failed to send contact form email:", emailResult.error);
+        // Still return success to user - we don't want them to worry
+        res.json({ ok: true, message: "Message received. We'll be in touch soon." });
+      }
+    } catch (error) {
+      console.error("Contact form error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ ok: false, error: error.errors[0]?.message || "Invalid form data" });
+      }
+      res.status(500).json({ ok: false, error: "Failed to send message. Please try again." });
+    }
+  });
+
   // Verify demo access token
   app.get("/api/verify-demo-token", async (req, res) => {
     try {

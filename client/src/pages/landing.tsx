@@ -10,6 +10,7 @@ import heroImage from "@assets/generated_images/modern_dental_clinic_hero_image.
 import logoFull from "@/assets/logo/logo-full.png";
 import logoIcon from "@/assets/logo/icon.png";
 import { SITE_NAME } from "@shared/config";
+import { Footer } from "@/components/footer";
 
 export default function Landing() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -389,6 +390,9 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <Footer />
 
       {/* Chatbot Widget - Auto-opens after 10 seconds, auto-minimizes after another 10 seconds */}
       <ChatbotWidget type="sales" />
