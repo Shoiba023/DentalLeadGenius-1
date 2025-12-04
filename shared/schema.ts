@@ -209,6 +209,8 @@ export const clinics = pgTable("clinics", {
   // DentalMapsHelper sync fields
   externalId: text("external_id"),
   googleMapsUrl: text("google_maps_url"),
+  // Marketing sync tracking (72-hour cooldown)
+  lastEmailedAt: timestamp("last_emailed_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -679,6 +681,54 @@ export const insertOnboardingEmailLogSchema = createInsertSchema(onboardingEmail
 
 export type InsertOnboardingEmailLog = z.infer<typeof insertOnboardingEmailLogSchema>;
 export type OnboardingEmailLog = typeof onboardingEmailLogs.$inferSelect;
+
+// Marketing Sync Outreach Logs - Tracks all automated email sends with 72-hour cooldown
+export const outreachLogs = pgTable("outreach_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clinicId: varchar("clinic_id").notNull().references(() => clinics.id),
+  leadId: varchar("lead_id").references(() => leads.id),
+  campaignId: varchar("campaign_id").references(() => outreachCampaigns.id),
+  cycleId: varchar("cycle_id").notNull(), // Unique ID for each automation cycle
+  recipientEmail: text("recipient_email").notNull(),
+  recipientName: text("recipient_name"),
+  subject: text("subject").notNull(),
+  messagePreview: text("message_preview"), // First 500 chars of message
+  status: text("status").default("pending").notNull(), // pending, sent, failed, bounced
+  errorMessage: text("error_message"),
+  aiGenerated: boolean("ai_generated").default(true).notNull(),
+  sentAt: timestamp("sent_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  clinicIdIdx: index("outreach_logs_clinic_id_idx").on(table.clinicId),
+  statusIdx: index("outreach_logs_status_idx").on(table.status),
+  sentAtIdx: index("outreach_logs_sent_at_idx").on(table.sentAt),
+  cycleIdIdx: index("outreach_logs_cycle_id_idx").on(table.cycleId),
+}));
+
+export const insertOutreachLogSchema = createInsertSchema(outreachLogs).omit({
+  id: true,
+  sentAt: true,
+  createdAt: true,
+});
+
+export type InsertOutreachLog = z.infer<typeof insertOutreachLogSchema>;
+export type OutreachLog = typeof outreachLogs.$inferSelect;
+
+// Outreach logs relations
+export const outreachLogsRelations = relations(outreachLogs, ({ one }) => ({
+  clinic: one(clinics, {
+    fields: [outreachLogs.clinicId],
+    references: [clinics.id],
+  }),
+  lead: one(leads, {
+    fields: [outreachLogs.leadId],
+    references: [leads.id],
+  }),
+  campaign: one(outreachCampaigns, {
+    fields: [outreachLogs.campaignId],
+    references: [outreachCampaigns.id],
+  }),
+}));
 
 // Onboarding relations
 export const onboardingProgressRelations = relations(onboardingProgress, ({ one, many }) => ({

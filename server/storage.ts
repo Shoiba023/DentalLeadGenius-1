@@ -17,6 +17,7 @@ import {
   onboardingProgress,
   onboardingEmails,
   onboardingEmailLogs,
+  outreachLogs,
   type User,
   type UpsertUser,
   type Lead,
@@ -49,9 +50,11 @@ import {
   type InsertOnboardingEmail,
   type OnboardingEmailLog,
   type InsertOnboardingEmailLog,
+  type OutreachLog,
+  type InsertOutreachLog,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, isNull, sql } from "drizzle-orm";
+import { eq, desc, and, or, isNull, sql, gte, lt, isNotNull, ne } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -245,6 +248,24 @@ export interface IStorage {
   getEnrollmentsByLead(leadId: string): Promise<(SequenceEnrollment & { sequenceName: string })[]>;
   updateSequenceEnrollment(id: string, data: Partial<InsertSequenceEnrollment> & { nextSendAt?: Date; completedAt?: Date }): Promise<SequenceEnrollment>;
   getActiveEnrollmentsDue(): Promise<(SequenceEnrollment & { lead: Lead; sequence: Sequence; step: SequenceStep | null })[]>;
+  
+  // Marketing Sync Engine operations (72-hour cooldown)
+  getClinicsEligibleForOutreach(cooldownHours?: number): Promise<Clinic[]>;
+  updateClinicLastEmailedAt(clinicId: string): Promise<void>;
+  getLeadsForOutreach(clinicId: string): Promise<Lead[]>;
+  
+  // Outreach logs operations
+  createOutreachLog(log: InsertOutreachLog): Promise<OutreachLog>;
+  getOutreachLogsByClinic(clinicId: string): Promise<OutreachLog[]>;
+  getOutreachLogsByCycle(cycleId: string): Promise<OutreachLog[]>;
+  getRecentOutreachLogs(limit: number): Promise<OutreachLog[]>;
+  getOutreachStats(): Promise<{
+    totalSent: number;
+    successfulSends: number;
+    failedSends: number;
+    lastCycleAt: Date | null;
+    clinicsEmailed: number;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1587,6 +1608,143 @@ export class DatabaseStorage implements IStorage {
     }
     
     return results;
+  }
+  
+  // Marketing Sync Engine operations (72-hour cooldown)
+  async getClinicsEligibleForOutreach(cooldownHours: number = 72): Promise<Clinic[]> {
+    const cooldownDate = new Date();
+    cooldownDate.setHours(cooldownDate.getHours() - cooldownHours);
+    
+    // Get clinics that have:
+    // 1. Valid email OR
+    // 2. Have synced leads with valid emails
+    // AND have not been emailed in the last 72 hours (or never emailed)
+    const clinicsWithLeads = await db
+      .selectDistinct({
+        id: clinics.id,
+        name: clinics.name,
+        slug: clinics.slug,
+        logoUrl: clinics.logoUrl,
+        brandColor: clinics.brandColor,
+        ownerId: clinics.ownerId,
+        address: clinics.address,
+        city: clinics.city,
+        state: clinics.state,
+        country: clinics.country,
+        phone: clinics.phone,
+        email: clinics.email,
+        website: clinics.website,
+        timezone: clinics.timezone,
+        businessHours: clinics.businessHours,
+        services: clinics.services,
+        emailProvider: clinics.emailProvider,
+        smsEnabled: clinics.smsEnabled,
+        onboardingCompleted: clinics.onboardingCompleted,
+        externalId: clinics.externalId,
+        googleMapsUrl: clinics.googleMapsUrl,
+        lastEmailedAt: clinics.lastEmailedAt,
+        createdAt: clinics.createdAt,
+        updatedAt: clinics.updatedAt,
+      })
+      .from(clinics)
+      .leftJoin(leads, eq(clinics.id, leads.clinicId))
+      .where(and(
+        // Clinic has valid email OR has leads with valid emails
+        or(
+          and(isNotNull(clinics.email), ne(clinics.email, '')),
+          and(isNotNull(leads.email), ne(leads.email, ''))
+        ),
+        // Cooldown check: never emailed OR last emailed more than 72 hours ago
+        or(
+          isNull(clinics.lastEmailedAt),
+          lt(clinics.lastEmailedAt, cooldownDate)
+        )
+      ))
+      .orderBy(clinics.name);
+    
+    return clinicsWithLeads;
+  }
+  
+  async updateClinicLastEmailedAt(clinicId: string): Promise<void> {
+    await db
+      .update(clinics)
+      .set({ lastEmailedAt: new Date(), updatedAt: new Date() })
+      .where(eq(clinics.id, clinicId));
+  }
+  
+  async getLeadsForOutreach(clinicId: string): Promise<Lead[]> {
+    // Get leads that:
+    // 1. Belong to this clinic
+    // 2. Have valid email
+    // 3. Have status="new" or status="contacted"
+    // 4. Have marketingOptIn=true
+    // 5. Are synced (syncStatus="synced")
+    return await db
+      .select()
+      .from(leads)
+      .where(and(
+        eq(leads.clinicId, clinicId),
+        isNotNull(leads.email),
+        ne(leads.email, ''),
+        or(eq(leads.status, 'new'), eq(leads.status, 'contacted')),
+        eq(leads.marketingOptIn, true),
+        eq(leads.syncStatus, 'synced')
+      ))
+      .orderBy(desc(leads.createdAt));
+  }
+  
+  // Outreach logs operations
+  async createOutreachLog(log: InsertOutreachLog): Promise<OutreachLog> {
+    const [newLog] = await db.insert(outreachLogs).values(log).returning();
+    return newLog;
+  }
+  
+  async getOutreachLogsByClinic(clinicId: string): Promise<OutreachLog[]> {
+    return await db
+      .select()
+      .from(outreachLogs)
+      .where(eq(outreachLogs.clinicId, clinicId))
+      .orderBy(desc(outreachLogs.sentAt));
+  }
+  
+  async getOutreachLogsByCycle(cycleId: string): Promise<OutreachLog[]> {
+    return await db
+      .select()
+      .from(outreachLogs)
+      .where(eq(outreachLogs.cycleId, cycleId))
+      .orderBy(desc(outreachLogs.sentAt));
+  }
+  
+  async getRecentOutreachLogs(limit: number): Promise<OutreachLog[]> {
+    return await db
+      .select()
+      .from(outreachLogs)
+      .orderBy(desc(outreachLogs.sentAt))
+      .limit(limit);
+  }
+  
+  async getOutreachStats(): Promise<{
+    totalSent: number;
+    successfulSends: number;
+    failedSends: number;
+    lastCycleAt: Date | null;
+    clinicsEmailed: number;
+  }> {
+    const [stats] = await db.select({
+      totalSent: sql<number>`count(*)::int`,
+      successfulSends: sql<number>`count(*) filter (where status = 'sent')::int`,
+      failedSends: sql<number>`count(*) filter (where status = 'failed')::int`,
+      lastCycleAt: sql<Date>`max(sent_at)`,
+      clinicsEmailed: sql<number>`count(distinct clinic_id)::int`,
+    }).from(outreachLogs);
+    
+    return {
+      totalSent: stats.totalSent || 0,
+      successfulSends: stats.successfulSends || 0,
+      failedSends: stats.failedSends || 0,
+      lastCycleAt: stats.lastCycleAt || null,
+      clinicsEmailed: stats.clinicsEmailed || 0,
+    };
   }
 }
 
