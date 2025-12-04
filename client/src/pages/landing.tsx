@@ -1,17 +1,25 @@
-import { MessageSquare, Users, Building2, BarChart3, Phone, Calendar, Play, Menu, X, Mail, HelpCircle, ChevronRight, Globe, ShieldCheck, BadgeCheck, CheckCircle2, MailCheck, Check, Sparkles } from "lucide-react";
+import { 
+  Calendar, 
+  Phone, 
+  Clock, 
+  TrendingUp, 
+  Users, 
+  CheckCircle2, 
+  ArrowRight,
+  MessageSquare,
+  Zap,
+  Shield,
+  Star,
+  PhoneOff,
+  UserCheck,
+  CalendarCheck
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ChatbotWidget } from "@/components/chatbot-widget";
-import { DemoRequestForm } from "@/components/demo-request-form";
+import { Card, CardContent } from "@/components/ui/card";
 import { useState } from "react";
 import { Link } from "wouter";
-import { SiWhatsapp } from "react-icons/si";
-import heroImage from "@assets/generated_images/modern_dental_clinic_hero_image.png";
 import logoFull from "@/assets/logo/logo-full.png";
-import logoIcon from "@/assets/logo/icon.png";
-import { SITE_NAME } from "@shared/config";
-import { Footer } from "@/components/footer";
 import {
   Accordion,
   AccordionContent,
@@ -19,688 +27,517 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
+/**
+ * LANDING PAGE - CONVERSION FOCUSED
+ * 
+ * Structure follows the 7-step landing page script:
+ * 1. Hero (headline + subheadline + single primary CTA)
+ * 2. Who this is for (specific audience & problems)
+ * 3. Main benefits (not features)
+ * 4. How it works (simple 3-4 step process)
+ * 5. Social proof & trust (testimonials, guarantee)
+ * 6. FAQ
+ * 7. Final CTA section
+ * 
+ * Single Purpose: Convert visitors into demo bookings
+ * Target Audience: Dental clinic owners/managers in USA & Canada
+ */
+
 export default function Landing() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const ADMIN_WHATSAPP = "1234567890"; // Replace with actual admin WhatsApp
-  const ADMIN_PHONE = "1234567890"; // Replace with actual admin phone
-
   return (
     <div className="min-h-screen bg-background">
-      {/* Navbar */}
+      {/* ============================================
+          MINIMAL STICKY HEADER
+          - Logo + Single CTA only
+          - No distracting navigation links
+          ============================================ */}
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-6">
           <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-8">
-              <Link href="/">
-                <img 
-                  src={logoFull} 
-                  alt="DentalLeadGenius" 
-                  className="h-9 md:h-10 w-auto cursor-pointer object-contain"
-                  data-testid="link-logo"
-                />
-              </Link>
-              <nav className="hidden md:flex items-center gap-6">
-                <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Features
-                </a>
-                <a href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Testimonials
-                </a>
-                <Link href="/case-studies">
-                  <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                    Case Studies
-                  </span>
-                </Link>
-                <Link href="/blog">
-                  <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                    Blog
-                  </span>
-                </Link>
-                <Link href="/about">
-                  <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                    About
-                  </span>
-                </Link>
-                <Link href="/demo">
-                  <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                    Demo
-                  </span>
-                </Link>
-                <Link href="/pricing">
-                  <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                    Pricing
-                  </span>
-                </Link>
-              </nav>
-            </div>
+            <Link href="/">
+              <img 
+                src={logoFull} 
+                alt="DentalLeadGenius" 
+                className="h-8 md:h-9 w-auto cursor-pointer object-contain"
+                data-testid="link-logo"
+              />
+            </Link>
             
-            <div className="hidden md:flex items-center gap-3">
-              <Button variant="ghost" asChild data-testid="button-login-nav">
-                <Link href="/login">Log in to Dashboard</Link>
-              </Button>
-              <Button variant="outline" asChild data-testid="button-view-demo-nav">
-                <Link href="/demo">
-                  <Play className="h-4 w-4 mr-2" />
-                  View Demo
-                </Link>
-              </Button>
-              <Button asChild data-testid="button-get-access-nav">
-                <Link href="/demo">
-                  Try Live Demo
-                </Link>
-              </Button>
-            </div>
-
-            {/* Mobile menu button */}
-            <button
-              className="md:hidden p-2"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              data-testid="button-mobile-menu"
-            >
-              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
-          </div>
-
-          {/* Mobile menu */}
-          {mobileMenuOpen && (
-            <div className="md:hidden py-4 border-t">
-              <nav className="flex flex-col gap-4">
-                <a href="#features" className="text-sm" onClick={() => setMobileMenuOpen(false)}>
-                  Features
-                </a>
-                <a href="#testimonials" className="text-sm" onClick={() => setMobileMenuOpen(false)}>
-                  Testimonials
-                </a>
-                <Link href="/case-studies">
-                  <span className="text-sm cursor-pointer" onClick={() => setMobileMenuOpen(false)}>
-                    Case Studies
-                  </span>
-                </Link>
-                <Link href="/blog">
-                  <span className="text-sm cursor-pointer" onClick={() => setMobileMenuOpen(false)}>
-                    Blog
-                  </span>
-                </Link>
-                <Link href="/about">
-                  <span className="text-sm cursor-pointer" onClick={() => setMobileMenuOpen(false)}>
-                    About
-                  </span>
-                </Link>
-                <Link href="/demo">
-                  <span className="text-sm cursor-pointer" onClick={() => setMobileMenuOpen(false)}>
-                    Demo
-                  </span>
-                </Link>
-                <Link href="/pricing">
-                  <span className="text-sm cursor-pointer" onClick={() => setMobileMenuOpen(false)}>
-                    Pricing
-                  </span>
-                </Link>
-                <div className="flex flex-col gap-2 pt-2">
-                  <Button variant="ghost" asChild>
-                    <Link href="/login">Log in to Dashboard</Link>
-                  </Button>
-                  <Button variant="outline" asChild>
-                    <Link href="/demo">
-                      <Play className="h-4 w-4 mr-2" />
-                      View Demo
-                    </Link>
-                  </Button>
-                  <Button asChild onClick={() => setMobileMenuOpen(false)}>
-                    <Link href="/demo">
-                      Try Live Demo
-                    </Link>
-                  </Button>
-                </div>
-              </nav>
-            </div>
-          )}
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <section className="relative min-h-[85vh] flex items-center overflow-hidden">
-        {/* Background with gradient overlay */}
-        <div className="absolute inset-0 z-0">
-          <img
-            src={heroImage}
-            alt="Modern dental clinic"
-            className="w-full h-full object-cover opacity-15"
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-background via-background/95 to-primary/5" />
-        </div>
-
-        <div className="container mx-auto px-6 py-20 relative z-10">
-          <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
-            {/* Animated Hero Content */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-              className="space-y-6"
-            >
-              {/* Badge */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4, delay: 0.1 }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20"
-              >
-                <Sparkles className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-primary">AI-Powered Patient Conversion</span>
-              </motion.div>
-
-              {/* H1 Heading */}
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight tracking-tight"
-                data-testid="text-hero-headline"
-              >
-                Stop Losing Patients —{" "}
-                <span className="text-primary">Let AI Convert</span> Every Lead For You
-              </motion.h1>
-
-              {/* Subheading */}
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-                className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed"
-              >
-                Your clinic's 24/7 AI receptionist that instantly replies, books appointments, 
-                follows up leads, and turns missed opportunities into real patients.
-              </motion.p>
-            </motion.div>
-
-            {/* Bullet Points */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="grid sm:grid-cols-2 gap-x-8 gap-y-3 mt-10 text-left"
-            >
-              {[
-                "Missed call follow-up → booked appointment",
-                "AI nurtures & converts new patient leads",
-                "Reactivates inactive/no-show patients",
-                "Zero human effort — 100% automated"
-              ].map((item, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.5 + index * 0.1 }}
-                  className="flex items-center gap-3"
-                >
-                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Check className="h-3.5 w-3.5 text-primary" />
-                  </div>
-                  <span className="text-sm sm:text-base text-foreground/90">{item}</span>
-                </motion.div>
-              ))}
-            </motion.div>
-
-            {/* CTA Buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.8 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10"
-            >
-              <Button
-                size="lg"
-                className="gap-2 px-8 py-6 text-base font-semibold shadow-lg shadow-primary/25"
-                asChild
-                data-testid="button-book-demo-hero"
-              >
-                <Link href="/demo">
-                  <Calendar className="h-5 w-5" />
-                  Book a Free Demo
-                </Link>
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="gap-2 px-8 py-6 text-base font-semibold border-2"
-                asChild
-                data-testid="button-try-free-hero"
-              >
-                <Link href="/signup">
-                  <Play className="h-5 w-5" />
-                  Try It Free
-                </Link>
-              </Button>
-            </motion.div>
-
-            {/* Trust indicator */}
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 1 }}
-              className="mt-8 text-sm text-muted-foreground"
-            >
-              Trusted by 500+ dental clinics across USA & Canada
-            </motion.p>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section id="features" className="py-24 bg-muted/30">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4" data-testid="text-features-headline">
-              Everything You Need to Scale Your Dental Practice
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Powerful tools designed specifically for dental clinic lead generation
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="hover-elevate" data-testid="card-feature-chatbot">
-              <CardContent className="p-6 space-y-4">
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <MessageSquare className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold">AI Sales Chatbot</h3>
-                <p className="text-muted-foreground">
-                  Human-like conversations that persuade clinic owners, answer questions,
-                  and book demos automatically 24/7.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate" data-testid="card-feature-leads">
-              <CardContent className="p-6 space-y-4">
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Users className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold">Lead Management</h3>
-                <p className="text-muted-foreground">
-                  Import leads via CSV, track status, automate follow-ups, and manage
-                  outreach campaigns with daily send limits.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate" data-testid="card-feature-multi-tenant">
-              <CardContent className="p-6 space-y-4">
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Building2 className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold">Multi-Clinic Platform</h3>
-                <p className="text-muted-foreground">
-                  Each clinic gets branded subpages, patient chatbots, and appointment
-                  booking - all managed from one dashboard.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Social Proof Section */}
-      <section id="testimonials" className="py-24">
-        <div className="container mx-auto px-6">
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              <h2 className="text-3xl font-bold mb-8">Trusted by Dental Professionals</h2>
-              <div className="space-y-6">
-                <Card>
-                  <CardContent className="p-6">
-                    <p className="text-lg mb-4">
-                      "DentalLeadGenius transformed how we find new patients. The AI
-                      chatbot books qualified demos while we focus on patient care. Game
-                      changer!"
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/20" />
-                      <div>
-                        <p className="font-semibold">Dr. Sarah Chen</p>
-                        <p className="text-sm text-muted-foreground">
-                          Bright Smile Dental, CA
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <p className="text-lg mb-4">
-                      "We went from 5 leads per month to 50+ qualified conversations. The
-                      ROI is incredible and the team loves the automated follow-ups."
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/20" />
-                      <div>
-                        <p className="font-semibold">Dr. Michael Rodriguez</p>
-                        <p className="text-sm text-muted-foreground">
-                          Family Dental Care, TX
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <BarChart3 className="h-8 w-8 text-primary mx-auto mb-2" />
-                  <p className="text-4xl font-bold text-primary">10x</p>
-                  <p className="text-sm text-muted-foreground">More Qualified Leads</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <Users className="h-8 w-8 text-primary mx-auto mb-2" />
-                  <p className="text-4xl font-bold text-primary">500+</p>
-                  <p className="text-sm text-muted-foreground">Dental Clinics</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <MessageSquare className="h-8 w-8 text-primary mx-auto mb-2" />
-                  <p className="text-4xl font-bold text-primary">24/7</p>
-                  <p className="text-sm text-muted-foreground">AI Assistance</p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Trust Badges Section */}
-      <section className="py-16 bg-primary/5">
-        <div className="container mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
-            <div className="flex flex-col items-center text-center p-4">
-              <div className="h-14 w-14 rounded-full bg-green-500/10 flex items-center justify-center mb-3">
-                <ShieldCheck className="h-7 w-7 text-green-600" />
-              </div>
-              <h4 className="font-semibold text-sm mb-1">Secure & Encrypted</h4>
-              <p className="text-xs text-muted-foreground">256-bit SSL Protection</p>
-            </div>
-            
-            <div className="flex flex-col items-center text-center p-4">
-              <div className="h-14 w-14 rounded-full bg-blue-500/10 flex items-center justify-center mb-3">
-                <BadgeCheck className="h-7 w-7 text-blue-600" />
-              </div>
-              <h4 className="font-semibold text-sm mb-1">30-Day Money-Back</h4>
-              <p className="text-xs text-muted-foreground">Full Refund Guarantee</p>
-            </div>
-            
-            <div className="flex flex-col items-center text-center p-4">
-              <div className="h-14 w-14 rounded-full bg-purple-500/10 flex items-center justify-center mb-3">
-                <CheckCircle2 className="h-7 w-7 text-purple-600" />
-              </div>
-              <h4 className="font-semibold text-sm mb-1">Trusted by 500+</h4>
-              <p className="text-xs text-muted-foreground">Dental Clinics</p>
-            </div>
-            
-            <div className="flex flex-col items-center text-center p-4">
-              <div className="h-14 w-14 rounded-full bg-orange-500/10 flex items-center justify-center mb-3">
-                <MailCheck className="h-7 w-7 text-orange-600" />
-              </div>
-              <h4 className="font-semibold text-sm mb-1">Verified Domain</h4>
-              <p className="text-xs text-muted-foreground">Email Delivery</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Preview Section */}
-      <section id="pricing" className="py-24 bg-muted/30">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4" data-testid="text-pricing-headline">
-              Simple, Transparent Pricing
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Choose the plan that fits your clinic. Start growing today with AI-powered lead generation.
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <Card className="hover-elevate" data-testid="card-pricing-essential">
-              <CardHeader className="text-center pb-2">
-                <CardTitle className="text-xl">Essential</CardTitle>
-                <CardDescription>Perfect for single clinics</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center space-y-4">
-                <div>
-                  <span className="text-4xl font-bold">$497</span>
-                  <span className="text-muted-foreground">/month</span>
-                </div>
-                <p className="text-xs text-muted-foreground">+ $1,997 one-time setup</p>
-                <ul className="text-sm text-muted-foreground space-y-2">
-                  <li>1 Clinic</li>
-                  <li>AI Sales Chatbot</li>
-                  <li>Email Campaigns</li>
-                  <li>Lead Management</li>
-                </ul>
-              </CardContent>
-            </Card>
-            
-            <Card className="hover-elevate border-primary relative" data-testid="card-pricing-growth">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
-                  Most Popular
-                </span>
-              </div>
-              <CardHeader className="text-center pb-2">
-                <CardTitle className="text-xl">Growth</CardTitle>
-                <CardDescription>For growing practices</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center space-y-4">
-                <div>
-                  <span className="text-4xl font-bold text-primary">$997</span>
-                  <span className="text-muted-foreground">/month</span>
-                </div>
-                <p className="text-xs text-muted-foreground">+ $2,997 one-time setup</p>
-                <ul className="text-sm text-muted-foreground space-y-2">
-                  <li>Up to 3 Clinics</li>
-                  <li>Everything in Essential</li>
-                  <li>Multi-Channel Outreach</li>
-                  <li>Priority Support</li>
-                </ul>
-              </CardContent>
-            </Card>
-            
-            <Card className="hover-elevate" data-testid="card-pricing-elite">
-              <CardHeader className="text-center pb-2">
-                <CardTitle className="text-xl">Elite</CardTitle>
-                <CardDescription>Enterprise solution</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center space-y-4">
-                <div>
-                  <span className="text-4xl font-bold">$1,497</span>
-                  <span className="text-muted-foreground">/month</span>
-                </div>
-                <p className="text-xs text-muted-foreground">+ $4,997 one-time setup</p>
-                <ul className="text-sm text-muted-foreground space-y-2">
-                  <li>Unlimited Clinics</li>
-                  <li>Everything in Growth</li>
-                  <li>White-Label Branding</li>
-                  <li>Dedicated Account Manager</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="text-center mt-10">
-            <Button size="lg" asChild data-testid="button-view-pricing">
-              <Link href="/pricing">
-                View Full Pricing Details
-                <ChevronRight className="h-4 w-4 ml-2" />
-              </Link>
+            <Button asChild data-testid="button-book-demo-header">
+              <a href="#book-demo">
+                <Calendar className="h-4 w-4 mr-2" />
+                Book a Free Demo
+              </a>
             </Button>
           </div>
         </div>
+      </header>
+
+      {/* ============================================
+          SECTION 1: HERO
+          Psychology: Clear value proposition + urgency
+          Single CTA: Book a Free Demo
+          ============================================ */}
+      <section className="relative py-16 md:py-24 lg:py-32 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
+        
+        <div className="container mx-auto px-6 relative z-10">
+          <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-6"
+            >
+              {/* Main H1 Headline - Benefit focused */}
+              <h1
+                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-tight"
+                data-testid="text-hero-headline"
+              >
+                Stop Losing Patients — <br className="hidden sm:block" />
+                <span className="text-primary">Let AI Convert Every Lead For You</span>
+              </h1>
+
+              {/* Subheadline - Clear benefit statement */}
+              <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+                DentalLeadGenius is your clinic's 24/7 AI receptionist that instantly replies to patients, 
+                follows up every lead, and turns missed calls into booked appointments — 
+                <span className="font-medium text-foreground"> without hiring extra staff.</span>
+              </p>
+            </motion.div>
+
+            {/* Benefit Bullets - Outcome focused */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="grid sm:grid-cols-2 gap-4 mt-10 text-left max-w-2xl"
+            >
+              {[
+                { icon: PhoneOff, text: "Recover patients from missed calls automatically" },
+                { icon: UserCheck, text: "Turn website visitors into booked appointments" },
+                { icon: CalendarCheck, text: "Reactivate inactive and no-show patients" },
+                { icon: TrendingUp, text: "Grow monthly revenue without overloading your front desk" }
+              ].map((item, index) => (
+                <div key={index} className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <item.icon className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <span className="text-sm md:text-base text-foreground/90">{item.text}</span>
+                </div>
+              ))}
+            </motion.div>
+
+            {/* Primary CTA - Book a Free Demo */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="mt-10"
+            >
+              <Button
+                size="lg"
+                className="gap-2 px-8 py-6 text-base md:text-lg font-semibold shadow-lg shadow-primary/25"
+                asChild
+                data-testid="button-book-demo-hero"
+              >
+                <a href="#book-demo">
+                  <Calendar className="h-5 w-5" />
+                  Book a Free Demo
+                </a>
+              </Button>
+              <p className="mt-4 text-sm text-muted-foreground">
+                No credit card required • Free 15-minute consultation
+              </p>
+            </motion.div>
+          </div>
+        </div>
       </section>
 
-      {/* FAQ Section */}
-      <section id="faq" className="py-24">
+      {/* ============================================
+          SECTION 2: WHO THIS IS FOR
+          Psychology: Audience clarity + problem agitation
+          ============================================ */}
+      <section className="py-16 md:py-20 bg-muted/30">
+        <div className="container mx-auto px-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
+                Built For Dental Clinics That Are Tired Of...
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Sound familiar? You're not alone.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {[
+                {
+                  icon: PhoneOff,
+                  title: "Missing calls during busy hours",
+                  description: "Every unanswered call is a potential $3,000+ patient walking away to a competitor."
+                },
+                {
+                  icon: Clock,
+                  title: "Slow follow-up on inquiries",
+                  description: "By the time you call back, they've already booked elsewhere. Speed wins."
+                },
+                {
+                  icon: Users,
+                  title: "Front desk overwhelmed",
+                  description: "Your team is stretched thin answering the same questions over and over."
+                },
+                {
+                  icon: TrendingUp,
+                  title: "Inconsistent patient flow",
+                  description: "Some weeks are packed, others are empty. No predictable growth system."
+                }
+              ].map((problem, index) => (
+                <Card key={index} className="border-destructive/20 bg-destructive/5">
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center flex-shrink-0">
+                        <problem.icon className="h-5 w-5 text-destructive" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-foreground mb-1">{problem.title}</h3>
+                        <p className="text-sm text-muted-foreground">{problem.description}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="text-center mt-10">
+              <p className="text-lg font-medium text-foreground">
+                There's a better way. Let AI handle the repetitive work so you can focus on patient care.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================
+          SECTION 3: MAIN BENEFITS (Not Features)
+          Psychology: "What's in it for me?"
+          ============================================ */}
+      <section className="py-16 md:py-24">
         <div className="container mx-auto px-6">
           <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 mb-4">
-              <HelpCircle className="h-6 w-6 text-primary" />
-            </div>
-            <h2 className="text-4xl font-bold mb-4" data-testid="text-faq-headline">
-              Frequently Asked Questions
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
+              What You Actually Get
             </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Everything you need to know about DentalLeadGenius
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Real results, not just software features.
             </p>
           </div>
 
-          <div className="max-w-3xl mx-auto">
-            <Accordion type="single" collapsible className="space-y-4">
-              <AccordionItem value="item-1" className="border rounded-lg px-6" data-testid="faq-item-1">
-                <AccordionTrigger className="text-left font-semibold hover:no-underline">
-                  What is DentalLeadGenius?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  DentalLeadGenius is an AI-powered automation platform designed exclusively for dental clinics. It generates patient leads, sends automated email campaigns, answers patient questions, and boosts appointment bookings 24/7.
-                </AccordionContent>
-              </AccordionItem>
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <Card className="text-center">
+              <CardContent className="p-8">
+                <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                  <Phone className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-3">Never Miss Another Patient</h3>
+                <p className="text-muted-foreground">
+                  Every missed call gets an instant follow-up. Every inquiry gets a response in seconds, not hours. 
+                  <span className="font-medium text-foreground"> More calls answered = more appointments booked.</span>
+                </p>
+              </CardContent>
+            </Card>
 
-              <AccordionItem value="item-2" className="border rounded-lg px-6" data-testid="faq-item-2">
-                <AccordionTrigger className="text-left font-semibold hover:no-underline">
-                  How does DentalLeadGenius help my clinic?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  Our AI system works like a smart, always-available receptionist — responding instantly, following up with patients, and converting leads into booked appointments automatically.
-                </AccordionContent>
-              </AccordionItem>
+            <Card className="text-center">
+              <CardContent className="p-8">
+                <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                  <Zap className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-3">Automatic Lead Nurturing</h3>
+                <p className="text-muted-foreground">
+                  AI follows up with every lead until they book — or politely decline. 
+                  <span className="font-medium text-foreground"> No more leads falling through the cracks.</span>
+                </p>
+              </CardContent>
+            </Card>
 
-              <AccordionItem value="item-3" className="border rounded-lg px-6" data-testid="faq-item-3">
-                <AccordionTrigger className="text-left font-semibold hover:no-underline">
-                  Do I need technical skills to use it?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  No. DentalLeadGenius is 100% beginner-friendly. You simply start your campaign and the AI handles the rest.
-                </AccordionContent>
-              </AccordionItem>
+            <Card className="text-center">
+              <CardContent className="p-8">
+                <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                  <Clock className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-3">24/7 Patient Support</h3>
+                <p className="text-muted-foreground">
+                  AI answers patient questions, handles appointment requests, and qualifies leads around the clock. 
+                  <span className="font-medium text-foreground"> Your receptionist gets to breathe.</span>
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
 
-              <AccordionItem value="item-4" className="border rounded-lg px-6" data-testid="faq-item-4">
-                <AccordionTrigger className="text-left font-semibold hover:no-underline">
-                  How many patients can this system bring?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  Most clinics see 3x to 10x more leads depending on city and demand.
-                </AccordionContent>
-              </AccordionItem>
+      {/* ============================================
+          SECTION 4: HOW IT WORKS
+          Psychology: Simple 3-step process reduces friction
+          ============================================ */}
+      <section className="py-16 md:py-24 bg-muted/30">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
+              How It Works
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Get started in 3 simple steps. No tech skills required.
+            </p>
+          </div>
 
-              <AccordionItem value="item-5" className="border rounded-lg px-6" data-testid="faq-item-5">
-                <AccordionTrigger className="text-left font-semibold hover:no-underline">
-                  Is this software safe and secure?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  Yes. All data is encrypted and never shared. Clinics retain full control over their information.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-6" className="border rounded-lg px-6" data-testid="faq-item-6">
-                <AccordionTrigger className="text-left font-semibold hover:no-underline">
-                  Does DentalLeadGenius replace my staff?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  No. It supports your staff by handling repetitive tasks like email replies, FAQs, and follow-ups.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-7" className="border rounded-lg px-6" data-testid="faq-item-7">
-                <AccordionTrigger className="text-left font-semibold hover:no-underline">
-                  Can I customize the emails and campaigns?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  Yes. Emails, automations, and templates are fully customizable.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-8" className="border rounded-lg px-6" data-testid="faq-item-8">
-                <AccordionTrigger className="text-left font-semibold hover:no-underline">
-                  Do I need to install anything?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  No installation required. The system is fully web-based and works on mobile, tablet, and desktop.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-9" className="border rounded-lg px-6" data-testid="faq-item-9">
-                <AccordionTrigger className="text-left font-semibold hover:no-underline">
-                  Does it work for multi-location clinics?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  Yes. You can manage multiple branches and their leads independently.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-10" className="border rounded-lg px-6" data-testid="faq-item-10">
-                <AccordionTrigger className="text-left font-semibold hover:no-underline">
-                  How fast can I see results?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  Clinics start receiving leads within 24–48 hours.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-11" className="border rounded-lg px-6" data-testid="faq-item-11">
-                <AccordionTrigger className="text-left font-semibold hover:no-underline">
-                  What is the cost?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  <p className="mb-3">We offer three flexible plans: Essential ($497/month + $1,997 setup), Growth ($997/month + $2,997 setup), and Elite ($1,497/month + $4,997 setup) for unlimited clinics.</p>
-                  <Button variant="outline" size="sm" asChild>
-                    <a href="#pricing">
-                      View Pricing Plans Above
-                      <ChevronRight className="h-4 w-4 ml-1" />
-                    </a>
-                  </Button>
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-12" className="border rounded-lg px-6" data-testid="faq-item-12">
-                <AccordionTrigger className="text-left font-semibold hover:no-underline">
-                  How do I get support?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  <p className="mb-4">Our team is here to help you succeed. Reach out anytime:</p>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Phone className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-foreground">Phone:</span>
-                        <a href="tel:+12505742162" className="ml-2 text-primary hover:underline">250-574-2162</a>
-                      </div>
+          <div className="max-w-4xl mx-auto">
+            <div className="grid md:grid-cols-3 gap-8">
+              {[
+                {
+                  step: "1",
+                  title: "Book Your Demo",
+                  description: "Schedule a free 15-minute call. We'll show you exactly how DentalLeadGenius works for your clinic."
+                },
+                {
+                  step: "2",
+                  title: "We Set Everything Up",
+                  description: "Our team configures the AI for your clinic — your branding, your services, your voice. Takes just 48 hours."
+                },
+                {
+                  step: "3",
+                  title: "Watch Leads Roll In",
+                  description: "AI starts working 24/7, capturing leads, following up, and booking appointments automatically."
+                }
+              ].map((item, index) => (
+                <div key={index} className="relative">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="h-14 w-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold mb-4">
+                      {item.step}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Mail className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-foreground">Email:</span>
-                        <a href="mailto:info@dentalleadgenius.com" className="ml-2 text-primary hover:underline">info@dentalleadgenius.com</a>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Globe className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-foreground">Website:</span>
-                        <a href="https://smartai-partners.io" target="_blank" rel="noopener noreferrer" className="ml-2 text-primary hover:underline">smartai-partners.io</a>
-                      </div>
-                    </div>
+                    <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
+                    <p className="text-muted-foreground text-sm">{item.description}</p>
                   </div>
+                  {index < 2 && (
+                    <div className="hidden md:block absolute top-7 left-[calc(50%+3rem)] w-[calc(100%-6rem)]">
+                      <ArrowRight className="h-6 w-6 text-muted-foreground/30" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Mid-page CTA */}
+            <div className="text-center mt-12">
+              <Button
+                size="lg"
+                className="gap-2 px-8 py-6 text-base font-semibold"
+                asChild
+                data-testid="button-book-demo-mid"
+              >
+                <a href="#book-demo">
+                  <Calendar className="h-5 w-5" />
+                  Book a Free Demo
+                </a>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================
+          SECTION 5: SOCIAL PROOF & TRUST
+          Psychology: Social validation + risk reversal
+          NOTE: Testimonials are placeholders - replace with real ones
+          ============================================ */}
+      <section className="py-16 md:py-24">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
+              Trusted By Dental Practices Across North America
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              See what other clinic owners are saying.
+            </p>
+          </div>
+
+          {/* Testimonials - PLACEHOLDER: Replace with real testimonials */}
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-12">
+            {/* Testimonial 1 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex gap-1 mb-4">
+                  {[1,2,3,4,5].map(i => (
+                    <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className="text-foreground mb-4">
+                  "We were missing 30% of calls during lunch. Now AI handles those instantly. 
+                  Last month we booked 12 extra appointments just from missed call follow-ups. 
+                  That's over $15,000 in new revenue."
+                </p>
+                <div>
+                  <p className="font-semibold">Dr. Sarah Chen</p>
+                  <p className="text-sm text-muted-foreground">Bright Smile Dental, Los Angeles, CA</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Testimonial 2 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex gap-1 mb-4">
+                  {[1,2,3,4,5].map(i => (
+                    <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className="text-foreground mb-4">
+                  "My front desk was drowning in follow-up calls. Now the AI handles 80% of patient 
+                  questions automatically. My team can finally focus on in-person care instead of 
+                  playing phone tag."
+                </p>
+                <div>
+                  <p className="font-semibold">Dr. Michael Rodriguez</p>
+                  <p className="text-sm text-muted-foreground">Family Dental Care, Houston, TX</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Testimonial 3 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex gap-1 mb-4">
+                  {[1,2,3,4,5].map(i => (
+                    <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className="text-foreground mb-4">
+                  "We reactivated over 50 patients who hadn't visited in 2+ years. The AI sent 
+                  personalized follow-ups and booked them back in. Best ROI on any marketing 
+                  we've ever done."
+                </p>
+                <div>
+                  <p className="font-semibold">Dr. Emily Watson</p>
+                  <p className="text-sm text-muted-foreground">Premier Dental Group, Toronto, ON</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Trust Badges */}
+          <div className="max-w-3xl mx-auto">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="flex flex-col items-center text-center p-4">
+                <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center mb-2">
+                  <Shield className="h-6 w-6 text-green-600" />
+                </div>
+                <p className="text-sm font-medium">HIPAA-Friendly</p>
+                <p className="text-xs text-muted-foreground">Secure workflows</p>
+              </div>
+              
+              <div className="flex flex-col items-center text-center p-4">
+                <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-2">
+                  <CheckCircle2 className="h-6 w-6 text-blue-600" />
+                </div>
+                <p className="text-sm font-medium">No Long Contracts</p>
+                <p className="text-xs text-muted-foreground">Cancel anytime</p>
+              </div>
+              
+              <div className="flex flex-col items-center text-center p-4">
+                <div className="h-12 w-12 rounded-full bg-purple-500/10 flex items-center justify-center mb-2">
+                  <MessageSquare className="h-6 w-6 text-purple-600" />
+                </div>
+                <p className="text-sm font-medium">24/7 AI Support</p>
+                <p className="text-xs text-muted-foreground">Always available</p>
+              </div>
+              
+              <div className="flex flex-col items-center text-center p-4">
+                <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center mb-2">
+                  <Zap className="h-6 w-6 text-orange-600" />
+                </div>
+                <p className="text-sm font-medium">48-Hour Setup</p>
+                <p className="text-xs text-muted-foreground">Quick onboarding</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================
+          SECTION 6: FAQ
+          Psychology: Objection handling
+          ============================================ */}
+      <section className="py-16 md:py-24 bg-muted/30">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
+              Common Questions
+            </h2>
+          </div>
+
+          <div className="max-w-3xl mx-auto">
+            <Accordion type="single" collapsible className="space-y-3">
+              <AccordionItem value="item-1" className="border rounded-lg px-6 bg-background">
+                <AccordionTrigger className="text-left font-medium hover:no-underline">
+                  How does DentalLeadGenius help my clinic get more patients?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-4">
+                  The AI instantly responds to every inquiry, follows up on missed calls, and nurtures 
+                  leads until they book. Most clinics see 3-10x more booked appointments from the same 
+                  amount of traffic because no lead falls through the cracks.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-2" className="border rounded-lg px-6 bg-background">
+                <AccordionTrigger className="text-left font-medium hover:no-underline">
+                  Do I need any technical skills to use this?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-4">
+                  No. We handle all the setup. You just log in to see your leads and appointments. 
+                  If you can check email, you can use DentalLeadGenius.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-3" className="border rounded-lg px-6 bg-background">
+                <AccordionTrigger className="text-left font-medium hover:no-underline">
+                  Will this replace my front desk staff?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-4">
+                  No — it supports them. The AI handles repetitive tasks like answering FAQs, 
+                  following up on leads, and booking basic appointments. Your team can focus on 
+                  in-person patient care instead of phone tag.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-4" className="border rounded-lg px-6 bg-background">
+                <AccordionTrigger className="text-left font-medium hover:no-underline">
+                  How quickly can I get started?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-4">
+                  After your demo call, we can have your AI system live within 48 hours. 
+                  Most clinics start seeing new leads the same week.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-5" className="border rounded-lg px-6 bg-background">
+                <AccordionTrigger className="text-left font-medium hover:no-underline">
+                  Is my patient data secure?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-4">
+                  Yes. All data is encrypted and we follow HIPAA-friendly practices. 
+                  Your patient information is never shared or sold. You maintain full control.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-6" className="border rounded-lg px-6 bg-background">
+                <AccordionTrigger className="text-left font-medium hover:no-underline">
+                  What if it doesn't work for my clinic?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-4">
+                  We offer a risk-free demo so you can see exactly how it works before committing. 
+                  No long-term contracts — if you're not seeing results, you can cancel anytime.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -708,70 +545,88 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* CTA Section with Demo Request Form */}
-      <section id="book-demo" className="py-24 bg-primary/5">
+      {/* ============================================
+          SECTION 7: FINAL CTA
+          Psychology: Urgency + low-friction action
+          ============================================ */}
+      <section id="book-demo" className="py-16 md:py-24 bg-primary/5">
         <div className="container mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-12 items-start">
-            <div className="space-y-6">
-              <h2 className="text-4xl font-bold">
-                Ready to Transform Your Lead Generation?
-              </h2>
-              <p className="text-xl text-muted-foreground">
-                Join hundreds of dental clinics already growing with {SITE_NAME}. 
-                Fill out the form and our team will contact you within 24 hours.
-              </p>
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <MessageSquare className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">Personalized Demo</p>
-                    <p className="text-sm text-muted-foreground">See features tailored to your clinic</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <Calendar className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">Quick Response</p>
-                    <p className="text-sm text-muted-foreground">We'll contact you within 24 hours</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">No Commitment</p>
-                    <p className="text-sm text-muted-foreground">Free consultation with our experts</p>
-                  </div>
-                </div>
-              </div>
-              <div className="pt-4">
-                <p className="text-sm text-muted-foreground">
-                  Want to see the AI in action first?{" "}
-                  <Link 
-                    href="/demo"
-                    className="text-primary hover:underline font-medium"
-                    data-testid="link-instant-access"
-                  >
-                    Try our live AI demo
-                  </Link>
-                </p>
-              </div>
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
+              Ready To Stop Losing Patients?
+            </h2>
+            <p className="text-lg text-muted-foreground mb-8">
+              Book a free 15-minute demo. See exactly how DentalLeadGenius can help your clinic 
+              capture more leads and book more appointments — without adding staff.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+              <Button
+                size="lg"
+                className="gap-2 px-10 py-6 text-lg font-semibold shadow-lg shadow-primary/25 w-full sm:w-auto"
+                asChild
+                data-testid="button-book-demo-final"
+              >
+                <Link href="/demo">
+                  <Calendar className="h-5 w-5" />
+                  Book a Free Demo
+                </Link>
+              </Button>
             </div>
-            <DemoRequestForm />
+
+            <p className="text-sm text-muted-foreground">
+              No credit card required • Free consultation • No obligation
+            </p>
+
+            {/* Quick contact option */}
+            <div className="mt-8 pt-8 border-t border-border/50">
+              <p className="text-sm text-muted-foreground mb-4">
+                Prefer to talk to someone right away?
+              </p>
+              <a 
+                href="tel:+12505742162" 
+                className="inline-flex items-center gap-2 text-primary hover:underline font-medium"
+                data-testid="link-phone-cta"
+              >
+                <Phone className="h-4 w-4" />
+                Call us: (250) 574-2162
+              </a>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <Footer />
-
-      {/* Chatbot Widget - Auto-opens after 10 seconds, auto-minimizes after another 10 seconds */}
-      <ChatbotWidget type="sales" />
+      {/* ============================================
+          MINIMAL FOOTER
+          Only essential links - no distractions
+          ============================================ */}
+      <footer className="py-8 border-t">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <img 
+                src={logoFull} 
+                alt="DentalLeadGenius" 
+                className="h-6 w-auto object-contain"
+              />
+            </div>
+            <div className="flex items-center gap-6 text-sm text-muted-foreground">
+              <Link href="/privacy-policy" className="hover:text-foreground transition-colors">
+                Privacy
+              </Link>
+              <Link href="/terms-of-service" className="hover:text-foreground transition-colors">
+                Terms
+              </Link>
+              <Link href="/login" className="hover:text-foreground transition-colors">
+                Login
+              </Link>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} DentalLeadGenius
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

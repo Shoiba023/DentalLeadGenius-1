@@ -95,24 +95,27 @@ export default async function runApp(
   }, () => {
     log(`serving on port ${port}`);
     
+    // ⚠️ EMAIL AUTOMATION DISABLED - Uncomment when issues are resolved
     // Auto-start the outreach automation engine (enabled after email domain verification)
-    setTimeout(() => {
-      const started = startAutomation();
-      if (started) {
-        log("Automated Outreach Engine started - running 24/7", "automation");
-      } else {
-        log("Automated Outreach Engine already running", "automation");
-      }
-    }, 5000); // Wait 5 seconds for server to fully initialize
+    // setTimeout(() => {
+    //   const started = startAutomation();
+    //   if (started) {
+    //     log("Automated Outreach Engine started - running 24/7", "automation");
+    //   } else {
+    //     log("Automated Outreach Engine already running", "automation");
+    //   }
+    // }, 5000); // Wait 5 seconds for server to fully initialize
     
     // Auto-start the marketing sync engine (10 clinics every 10 minutes with 72-hour cooldown)
-    setTimeout(() => {
-      const result = startMarketingSync();
-      if (result.success) {
-        log("Marketing Sync Engine started - sending to 10 clinics every 10 minutes", "marketing-sync");
-      } else {
-        log(`Marketing Sync Engine: ${result.message}`, "marketing-sync");
-      }
-    }, 10000); // Wait 10 seconds to ensure database is ready
+    // setTimeout(() => {
+    //   const result = startMarketingSync();
+    //   if (result.success) {
+    //     log("Marketing Sync Engine started - sending to 10 clinics every 10 minutes", "marketing-sync");
+    //   } else {
+    //     log(`Marketing Sync Engine: ${result.message}`, "marketing-sync");
+    //   }
+    // }, 10000); // Wait 10 seconds to ensure database is ready
+    
+    log("⚠️ Email automation engines are DISABLED - enable manually when ready", "system");
   });
 }
