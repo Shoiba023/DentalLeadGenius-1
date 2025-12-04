@@ -7,8 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
 import logoFull from "@/assets/logo/logo-full.png";
+import { FormError, FormAlert, PasswordStrength } from "@/components/ui/form-error";
+import { signupFormSchema, validateForm } from "@/lib/formValidation";
 
 export default function Signup() {
   const [, setLocation] = useLocation();
@@ -22,6 +24,8 @@ export default function Signup() {
     clinicName: "",
   });
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const signupMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -60,14 +64,16 @@ export default function Signup() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setFieldErrors({});
 
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+    const validation = validateForm(signupFormSchema, formData);
+    if (!validation.success) {
+      const newFieldErrors: Record<string, string> = {};
+      for (const [field, messages] of Object.entries(validation.errors)) {
+        newFieldErrors[field] = messages[0];
+      }
+      setFieldErrors(newFieldErrors);
+      setError("Please fix the errors below");
       return;
     }
 
@@ -75,7 +81,20 @@ export default function Signup() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    setTouched((prev) => ({ ...prev, [e.target.name]: true }));
   };
 
   return (
@@ -93,9 +112,7 @@ export default function Signup() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md" data-testid="text-signup-error">
-                {error}
-              </div>
+              <FormAlert type="error" message={error} data-testid="text-signup-error" />
             )}
             
             <div className="grid grid-cols-2 gap-4">
@@ -107,9 +124,11 @@ export default function Signup() {
                   placeholder="John"
                   value={formData.firstName}
                   onChange={handleChange}
-                  required
+                  onBlur={handleBlur}
+                  className={fieldErrors.firstName ? "border-destructive" : ""}
                   data-testid="input-signup-firstname"
                 />
+                <FormError message={fieldErrors.firstName} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last Name</Label>
@@ -119,9 +138,11 @@ export default function Signup() {
                   placeholder="Smith"
                   value={formData.lastName}
                   onChange={handleChange}
-                  required
+                  onBlur={handleBlur}
+                  className={fieldErrors.lastName ? "border-destructive" : ""}
                   data-testid="input-signup-lastname"
                 />
+                <FormError message={fieldErrors.lastName} />
               </div>
             </div>
 
@@ -133,9 +154,11 @@ export default function Signup() {
                 placeholder="Bright Smile Dental"
                 value={formData.clinicName}
                 onChange={handleChange}
-                required
+                onBlur={handleBlur}
+                className={fieldErrors.clinicName ? "border-destructive" : ""}
                 data-testid="input-signup-clinic"
               />
+              <FormError message={fieldErrors.clinicName} />
             </div>
             
             <div className="space-y-2">
@@ -147,9 +170,11 @@ export default function Signup() {
                 placeholder="john@example.com"
                 value={formData.email}
                 onChange={handleChange}
-                required
+                onBlur={handleBlur}
+                className={fieldErrors.email ? "border-destructive" : ""}
                 data-testid="input-signup-email"
               />
+              <FormError message={fieldErrors.email} />
             </div>
             
             <div className="space-y-2">
@@ -161,9 +186,12 @@ export default function Signup() {
                 placeholder="At least 6 characters"
                 value={formData.password}
                 onChange={handleChange}
-                required
+                onBlur={handleBlur}
+                className={fieldErrors.password ? "border-destructive" : ""}
                 data-testid="input-signup-password"
               />
+              <FormError message={fieldErrors.password} />
+              <PasswordStrength password={formData.password} />
             </div>
 
             <div className="space-y-2">
@@ -175,9 +203,11 @@ export default function Signup() {
                 placeholder="Confirm your password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                required
+                onBlur={handleBlur}
+                className={fieldErrors.confirmPassword ? "border-destructive" : ""}
                 data-testid="input-signup-confirm-password"
               />
+              <FormError message={fieldErrors.confirmPassword} />
             </div>
             
             <Button
