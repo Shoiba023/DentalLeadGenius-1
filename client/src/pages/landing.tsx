@@ -1,4 +1,5 @@
-import { MessageSquare, Users, Building2, BarChart3, Phone, Calendar, Play, Menu, X, Mail, HelpCircle, ChevronRight, Globe, ShieldCheck, BadgeCheck, CheckCircle2, MailCheck } from "lucide-react";
+import { MessageSquare, Users, Building2, BarChart3, Phone, Calendar, Play, Menu, X, Mail, HelpCircle, ChevronRight, Globe, ShieldCheck, BadgeCheck, CheckCircle2, MailCheck, Check, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChatbotWidget } from "@/components/chatbot-widget";
@@ -129,84 +130,130 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative min-h-[80vh] flex items-center">
+      <section className="relative min-h-[85vh] flex items-center overflow-hidden">
+        {/* Background with gradient overlay */}
         <div className="absolute inset-0 z-0">
           <img
             src={heroImage}
             alt="Modern dental clinic"
-            className="w-full h-full object-cover opacity-20"
+            className="w-full h-full object-cover opacity-15"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-background/50" />
+          <div className="absolute inset-0 bg-gradient-to-br from-background via-background/95 to-primary/5" />
         </div>
 
         <div className="container mx-auto px-6 py-20 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-8">
-              <h1
-                className="text-5xl lg:text-7xl font-bold leading-tight"
+          <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+            {/* Animated Hero Content */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="space-y-6"
+            >
+              {/* Badge */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20"
+              >
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-primary">AI-Powered Patient Conversion</span>
+              </motion.div>
+
+              {/* H1 Heading */}
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight tracking-tight"
                 data-testid="text-hero-headline"
               >
-                Generate{" "}
-                <span className="text-primary">10x More</span> Quality Dental Leads
-              </h1>
-              <p className="text-xl text-muted-foreground max-w-2xl">
-                AI-powered lead generation platform that automates outreach, gets more
-                clients, and helps dental clinics grow their practice with intelligent
-                chatbots and multi-channel campaigns.
-              </p>
+                Stop Losing Patients —{" "}
+                <span className="text-primary">Let AI Convert</span> Every Lead For You
+              </motion.h1>
 
-              {/* Contact Buttons */}
-              <div className="flex flex-wrap gap-4">
-                <Button
-                  size="lg"
-                  className="gap-2 px-6"
-                  asChild
-                  data-testid="button-book-demo-hero"
-                >
-                  <Link href="/demo">
-                    <Play className="h-5 w-5" />
-                    Try Live Demo
-                  </Link>
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="gap-2 px-6"
-                  asChild
-                  data-testid="button-whatsapp"
-                >
-                  <a
-                    href={`https://wa.me/${ADMIN_WHATSAPP}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <SiWhatsapp className="h-5 w-5" />
-                    WhatsApp
-                  </a>
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="gap-2 px-6"
-                  asChild
-                  data-testid="button-sms"
-                >
-                  <a href={`sms:${ADMIN_PHONE}`}>
-                    <Phone className="h-5 w-5" />
-                    Send SMS
-                  </a>
-                </Button>
-              </div>
-            </div>
+              {/* Subheading */}
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed"
+              >
+                Your clinic's 24/7 AI receptionist that instantly replies, books appointments, 
+                follows up leads, and turns missed opportunities into real patients.
+              </motion.p>
+            </motion.div>
 
-            <div className="relative lg:block hidden">
-              <div className="absolute -inset-4 bg-primary/10 rounded-2xl blur-3xl" />
-              <img
-                src={heroImage}
-                alt="Dental clinic interface"
-                className="relative rounded-2xl shadow-2xl"
-              />
-            </div>
+            {/* Bullet Points */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="grid sm:grid-cols-2 gap-x-8 gap-y-3 mt-10 text-left"
+            >
+              {[
+                "Missed call follow-up → booked appointment",
+                "AI nurtures & converts new patient leads",
+                "Reactivates inactive/no-show patients",
+                "Zero human effort — 100% automated"
+              ].map((item, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.4, delay: 0.5 + index * 0.1 }}
+                  className="flex items-center gap-3"
+                >
+                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Check className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <span className="text-sm sm:text-base text-foreground/90">{item}</span>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* CTA Buttons */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.8 }}
+              className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10"
+            >
+              <Button
+                size="lg"
+                className="gap-2 px-8 py-6 text-base font-semibold shadow-lg shadow-primary/25"
+                asChild
+                data-testid="button-book-demo-hero"
+              >
+                <Link href="/demo">
+                  <Calendar className="h-5 w-5" />
+                  Book a Free Demo
+                </Link>
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="gap-2 px-8 py-6 text-base font-semibold border-2"
+                asChild
+                data-testid="button-try-free-hero"
+              >
+                <Link href="/signup">
+                  <Play className="h-5 w-5" />
+                  Try It Free
+                </Link>
+              </Button>
+            </motion.div>
+
+            {/* Trust indicator */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 1 }}
+              className="mt-8 text-sm text-muted-foreground"
+            >
+              Trusted by 500+ dental clinics across USA & Canada
+            </motion.p>
           </div>
         </div>
       </section>
