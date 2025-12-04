@@ -8,6 +8,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { generateChatResponse, generateOutreachDraft, generateDemoResponse, type DemoMode } from "./openai";
 import { insertLeadSchema, insertClinicSchema, insertBookingSchema, insertSequenceSchema, insertSequenceStepSchema, insertSequenceEnrollmentSchema, loginSchema, createUserSchema } from "@shared/schema";
 import { z } from "zod";
+import { standardLimiter, strictLimiter, authLimiter, apiLimiter, logFailedAttempt, sanitizeInput, validateEmail, validatePhone } from "./rateLimit";
 import {
   runClinicNurtureCampaign,
   getNurtureStatus,
@@ -88,6 +89,18 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Security headers middleware
+  app.use((req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("X-XSS-Protection", "1; mode=block");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    next();
+  });
+
+  // Apply standard rate limiting to all API routes
+  app.use("/api", standardLimiter);
+
   // Health check endpoint for deployment monitoring
   app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
@@ -161,17 +174,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
   
   // Email/password login endpoint
-  app.post("/api/auth/login", async (req: any, res) => {
+  app.post("/api/auth/login", authLimiter, async (req: any, res) => {
     try {
       const { email, password } = loginSchema.parse(req.body);
       
       const user = await storage.getUserByEmail(email);
       if (!user || !user.password) {
+        logFailedAttempt("login_failed", email, "User not found");
         return res.status(401).json({ message: "Invalid email or password" });
       }
       
       const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) {
+        logFailedAttempt("login_failed", email, "Invalid password");
         return res.status(401).json({ message: "Invalid email or password" });
       }
       
@@ -222,9 +237,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Signup endpoint for new clinic accounts
-  app.post("/api/auth/signup", async (req: any, res) => {
+  app.post("/api/auth/signup", authLimiter, async (req: any, res) => {
     try {
       const { email, password, firstName, lastName, clinicName } = req.body;
+      
+      // Validate email format
+      if (!validateEmail(email)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
       
       if (!email || !password || !firstName || !lastName || !clinicName) {
         return res.status(400).json({ message: "All fields are required" });
@@ -5825,7 +5845,7 @@ Continue Setup: {{dashboardUrl}}/onboarding`,
   });
 
   // Start automation engine
-  app.post("/api/automation/start", isAuthenticated, async (req: any, res) => {
+  app.post("/api/automation/start", isAuthenticated, strictLimiter, async (req: any, res) => {
     try {
       const started = startAutomation();
       if (started) {
@@ -5840,7 +5860,7 @@ Continue Setup: {{dashboardUrl}}/onboarding`,
   });
 
   // Stop automation engine
-  app.post("/api/automation/stop", isAuthenticated, async (req: any, res) => {
+  app.post("/api/automation/stop", isAuthenticated, strictLimiter, async (req: any, res) => {
     try {
       const stopped = stopAutomation();
       if (stopped) {
@@ -5855,7 +5875,7 @@ Continue Setup: {{dashboardUrl}}/onboarding`,
   });
 
   // Run one cycle manually (for testing or immediate action)
-  app.post("/api/automation/run-now", isAuthenticated, async (req: any, res) => {
+  app.post("/api/automation/run-now", isAuthenticated, strictLimiter, async (req: any, res) => {
     try {
       console.log("[API] Running automation cycle manually...");
       const result = await runAutomationCycle();
@@ -5897,7 +5917,7 @@ Continue Setup: {{dashboardUrl}}/onboarding`,
   });
 
   // Start marketing sync engine
-  app.post("/api/marketing-sync/start", isAuthenticated, async (req: any, res) => {
+  app.post("/api/marketing-sync/start", isAuthenticated, strictLimiter, async (req: any, res) => {
     try {
       const result = startMarketingSync();
       res.json(result);
@@ -5908,7 +5928,7 @@ Continue Setup: {{dashboardUrl}}/onboarding`,
   });
 
   // Stop marketing sync engine
-  app.post("/api/marketing-sync/stop", isAuthenticated, async (req: any, res) => {
+  app.post("/api/marketing-sync/stop", isAuthenticated, strictLimiter, async (req: any, res) => {
     try {
       const result = stopMarketingSync();
       res.json(result);
@@ -5919,7 +5939,7 @@ Continue Setup: {{dashboardUrl}}/onboarding`,
   });
 
   // Run a single marketing sync cycle manually
-  app.post("/api/marketing-sync/run-now", isAuthenticated, async (req: any, res) => {
+  app.post("/api/marketing-sync/run-now", isAuthenticated, strictLimiter, async (req: any, res) => {
     try {
       console.log("[API] Running marketing sync cycle manually...");
       const result = await runManualCycle();

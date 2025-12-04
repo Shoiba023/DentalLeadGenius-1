@@ -175,6 +175,122 @@
   }
 }
 
+/* Premium Gradient Utilities */
+@layer utilities {
+  .gradient-primary {
+    @apply bg-gradient-to-r from-blue-600 to-cyan-500;
+  }
+  
+  .gradient-success {
+    @apply bg-gradient-to-r from-emerald-500 to-teal-400;
+  }
+  
+  .gradient-premium {
+    @apply bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-400;
+  }
+  
+  .gradient-hero {
+    @apply bg-gradient-to-br from-blue-600/10 via-cyan-500/5 to-transparent;
+  }
+  
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500;
+  }
+  
+  /* Glass Morphism */
+  .glass {
+    @apply backdrop-blur-xl bg-white/80 dark:bg-black/50 border border-white/20 dark:border-white/10;
+  }
+  
+  .glass-subtle {
+    @apply backdrop-blur-md bg-white/60 dark:bg-black/40;
+  }
+  
+  /* Premium Shadows */
+  .shadow-premium {
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.1), 0 2px 8px -2px rgba(0, 0, 0, 0.06);
+  }
+  
+  .shadow-glow {
+    box-shadow: 0 0 40px -10px rgba(37, 99, 235, 0.3);
+  }
+  
+  .shadow-glow-sm {
+    box-shadow: 0 0 20px -5px rgba(37, 99, 235, 0.2);
+  }
+  
+  /* Premium Card Hover */
+  .card-premium {
+    @apply transition-all duration-300 ease-out;
+  }
+  
+  .card-premium:hover {
+    @apply shadow-lg -translate-y-0.5;
+  }
+  
+  /* Shimmer Loading Effect */
+  .shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  
+  /* Pulse Glow Animation */
+  .pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px -5px rgba(37, 99, 235, 0.3); }
+    50% { box-shadow: 0 0 30px -5px rgba(37, 99, 235, 0.5); }
+  }
+  
+  /* Fade In Animation */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  /* Stagger Animation Delays */
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
+  .stagger-5 { animation-delay: 0.5s; }
+  
+  /* Number Counter Animation */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  
+  /* Gradient Border */
+  .gradient-border {
+    position: relative;
+  }
+  
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 2px;
+    background: linear-gradient(135deg, #2563eb, #06b6d4);
+    border-radius: inherit;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: xor;
+    -webkit-mask-composite: xor;
+    pointer-events: none;
+  }
+}
+
 /**
  * Using the elevate system.
  * Automatic contrast adjustment.

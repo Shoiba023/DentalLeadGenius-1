@@ -2,146 +2,163 @@
 
 ## Design Approach
 
-**Hybrid Strategy:**
-- **Marketing/Patient Areas:** Inspired by Linear (clean B2B SaaS aesthetic) + Intercom (conversational UI patterns)
-- **Admin Dashboard:** Tailwind UI conventions for data-dense interfaces
-- **Core Principle:** Professional healthcare credibility meets modern SaaS approachability
+**Premium B2B SaaS Aesthetic:**
+- **Reference Inspiration:** Linear's clean precision + Intercom's conversational warmth + Stripe's sophisticated restraint
+- **Core Principle:** Investor-ready polish meets healthcare credibility. Every pixel should communicate premium value and data-driven results.
+
+## Color System
+
+**Primary Palette:**
+- **Trust Blue:** Primary brand color (headers, CTAs, key UI elements) - #2563EB to #1E40AF range
+- **Success Teal/Green:** Accent for growth metrics, positive states, conversion points - #14B8A6 to #10B981 range
+- **Warm Neutrals:** Healthcare warmth in backgrounds - #F9FAFB, #F3F4F6, #E5E7EB
+- **Dark Text:** Charcoal for readability - #111827, #1F2937
+
+**Premium Treatments:**
+- **Gradient Accents:** Blue-to-teal gradients for hero CTAs and premium cards (bg-gradient-to-r from-blue-600 to-teal-500)
+- **Glass Morphism:** Semi-transparent modals with backdrop-blur-xl, border with white/10 opacity
+- **Subtle Shadows:** Layered shadow-sm + shadow-lg/20 for depth without heaviness
 
 ## Typography
 
 **Font Stack:**
-- Primary: Inter (Google Fonts) - body text, UI elements, chat messages
-- Accent: Cal Sans (or Lexend) - headlines, hero text
-  
+- **Primary:** Inter (Google Fonts) - All UI, body text, dashboard elements
+- **Headlines:** Inter Bold/Black with tight tracking for geometric precision
+
 **Hierarchy:**
-- Hero Headlines: text-5xl to text-7xl, font-bold
-- Section Headers: text-3xl to text-4xl, font-semibold
-- Body/Chat: text-base to text-lg, font-normal
-- Labels/Metadata: text-sm, font-medium
-- Micro-copy: text-xs
+- **Hero Headlines:** text-6xl lg:text-7xl, font-black, tracking-tight, leading-tight
+- **Section Headers:** text-4xl, font-bold, tracking-tight
+- **Dashboard Headers:** text-2xl, font-semibold
+- **Body/Chat:** text-base lg:text-lg, leading-relaxed
+- **Data Labels:** text-sm, font-medium, text-gray-600
+- **Metrics:** text-4xl to text-5xl, font-bold, tabular-nums
 
 ## Layout System
 
-**Spacing Units:** Consistent use of 4, 6, 8, 12, 16, 20, 24, 32
-- Component padding: p-4, p-6, p-8
-- Section spacing: py-16, py-20, py-24
-- Element gaps: gap-4, gap-6, gap-8
+**Spacing Primitives:** 4, 6, 8, 12, 16, 20, 24, 32
+- **Component Padding:** p-6, p-8 (cards), p-4 (compact elements)
+- **Section Spacing:** py-20, py-24, py-32 (marketing), py-8, py-12 (dashboard)
+- **Grid Gaps:** gap-6, gap-8, gap-12
 
-**Grid Structure:**
-- Marketing sections: max-w-7xl centered containers
-- Admin dashboard: full-width with max-w-screen-2xl
-- Content areas: max-w-4xl for readability
-- Responsive: grid-cols-1 md:grid-cols-2 lg:grid-cols-3
+**Container Strategy:**
+- **Marketing:** max-w-7xl, mx-auto, px-6
+- **Dashboard:** Full-width with max-w-screen-2xl, pl-64 (sidebar offset)
+- **Content Blocks:** max-w-4xl for text-heavy areas
 
 ## Homepage Structure
 
-**Hero Section (80vh):**
-- Two-column layout: Left (60%) - headline, subheadline, 3 contact buttons (WhatsApp, SMS, Demo); Right (40%) - hero image
-- Headline emphasizes lead generation results ("Generate 10x More Quality Dental Leads")
-- Contact buttons in horizontal row: rounded-lg, px-6, py-3, with blur backdrop for image overlay
+**Hero Section (85vh):**
+- **Layout:** Asymmetric two-column - Left 55% (content), Right 45% (premium hero image)
+- **Content:** Headline emphasizing ROI ("Generate 10x More Quality Leads"), subheadline with credibility stats, gradient CTA button row (WhatsApp, SMS, Demo Request)
+- **Image:** High-quality professional dental clinic imagery, rounded-2xl, shadow-2xl with subtle gradient overlay
+- **CTA Buttons:** Gradient primary button + glass-morphism secondary buttons with backdrop-blur-md
 
-**Features Section:**
-- 3-column grid showcasing: AI Chatbot, Lead Management, Multi-Clinic Platform
-- Each card: icon (top), title, description, subtle hover lift effect
+**Value Proposition (3-column grid):**
+- **Premium stat cards** with gradient borders, large numbers (text-5xl), growth indicators with teal accents
+- Each card: Icon, metric, percentage growth, micro-sparkline visualization
 
-**Social Proof:**
-- 2-column layout: testimonials (left 2/3) + stats/metrics cards (right 1/3)
-- Stats in vertical stack: number + label format
+**Features Section (Staggered 2-column):**
+- **Alternating image-content layout** for 3 core features (AI Chatbot, Lead Management, Multi-Clinic)
+- Feature cards with subtle shadow-lg, hover:shadow-xl transition
+- Icons using Heroicons with gradient backgrounds (rounded-xl, p-3)
 
-**Demo CTA Section:**
-- Centered, single-column, py-24
-- Prominent call-to-action with demo booking trigger
+**Social Proof (Split layout):**
+- Left 60%: Testimonial cards in masonry grid with clinic logos, quotes, results metrics
+- Right 40%: Vertical stats stack with animated number counters, trust badges
+
+**Premium Demo CTA:**
+- Full-width section with gradient background (blue-to-teal)
+- Glass-morphism form card centered, backdrop-blur-xl, white text on gradient
+- Headline + 2-column mini-form (email + phone) with gradient submit button
+
+## Dashboard Interface
+
+**Sidebar Navigation:**
+- **Fixed left, w-64,** gradient background (subtle blue-gray), white text
+- Logo at top with glow effect, menu items with icons (Heroicons), active state with teal accent border-left
+- User profile card at bottom with avatar, name, role badge
+
+**Main Content Area:**
+- **Top Stats Bar:** 4-column grid of gradient metric cards, each with icon, large number, trend arrow, mini-sparkline
+- **Data Table:** Premium styling with alternating row backgrounds, sticky header with shadow, status badges with gradient backgrounds
+- **Filters:** Glass-morphism filter bar above table with dropdown selects and search input with gradient focus ring
+
+**Lead Detail Modal:**
+- **Glass morphism overlay** with backdrop-blur-md
+- Content card: rounded-2xl, shadow-2xl, white background
+- Header with gradient accent, profile section, timeline of interactions, action buttons with gradients
 
 ## Chatbot Widget
 
-**Visual Design:**
-- Fixed bottom-right: bottom-6, right-6
-- Collapsed: Circular button (w-16 h-16) with chat icon + notification dot
-- Expanded: Card (w-96 h-[600px]) with rounded-2xl, shadow-2xl
-- Header: Gradient background, avatar + "Sarah - Dental Lead Specialist" + status dot
-- Message area: Scrollable, px-4, py-2 spacing between messages
-- User messages: Right-aligned, rounded-2xl bubbles
-- Bot messages: Left-aligned with avatar thumbnail
-- Input: Sticky bottom, rounded-full input with send button
+**Collapsed State:**
+- **Fixed bottom-right** (bottom-8, right-8), circular button (w-20 h-20) with gradient background
+- Pulse animation ring, notification badge with count
 
-**Auto-open Behavior:** Slides up from bottom-right after 2.5s page load
-
-## Admin Dashboard
-
-**Navigation:**
-- Sidebar (fixed left, w-64): Logo top, menu items with icons, user profile bottom
-- Main content: pl-64, full height, bg-gray-50
-
-**Lead Table:**
-- Data table with sticky header
-- Columns: Checkbox, Name, Email, Phone, State, Status (badge), Actions (dropdown)
-- Row hover: Subtle background change
-- Filters bar above table: Search input + dropdown filters (state, status)
-- Pagination below table
-
-**Analytics Cards:**
-- 4-column grid of metric cards
-- Each card: Large number (text-4xl), label below, icon accent, trend indicator
+**Expanded (w-[400px] h-[650px]):**
+- **Card:** rounded-3xl, shadow-2xl with glass-morphism header
+- **Header:** Gradient background, AI avatar with glow effect, "Sarah - Lead Specialist" text, green status dot
+- **Messages:** User bubbles with gradient backgrounds (right), bot messages with light gray (left), avatar thumbnails
+- **Input Bar:** Glass-morphism sticky bottom, rounded-full input, gradient send button
+- **Auto-open:** Slide-up animation after 3s with subtle bounce
 
 ## Clinic Subpages
 
 **Patient-Facing Layout:**
-- Header: Clinic logo (left), clinic name, navigation links, "Book Appointment" CTA
-- Hero: Full-width banner with clinic photo, headline, services overview
-- Services Section: 2-3 column grid of dental services
-- Chatbot widget: Same design as homepage but branded with clinic colors
-- Footer: Clinic contact info, hours, location map embed
+- **Header:** Transparent-to-solid on scroll, clinic logo, navigation with gradient hover states, "Book Now" gradient CTA
+- **Hero Banner:** Full-width clinic image with gradient overlay, large headline, services badges in horizontal scroll
+- **Services Grid:** 3-column premium cards with service icons, descriptions, "Learn More" links with teal accent
+- **Branded Chatbot:** Same widget design with clinic's custom gradient colors
 
-## Component Library
+## Premium Component Library
 
 **Buttons:**
-- Primary: Solid background, rounded-lg, font-medium, hover:opacity-90
-- Secondary: Border variant, transparent background
-- Icon buttons: Square or circular, p-2 to p-3
-
-**Forms:**
-- Input fields: rounded-lg, px-4, py-3, border, focus:ring-2
-- Labels: text-sm, font-medium, mb-2
-- Inline validation messages below inputs
+- **Primary Gradient:** bg-gradient-to-r from-blue-600 to-teal-500, rounded-lg, px-8, py-4, shadow-lg, hover:shadow-xl
+- **Glass Secondary:** backdrop-blur-md, border white/20, hover:bg-white/10
+- **Icon Buttons:** Rounded-full with gradient on hover
 
 **Cards:**
-- Standard: rounded-xl, shadow-sm, p-6, border
-- Hover cards: Add shadow-md transition on hover
-- Stat cards: Highlight numbers with large text, subtle background
+- **Premium:** rounded-2xl, shadow-lg, border border-gray-100, hover:shadow-2xl transition-all duration-300
+- **Stat Cards:** Gradient borders (border-2), large numbers with tabular-nums, mini-visualizations
+- **Feature Cards:** Image at top (rounded-t-2xl), content p-8, gradient accent line at bottom
+
+**Form Inputs:**
+- **Fields:** rounded-xl, px-4, py-3, border-2, focus:ring-4 with blue/20 ring, focus:border-blue-500
+- **Labels:** text-sm, font-semibold, mb-2, text-gray-700
+- **Validation:** Inline messages with icons, teal for success, red for errors
 
 **Badges:**
-- Status indicators: rounded-full, px-3, py-1, text-xs, font-semibold
-- Colors mapped to status (not specified now, but structure for New/Contacted/Won/Lost)
+- **Status:** Gradient backgrounds for Won/Contacted, rounded-full, px-4, py-1.5, text-xs, font-bold, shadow-sm
+- **Trust Badges:** Logo + text in glass-morphism containers
 
-**Modals:**
-- Overlay: Semi-transparent backdrop
-- Content: Centered card, max-w-lg, rounded-2xl, p-8
-- Close button: Absolute top-right
+## Micro-Animations
+
+**Strategic Premium Polish:**
+- **Card Entrance:** Stagger fade-up on scroll (100ms delays), 400ms duration
+- **Metric Counters:** Animated number roll-up on viewport entry
+- **Hover States:** Scale(1.02) + shadow enhancement, 200ms ease-out
+- **Gradient Shifts:** Subtle gradient position animation on hover for CTAs
+- **Loading States:** Gradient shimmer effect for skeleton screens
+- **Modal Transitions:** Backdrop fade + content scale-up (300ms)
 
 ## Images
 
-**Hero Image (Homepage):** 
-Professional dental clinic office or happy dentist-patient interaction, high-quality photography, placed right side of hero section (40% width), rounded-2xl with subtle shadow
+**Hero Section:**
+- **Primary Hero Image:** Professional dental office or dentist-patient interaction, bright and inviting, placed right 45% of hero, rounded-2xl, shadow-2xl
 
-**Clinic Subpage Header:**
-Each clinic's branded hero image showing their office/team, full-width background with overlay gradient for text readability
+**Feature Sections:**
+- **Alternating feature images:** Screenshot mockups of dashboard, chatbot interface, lead management views - high-fidelity, with subtle gradient overlays
 
-**Feature Icons:**
-Use Heroicons (via CDN) for all UI icons - chat, calendar, users, chart-bar, etc.
+**Clinic Subpages:**
+- **Full-width hero banner:** Each clinic's office/team photo with gradient overlay for text contrast
 
-## Animations
+**Social Proof:**
+- **Clinic logos** in testimonial cards, grayscale with color on hover
 
-**Minimal, Strategic Use:**
-- Chatbot entrance: Slide-up with fade (300ms ease-out)
-- Card hovers: Subtle scale/shadow transition (200ms)
-- Page transitions: Fade between dashboard views (150ms)
-- Loading states: Subtle spinner only where necessary
-
-**No distracting scroll animations or parallax effects**
+**Icons:** Heroicons exclusively via CDN for all UI elements
 
 ## Accessibility
 
-- Form labels always visible, not placeholders only
-- Sufficient contrast ratios throughout
-- Focus states: ring-2 ring-offset-2 for keyboard navigation
-- ARIA labels for icon-only buttons
+- **Focus Rings:** ring-4 ring-blue-500/20 with ring-offset-2 for keyboard navigation
+- **Contrast:** All text meets WCAG AA against backgrounds, special attention to gradient text
+- **Form Labels:** Always visible above inputs, never placeholder-only
+- **ARIA:** Proper labels for icon buttons, status indicators, and interactive elements
