@@ -531,6 +531,8 @@ export async function getNurtureStatus(leadId: string): Promise<{
   if (tags.includes("nurture_step_1_sent")) completedSteps.push("STEP_1");
   if (tags.includes("nurture_step_2_sent")) completedSteps.push("STEP_2");
   if (tags.includes("nurture_step_3_sent")) completedSteps.push("STEP_3");
+  if (tags.includes("nurture_step_4_sent")) completedSteps.push("STEP_4");
+  if (tags.includes("nurture_step_5_sent")) completedSteps.push("STEP_5");
   
   const nextStep = calculateNextStep(lead);
   const isComplete = hasTag(lead, LEAD_TAGS.NURTURE_COMPLETE);
@@ -557,16 +559,63 @@ export async function getNurtureStatus(leadId: string): Promise<{
  */
 export async function createNurtureSequenceCampaign(
   clinicId: string,
-  name: string = "Automated Nurture Sequence"
+  name: string = "5-Day Automated Nurture Sequence"
 ): Promise<OutreachCampaign> {
   const campaign = await storage.createCampaign({
     clinicId,
     name,
     type: "email",
     status: "active",
-    subject: "Automated 3-Step Nurture Sequence",
-    message: "This campaign sends automated follow-ups on Day 0, Day 2, and Day 5.",
+    subject: "5-Day Automated Nurture Sequence",
+    message: "This campaign sends automated follow-ups on Day 0 (Welcome), Day 1 (Social Proof), Day 2 (Features), Day 3 (Case Study), and Day 4 (Final CTA).",
   });
   
   return campaign;
+}
+
+/**
+ * Get nurture sequence stats for a clinic
+ */
+export async function getNurtureSequenceStats(clinicId: string): Promise<{
+  totalLeads: number;
+  inSequence: number;
+  completedSequence: number;
+  stepBreakdown: Record<string, number>;
+  averageConversionDay: number | null;
+}> {
+  const leads = await storage.getLeadsByClinic(clinicId);
+  
+  let inSequence = 0;
+  let completedSequence = 0;
+  const stepBreakdown: Record<string, number> = {
+    step_1: 0,
+    step_2: 0,
+    step_3: 0,
+    step_4: 0,
+    step_5: 0,
+  };
+  
+  for (const lead of leads) {
+    const tags = lead.tags || [];
+    
+    if (tags.includes("nurture_step_1_sent")) stepBreakdown.step_1++;
+    if (tags.includes("nurture_step_2_sent")) stepBreakdown.step_2++;
+    if (tags.includes("nurture_step_3_sent")) stepBreakdown.step_3++;
+    if (tags.includes("nurture_step_4_sent")) stepBreakdown.step_4++;
+    if (tags.includes("nurture_step_5_sent")) stepBreakdown.step_5++;
+    
+    if (hasTag(lead, LEAD_TAGS.NURTURE_COMPLETE)) {
+      completedSequence++;
+    } else if (tags.some(t => t.startsWith("nurture_step_"))) {
+      inSequence++;
+    }
+  }
+  
+  return {
+    totalLeads: leads.length,
+    inSequence,
+    completedSequence,
+    stepBreakdown,
+    averageConversionDay: null, // TODO: Calculate from conversion data
+  };
 }

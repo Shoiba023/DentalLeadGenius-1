@@ -110,6 +110,9 @@ export interface IStorage {
   // Booking operations
   createBooking(booking: InsertBooking): Promise<Booking>;
   getAllBookings(): Promise<Booking[]>;
+  getBookingById(id: string): Promise<Booking | undefined>;
+  updateBooking(id: string, updates: Partial<InsertBooking>): Promise<Booking | undefined>;
+  getBookingsByClinic(clinicId: string): Promise<Booking[]>;
 
   // Chatbot thread operations
   createChatbotThread(thread: InsertChatbotThread): Promise<ChatbotThread>;
@@ -706,6 +709,20 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(bookings)
       .where(eq(bookings.clinicId, clinicId))
       .orderBy(desc(bookings.createdAt));
+  }
+
+  async getBookingById(id: string): Promise<Booking | undefined> {
+    const [booking] = await db.select().from(bookings).where(eq(bookings.id, id));
+    return booking;
+  }
+
+  async updateBooking(id: string, updates: Partial<InsertBooking>): Promise<Booking | undefined> {
+    const [updatedBooking] = await db
+      .update(bookings)
+      .set(updates)
+      .where(eq(bookings.id, id))
+      .returning();
+    return updatedBooking;
   }
 
   // Chatbot thread operations

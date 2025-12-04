@@ -3220,8 +3220,17 @@ Submitted At: ${timestamp}`;
   });
   
   // Get nurture status for a lead
-  app.get("/api/nurture/status/:leadId", isAuthenticated, async (req: any, res) => {
+  app.get("/api/nurture/status/:leadId", async (req: any, res) => {
     try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+
+      // Verify lead belongs to user's clinic
+      const lead = await storage.getLeadById(req.params.leadId);
+      if (!lead || lead.clinicId !== clinicId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const status = await getNurtureStatus(req.params.leadId);
       res.json(status);
     } catch (error) {
@@ -3252,12 +3261,283 @@ Submitted At: ${timestamp}`;
       res.status(500).json({ message: "Failed to create nurture campaign" });
     }
   });
+
+  // Get nurture sequence stats
+  app.get("/api/nurture/stats/:clinicId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Verify user has access to this clinic
+      const clinic = await storage.getClinicById(req.params.clinicId);
+      if (!clinic || clinic.ownerId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const { getNurtureSequenceStats } = await import("./nurtureCampaign");
+      const stats = await getNurtureSequenceStats(req.params.clinicId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching nurture stats:", error);
+      res.status(500).json({ message: "Failed to fetch nurture stats" });
+    }
+  });
+
+  // ================== DEMO BOOKING ROUTES ==================
+
+  // Get available demo time slots
+  app.get("/api/demo/slots", async (req, res) => {
+    try {
+      const { generateAvailableSlots } = await import("./demoBooking");
+      const bookings = await storage.getAllBookings();
+      const slots = generateAvailableSlots(bookings);
+      res.json(slots);
+    } catch (error) {
+      console.error("Error fetching demo slots:", error);
+      res.status(500).json({ message: "Failed to fetch available slots" });
+    }
+  });
+
+  // Book a demo with calendar integration
+  app.post("/api/demo/book", async (req, res) => {
+    try {
+      const { sendDemoConfirmation, updateLeadForDemo } = await import("./demoBooking");
+      const { name, email, phone, clinicName, scheduledDate, scheduledTime, notes, leadId } = req.body;
+
+      // Create booking
+      const booking = await storage.createBooking({
+        clinicName,
+        ownerName: name,
+        email,
+        phone,
+        preferredTime: `${scheduledDate}T${scheduledTime}`,
+        notes,
+        status: "confirmed",
+      });
+
+      // Send confirmation email
+      await sendDemoConfirmation({
+        name,
+        email,
+        phone,
+        clinicName,
+        scheduledDate,
+        scheduledTime,
+        notes,
+        leadId,
+      });
+
+      // Update lead status if leadId provided
+      if (leadId) {
+        await updateLeadForDemo(leadId);
+      }
+
+      res.json({ success: true, booking });
+    } catch (error) {
+      console.error("Error booking demo:", error);
+      res.status(500).json({ message: "Failed to book demo" });
+    }
+  });
+
+  // Get demo booking stats (uses current clinic context)
+  app.get("/api/demo/stats", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+
+      const { getDemoBookingStats } = await import("./demoBooking");
+      const stats = await getDemoBookingStats(clinicId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching demo stats:", error);
+      res.status(500).json({ message: "Failed to fetch demo stats" });
+    }
+  });
+
+  // Mark demo as completed and send follow-up
+  app.post("/api/demo/:id/complete", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+
+      const { sendPostDemoFollowUp } = await import("./demoBooking");
+      const booking = await storage.getBookingById(req.params.id);
+      
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      // Verify booking belongs to user's clinic
+      if (booking.clinicId && booking.clinicId !== clinicId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      await storage.updateBooking(req.params.id, { status: "completed" });
+      await sendPostDemoFollowUp(booking);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error completing demo:", error);
+      res.status(500).json({ message: "Failed to complete demo" });
+    }
+  });
+
+  // ================== LEAD REACTIVATION ROUTES ==================
+
+  // Get reactivation stats for current clinic
+  app.get("/api/reactivation/stats", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+
+      const { getReactivationStats } = await import("./leadReactivation");
+      const stats = await getReactivationStats(clinicId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching reactivation stats:", error);
+      res.status(500).json({ message: "Failed to fetch reactivation stats" });
+    }
+  });
+
+  // Run reactivation campaign for current clinic
+  app.post("/api/reactivation/run", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+
+      const { runClinicReactivation } = await import("./leadReactivation");
+      const results = await runClinicReactivation(clinicId);
+      res.json(results);
+    } catch (error) {
+      console.error("Error running reactivation:", error);
+      res.status(500).json({ message: "Failed to run reactivation campaign" });
+    }
+  });
+
+  // Mark lead as reactivated (responded)
+  app.post("/api/reactivation/lead/:leadId/reactivated", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+
+      // Verify lead belongs to user's clinic
+      const lead = await storage.getLeadById(req.params.leadId);
+      if (!lead || lead.clinicId !== clinicId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { markLeadReactivated } = await import("./leadReactivation");
+      await markLeadReactivated(req.params.leadId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking lead reactivated:", error);
+      res.status(500).json({ message: "Failed to mark lead as reactivated" });
+    }
+  });
+
+  // ================== AI REPLY SUGGESTIONS ROUTES ==================
+
+  // Get AI email reply suggestions for a lead
+  app.post("/api/ai/reply-suggestions", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+
+      const { getSuggestionsForLead } = await import("./aiReplySuggestions");
+      const { leadId, inquiry } = req.body;
+
+      if (!leadId || !inquiry) {
+        return res.status(400).json({ message: "leadId and inquiry are required" });
+      }
+
+      // Verify lead belongs to user's clinic
+      const lead = await storage.getLeadById(leadId);
+      if (!lead || lead.clinicId !== clinicId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const suggestions = await getSuggestionsForLead(leadId, inquiry);
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Error generating reply suggestions:", error);
+      res.status(500).json({ message: "Failed to generate suggestions" });
+    }
+  });
+
+  // Get AI follow-up suggestions for a lead
+  app.get("/api/ai/follow-up/:leadId", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+
+      const { generateFollowUpSuggestions } = await import("./aiReplySuggestions");
+      const lead = await storage.getLeadById(req.params.leadId);
+      
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+
+      // Verify lead belongs to user's clinic
+      if (lead.clinicId !== clinicId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const clinic = await storage.getClinicById(clinicId);
+      if (!clinic) {
+        return res.status(404).json({ message: "Clinic not found" });
+      }
+
+      const suggestions = await generateFollowUpSuggestions(lead, clinic);
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Error generating follow-up suggestions:", error);
+      res.status(500).json({ message: "Failed to generate suggestions" });
+    }
+  });
+
+  // Get AI objection handling responses
+  app.post("/api/ai/objection-response", async (req: any, res) => {
+    try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+
+      const { generateObjectionResponse } = await import("./aiReplySuggestions");
+      const { objection } = req.body;
+
+      // Use the clinic name from the user's selected clinic
+      const clinic = await storage.getClinicById(clinicId);
+      if (!clinic) {
+        return res.status(404).json({ message: "Clinic not found" });
+      }
+
+      if (!objection) {
+        return res.status(400).json({ message: "objection is required" });
+      }
+
+      const responses = await generateObjectionResponse(objection, clinic.name);
+      res.json(responses);
+    } catch (error) {
+      console.error("Error generating objection response:", error);
+      res.status(500).json({ message: "Failed to generate response" });
+    }
+  });
   
   // ================== LEAD SEGMENTATION ROUTES ==================
   
   // Update lead status
-  app.patch("/api/leads/:id/status", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/leads/:id/status", async (req: any, res) => {
     try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+
+      // Verify lead belongs to user's clinic
+      const existingLead = await storage.getLeadById(req.params.id);
+      if (!existingLead || existingLead.clinicId !== clinicId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const { status } = req.body;
       let updatedLead;
       
@@ -3296,8 +3576,17 @@ Submitted At: ${timestamp}`;
   });
   
   // Add tag to lead
-  app.post("/api/leads/:id/tags", isAuthenticated, async (req: any, res) => {
+  app.post("/api/leads/:id/tags", async (req: any, res) => {
     try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+
+      // Verify lead belongs to user's clinic
+      const existingLead = await storage.getLeadById(req.params.id);
+      if (!existingLead || existingLead.clinicId !== clinicId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const { tag } = req.body;
       if (!tag) {
         return res.status(400).json({ message: "Tag is required" });
@@ -3316,8 +3605,17 @@ Submitted At: ${timestamp}`;
   });
   
   // Remove tag from lead
-  app.delete("/api/leads/:id/tags/:tag", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/leads/:id/tags/:tag", async (req: any, res) => {
     try {
+      const clinicId = await requireClinicContext(req, res);
+      if (!clinicId) return;
+
+      // Verify lead belongs to user's clinic
+      const existingLead = await storage.getLeadById(req.params.id);
+      if (!existingLead || existingLead.clinicId !== clinicId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const lead = await removeTag(req.params.id, req.params.tag);
       if (!lead) {
         return res.status(404).json({ message: "Lead not found" });

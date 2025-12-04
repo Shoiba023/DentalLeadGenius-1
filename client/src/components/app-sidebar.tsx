@@ -60,6 +60,11 @@ const adminMenuItems = [
     url: "/dashboard/analytics",
     icon: LineChart,
   },
+  {
+    title: "Sales Pipeline",
+    url: "/dashboard/pipeline",
+    icon: BarChart3,
+  },
 ];
 
 const clinicMenuItems = [
