@@ -95,23 +95,24 @@ export default async function runApp(
   }, () => {
     log(`serving on port ${port}`);
     
-    // ✅ AUTO-START MARKETING SYNC ENGINE - 24/7 Email Outreach
-    // Sends personalized emails to 10 clinics every 10 minutes with 72-hour cooldown
+    // ✅ GENIUS AUTO-MODE - 24/7 Email Outreach (syncs every 1 minute)
+    // Sends AI-personalized emails to eligible clinics with 72-hour cooldown
     // Always includes demo link: https://dental-lead-genius-1-shoibaali10.replit.app/demo
     setTimeout(() => {
       const result = startMarketingSync();
       if (result.success) {
-        log("╔═══════════════════════════════════════════════════════════════╗", "marketing-sync");
-        log("║  MARKETING SYNC ENGINE STARTED - 24/7 EMAIL OUTREACH ACTIVE   ║", "marketing-sync");
-        log("║  • 10 clinics per 10-minute cycle                             ║", "marketing-sync");
-        log("║  • 72-hour cooldown per clinic                                ║", "marketing-sync");
-        log("║  • AI-personalized emails with demo link                      ║", "marketing-sync");
-        log("╚═══════════════════════════════════════════════════════════════╝", "marketing-sync");
+        log("╔═══════════════════════════════════════════════════════════════╗", "genius");
+        log("║  🚀 GENIUS AUTO-MODE ACTIVE - SYNCING EVERY 1 MINUTE          ║", "genius");
+        log("║  • Up to 10 clinics per cycle (staggered delivery)            ║", "genius");
+        log("║  • 72-hour cooldown per clinic (no spam)                      ║", "genius");
+        log("║  • AI-personalized emails with demo link                      ║", "genius");
+        log("║  • USA & Canada clinics only                                  ║", "genius");
+        log("╚═══════════════════════════════════════════════════════════════╝", "genius");
       } else {
-        log(`Marketing Sync Engine: ${result.message}`, "marketing-sync");
+        log(`Genius Auto-Mode: ${result.message}`, "genius");
       }
     }, 10000); // Wait 10 seconds to ensure database is ready
     
-    log("✅ Email automation engine AUTO-START enabled", "system");
+    log("✅ Genius Auto-Mode enabled - syncing every 1 minute", "system");
   });
 }

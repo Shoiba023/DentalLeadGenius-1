@@ -1,12 +1,13 @@
 /**
- * Marketing Sync Engine
+ * Marketing Sync Engine (Genius Auto-Mode)
  * 
  * Fully autonomous email outreach system that:
- * 1. Sends personalized emails to 10 clinics every 10 minutes (24/7)
- * 2. Enforces 72-hour cooldown per clinic
- * 3. Uses AI to generate personalized email content
+ * 1. Syncs with DentalMapsHelper every 1 minute
+ * 2. Sends AI-personalized emails to eligible clinics (24/7)
+ * 3. Enforces 72-hour cooldown per clinic (no spam)
  * 4. Always includes demo link in every email
  * 5. Logs all outreach activity for tracking
+ * 6. Auto-creates campaigns and enrolls valid leads
  */
 
 import { storage } from "./storage";
@@ -14,14 +15,14 @@ import { sendEmail } from "./email";
 import OpenAI from "openai";
 import type { Clinic, Lead, InsertOutreachLog } from "@shared/schema";
 
-// Configuration
+// Configuration - Genius Auto-Mode
 const CONFIG = {
-  CLINICS_PER_CYCLE: 10,
-  CYCLE_INTERVAL_MS: 10 * 60 * 1000, // 10 minutes
-  COOLDOWN_HOURS: 72,
+  CLINICS_PER_CYCLE: 10,           // Max 10 clinics per cycle (staggered delivery)
+  CYCLE_INTERVAL_MS: 1 * 60 * 1000, // 1 minute sync interval
+  COOLDOWN_HOURS: 72,               // 72-hour cooldown per clinic
   DEMO_LINK: "https://dental-lead-genius-1-shoibaali10.replit.app/demo",
   MAX_RETRIES: 3,
-  SEND_DELAY_MS: 1000, // 1 second between emails
+  SEND_DELAY_MS: 500,               // 500ms between emails (faster pacing)
 };
 
 // Engine state
