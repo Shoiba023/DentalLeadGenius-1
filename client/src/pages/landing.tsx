@@ -358,9 +358,10 @@ export default function Landing() {
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <div>
-                  <span className="text-4xl font-bold">$199</span>
+                  <span className="text-4xl font-bold">$497</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
+                <p className="text-xs text-muted-foreground">+ $1,997 one-time setup</p>
                 <ul className="text-sm text-muted-foreground space-y-2">
                   <li>1 Clinic</li>
                   <li>AI Sales Chatbot</li>
@@ -382,9 +383,10 @@ export default function Landing() {
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <div>
-                  <span className="text-4xl font-bold text-primary">$349</span>
+                  <span className="text-4xl font-bold text-primary">$997</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
+                <p className="text-xs text-muted-foreground">+ $2,997 one-time setup</p>
                 <ul className="text-sm text-muted-foreground space-y-2">
                   <li>Up to 3 Clinics</li>
                   <li>Everything in Essential</li>
@@ -401,9 +403,10 @@ export default function Landing() {
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <div>
-                  <span className="text-4xl font-bold">$599</span>
+                  <span className="text-4xl font-bold">$1,497</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
+                <p className="text-xs text-muted-foreground">+ $4,997 one-time setup</p>
                 <ul className="text-sm text-muted-foreground space-y-2">
                   <li>Unlimited Clinics</li>
                   <li>Everything in Growth</li>
@@ -537,7 +540,7 @@ export default function Landing() {
                   What is the cost?
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground">
-                  <p className="mb-3">We offer flexible pricing plans starting from $199/month for single clinics up to $599/month for enterprise solutions with unlimited clinics.</p>
+                  <p className="mb-3">We offer three flexible plans: Essential ($497/month + $1,997 setup), Growth ($997/month + $2,997 setup), and Elite ($1,497/month + $4,997 setup) for unlimited clinics.</p>
                   <Button variant="outline" size="sm" asChild>
                     <a href="#pricing">
                       View Pricing Plans Above
