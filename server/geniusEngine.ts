@@ -69,6 +69,32 @@ export const GENIUS_CONFIG = {
 };
 
 // ============================================================================
+// HIGH-CONVERTING SUBJECT LINE ROTATION
+// ============================================================================
+
+export const SUBJECT_LINE_ROTATION = [
+  // Original subjects
+  "Your clinic is losing 30–50 patients every month",
+  "See how clinics get 40–60 new bookings monthly",
+  "Missed calls = $300–$600 lost daily",
+  "How one clinic added $14,200/month with AI receptionist",
+  '"We already have a receptionist" (Solved)',
+  "Final 24 hours for early pricing access",
+  "Last chance — installs in 3 minutes",
+  // NEW HIGH-CONVERTING SUBJECTS (User requested)
+  "Quick question about your dental clinic (saw something important)",
+  "We noticed you might be losing 7–12 new patients weekly…",
+  "Your competitor is using AI — are you?",
+  "1-minute improvement for your clinic's patient flow",
+];
+
+export function getRotatedSubject(day: number): string {
+  // Rotate through subject lines based on day and randomization
+  const daySubjects = SUBJECT_LINE_ROTATION.filter((_, i) => i % 7 === day % 7 || i >= 7);
+  return daySubjects[Math.floor(Math.random() * daySubjects.length)] || SUBJECT_LINE_ROTATION[0];
+}
+
+// ============================================================================
 // EMAIL TEMPLATES - 7-Day Sales Sequence
 // ============================================================================
 

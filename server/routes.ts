@@ -4011,6 +4011,51 @@ Submitted At: ${timestamp}`;
     }
   });
 
+  // Get LIVE Stripe payment links for all plans
+  app.get("/api/stripe/payment-links", async (req, res) => {
+    try {
+      const { getPaymentLinks } = await import("./stripeProducts");
+      const links = getPaymentLinks();
+      
+      res.json({
+        mode: process.env.REPLIT_DEPLOYMENT === '1' ? 'LIVE' : 'TEST',
+        links: {
+          starter: {
+            name: "Starter Plan",
+            price: "$497/month",
+            url: links.starter,
+            features: ["AI Receptionist 24/7", "Up to 500 leads/month", "Email + SMS outreach"]
+          },
+          pro: {
+            name: "Pro Plan", 
+            price: "$297/month",
+            url: links.pro,
+            features: ["Everything in Starter", "Unlimited leads", "Multi-channel campaigns"]
+          },
+          eliteStandard: {
+            name: "Elite Plan",
+            price: "$2,497 one-time",
+            url: links.eliteStandard,
+            features: ["Lifetime access", "White-label branding", "Dedicated success manager"]
+          },
+          elitePremium: {
+            name: "Elite Premium",
+            price: "$4,997 one-time",
+            url: links.elitePremium,
+            features: ["Everything in Elite", "Multi-location support", "Done-for-you setup"]
+          }
+        },
+        createdAt: links.createdAt
+      });
+    } catch (error) {
+      console.error("Error getting payment links:", error);
+      res.status(500).json({ 
+        message: "Payment links not available",
+        error: String(error)
+      });
+    }
+  });
+
   // Get pricing packages (your exact pricing)
   app.get("/api/pricing", async (req, res) => {
     const packages = [

@@ -421,14 +421,14 @@ async function sendWarmingEmail(lead: any, warmingDay: number): Promise<boolean>
  * Check if lead should switch to 9-step sales sequence
  */
 async function checkForRepliesAndSwitch(): Promise<number> {
-  // Find leads who have replied (their repliedAt is set)
+  // Find leads who have replied
   const repliedLeads = await db.select()
     .from(geniusLeads)
     .where(
       and(
-        sql`${geniusLeads.repliedAt} IS NOT NULL`,
-        sql`COALESCE(${geniusLeads.warmingDay}, 0) < 5`,
-        eq(geniusLeads.status, 'enrolled')
+        eq(geniusLeads.replied, true),
+        sql`${geniusLeads.currentDay} < 5`,
+        eq(geniusLeads.status, 'active')
       )
     )
     .limit(50);
@@ -438,8 +438,7 @@ async function checkForRepliesAndSwitch(): Promise<number> {
     // Switch to main 9-step sales sequence
     await db.update(geniusLeads)
       .set({
-        warmingDay: 5, // Mark warming as complete
-        sequenceDay: 0, // Start main sequence
+        currentDay: 5, // Mark warming as complete, start main sequence
         status: 'warm',
         updatedAt: new Date(),
       })
@@ -472,8 +471,8 @@ async function runWarmingCycle(): Promise<void> {
 
     let sent = 0;
     for (const lead of leads) {
-      const currentWarmingDay = lead.warmingDay || 0;
-      const lastEmailAt = lead.lastWarmingEmailAt ? new Date(lead.lastWarmingEmailAt) : null;
+      const currentDay = lead.currentDay || 0;
+      const lastEmailAt = lead.lastEmailSentAt ? new Date(lead.lastEmailSentAt) : null;
 
       // Check if enough time has passed (24 hours between emails)
       if (lastEmailAt) {
@@ -484,13 +483,12 @@ async function runWarmingCycle(): Promise<void> {
       }
 
       // Determine next warming day
-      const nextWarmingDay = currentWarmingDay + 1;
-      if (nextWarmingDay > 4) {
+      const nextDay = currentDay + 1;
+      if (nextDay > 4) {
         // Warming sequence complete, move to main sequence
         await db.update(geniusLeads)
           .set({
-            warmingDay: 5,
-            sequenceDay: 0,
+            currentDay: 5,
             status: 'contacted',
             updatedAt: new Date(),
           })
@@ -500,7 +498,7 @@ async function runWarmingCycle(): Promise<void> {
       }
 
       // Send warming email
-      const success = await sendWarmingEmail(lead, nextWarmingDay);
+      const success = await sendWarmingEmail(lead, nextDay);
       if (success) {
         sent++;
         warmingStats.leadsWarmed++;

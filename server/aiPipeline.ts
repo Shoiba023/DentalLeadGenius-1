@@ -5,6 +5,8 @@ import { startDemoBot, stopDemoBot, getDemoBotStatus } from "./module3DemoBookin
 import { startCloserBot, stopCloserBot, getCloserBotStatus } from "./module4CloserBot";
 import { startRevenueEngine, stopRevenueEngine, getRevenueStatus } from "./module5RevenueEngine";
 import { startClientSuccessBot, stopClientSuccessBot, getClientSuccessStatus } from "./moduleClientSuccess";
+import { startWarmingEngine, stopWarmingEngine, getWarmingStatus } from "./leadWarmingEngine";
+import { initializeStripeProducts, getPaymentLinks } from "./stripeProducts";
 
 interface PipelineStatus {
   isRunning: boolean;
@@ -121,6 +123,34 @@ export async function startFullPipeline(mode: OperatingMode = 'normal'): Promise
     details.push(`✅ Bonus (Client Success): ${successResult.message}`);
   } catch (error) {
     errors.push(`❌ Client Success failed: ${error}`);
+  }
+
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  // Start Lead Warming Engine (4-step sequence)
+  try {
+    startWarmingEngine();
+    details.push(`✅ Lead Warming Engine: 4-step sequence active`);
+  } catch (error) {
+    errors.push(`❌ Warming Engine failed: ${error}`);
+  }
+
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  // Initialize Stripe LIVE Products & Payment Links
+  try {
+    const paymentLinks = await initializeStripeProducts();
+    if (paymentLinks.starter) {
+      details.push(`✅ Stripe LIVE: Payment links ready`);
+      log('');
+      log('💳 STRIPE PAYMENT LINKS (LIVE MODE):');
+      log(`   • Starter ($497/mo): ${paymentLinks.starter}`);
+      log(`   • Pro ($297/mo): ${paymentLinks.pro}`);
+      log(`   • Elite ($2,497): ${paymentLinks.eliteStandard}`);
+      log(`   • Elite Premium ($4,997): ${paymentLinks.elitePremium}`);
+    }
+  } catch (error) {
+    log(`⚠️ Stripe initialization skipped: ${error}`);
   }
 
   isPipelineRunning = true;
