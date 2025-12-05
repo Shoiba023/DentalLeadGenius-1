@@ -1020,3 +1020,137 @@ export const messageEventsRelations = relations(messageEvents, ({ one }) => ({
     references: [clinics.id],
   }),
 }));
+
+// ============================================================================
+// GENIUS SYSTEM - 7-Day Email Sequence Automation
+// ============================================================================
+
+// Genius Leads - Tracks leads through the 7-day email sequence
+export const geniusLeads = pgTable("genius_leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").references(() => leads.id),
+  email: text("email").notNull(),
+  dentistName: text("dentist_name").default("Dr.").notNull(),
+  clinicName: text("clinic_name"),
+  city: text("city"),
+  state: text("state"),
+  phone: text("phone"),
+  website: text("website"),
+  currentDay: integer("current_day").default(0).notNull(), // 0-6 for 7-day sequence
+  status: text("status").default("active").notNull(), // active, paused, completed, unsubscribed, bounced
+  lastEmailSentAt: timestamp("last_email_sent_at"),
+  nextEmailDue: timestamp("next_email_due"),
+  emailsSent: integer("emails_sent").default(0).notNull(),
+  opens: integer("opens").default(0).notNull(),
+  clicks: integer("clicks").default(0).notNull(),
+  replied: boolean("replied").default(false).notNull(),
+  demoBooked: boolean("demo_booked").default(false).notNull(),
+  source: text("source").default("import").notNull(), // import, scraper, manual
+  importedAt: timestamp("imported_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  emailUniqueIdx: uniqueIndex("genius_leads_email_unique").on(table.email),
+  statusIdx: index("genius_leads_status_idx").on(table.status),
+  currentDayIdx: index("genius_leads_current_day_idx").on(table.currentDay),
+  nextEmailDueIdx: index("genius_leads_next_email_due_idx").on(table.nextEmailDue),
+}));
+
+export const insertGeniusLeadSchema = createInsertSchema(geniusLeads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  importedAt: true,
+});
+
+export type InsertGeniusLead = z.infer<typeof insertGeniusLeadSchema>;
+export type GeniusLead = typeof geniusLeads.$inferSelect;
+
+// Genius Email Sends - Log of all emails sent by the system
+export const geniusEmailSends = pgTable("genius_email_sends", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  geniusLeadId: varchar("genius_lead_id").notNull().references(() => geniusLeads.id),
+  day: integer("day").notNull(), // 0-6
+  subject: text("subject").notNull(),
+  templateVersion: integer("template_version").default(1).notNull(), // For A/B testing/rotation
+  status: text("status").default("sent").notNull(), // sent, delivered, opened, clicked, bounced, complained
+  messageId: text("message_id"), // Resend message ID
+  openedAt: timestamp("opened_at"),
+  clickedAt: timestamp("clicked_at"),
+  bouncedAt: timestamp("bounced_at"),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+}, (table) => ({
+  geniusLeadIdIdx: index("genius_email_sends_lead_id_idx").on(table.geniusLeadId),
+  dayIdx: index("genius_email_sends_day_idx").on(table.day),
+  statusIdx: index("genius_email_sends_status_idx").on(table.status),
+  sentAtIdx: index("genius_email_sends_sent_at_idx").on(table.sentAt),
+}));
+
+export const insertGeniusEmailSendSchema = createInsertSchema(geniusEmailSends).omit({
+  id: true,
+  sentAt: true,
+});
+
+export type InsertGeniusEmailSend = z.infer<typeof insertGeniusEmailSendSchema>;
+export type GeniusEmailSend = typeof geniusEmailSends.$inferSelect;
+
+// Genius Daily Stats - Aggregated daily metrics for reporting
+export const geniusDailyStats = pgTable("genius_daily_stats", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  date: timestamp("date").notNull(),
+  leadsImported: integer("leads_imported").default(0).notNull(),
+  totalLeads: integer("total_leads").default(0).notNull(),
+  emailsSent: integer("emails_sent").default(0).notNull(),
+  opens: integer("opens").default(0).notNull(),
+  clicks: integer("clicks").default(0).notNull(),
+  replies: integer("replies").default(0).notNull(),
+  demosBooked: integer("demos_booked").default(0).notNull(),
+  bounces: integer("bounces").default(0).notNull(),
+  complaints: integer("complaints").default(0).notNull(),
+  emailBudgetUsed: integer("email_budget_used").default(0).notNull(), // cents
+  replitBudgetUsed: integer("replit_budget_used").default(0).notNull(), // cents
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  dateUniqueIdx: uniqueIndex("genius_daily_stats_date_unique").on(table.date),
+}));
+
+export const insertGeniusDailyStatsSchema = createInsertSchema(geniusDailyStats).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertGeniusDailyStats = z.infer<typeof insertGeniusDailyStatsSchema>;
+export type GeniusDailyStats = typeof geniusDailyStats.$inferSelect;
+
+// Genius System Config - Runtime configuration for the automation engine
+export const geniusConfig = pgTable("genius_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(),
+  value: text("value").notNull(),
+  description: text("description"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGeniusConfigSchema = createInsertSchema(geniusConfig).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertGeniusConfig = z.infer<typeof insertGeniusConfigSchema>;
+export type GeniusConfig = typeof geniusConfig.$inferSelect;
+
+// Relations for Genius tables
+export const geniusLeadsRelations = relations(geniusLeads, ({ one, many }) => ({
+  lead: one(leads, {
+    fields: [geniusLeads.leadId],
+    references: [leads.id],
+  }),
+  emailSends: many(geniusEmailSends),
+}));
+
+export const geniusEmailSendsRelations = relations(geniusEmailSends, ({ one }) => ({
+  geniusLead: one(geniusLeads, {
+    fields: [geniusEmailSends.geniusLeadId],
+    references: [geniusLeads.id],
+  }),
+}));

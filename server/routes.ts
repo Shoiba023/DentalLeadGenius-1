@@ -47,6 +47,7 @@ import {
   runManualCycle,
   getOutreachStatistics,
 } from "./marketingSync";
+import geniusRoutes from "./geniusRoutes";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -5953,6 +5954,12 @@ Continue Setup: {{dashboardUrl}}/onboarding`,
       res.status(500).json({ message: "Failed to run marketing sync cycle" });
     }
   });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GENIUS SYSTEM - 7-Day Automated Email Sequence
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Mount GENIUS routes for lead import, engine control, and reporting
+  app.use("/api/genius", geniusRoutes);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ANALYTICS TRACKING ENDPOINTS (Comprehensive Analytics Engine)
