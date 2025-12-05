@@ -4,6 +4,14 @@
  * This is the core automation engine for DentalLeadGenius outbound sales.
  * It manages lead sequences, email templates, and sending logic.
  * 
+ * PHASE-2 OPTIMIZATION MODE ACTIVE:
+ * - Lead scoring (1-10)
+ * - Send-time AI (3 windows: 8AM, 11:30AM, 4PM)
+ * - 7 template variations per day
+ * - Hot/dead lead detection
+ * - Response handling
+ * - Demo auto-booking
+ * 
  * BUDGET LIMITS (enforced):
  * - Max 1,666 emails/day
  * - $100/month email budget
@@ -16,14 +24,33 @@ import {
   geniusEmailSends, 
   geniusDailyStats, 
   geniusConfig,
+  geniusTemplateVariants,
+  geniusResponseQueue,
   type GeniusLead,
   type InsertGeniusLead,
   type GeniusEmailSend,
   type GeniusDailyStats,
 } from "@shared/schema";
-import { eq, and, lte, gte, sql, desc, isNull, or } from "drizzle-orm";
+import { eq, and, lte, gte, sql, desc, isNull, or, asc } from "drizzle-orm";
 import { sendEmail } from "./email";
 import { SITE_NAME, SITE_URL, SUPPORT_EMAIL } from "@shared/config";
+
+// PHASE-2 Optimizer imports
+import {
+  calculateLeadScore,
+  scoreAndUpdateLead,
+  calculateSendTime,
+  getRotatedTemplate,
+  applyMicroVariations,
+  isHotLead,
+  isDeadLead,
+  hasBuyingSignals,
+  queueDemoInvite,
+  updateLeadStatuses,
+  runDailyOptimization,
+  initializePhase2,
+  DEMO_LINK,
+} from "./geniusOptimizer";
 
 // ============================================================================
 // CONFIGURATION - Budget & Rate Limits
@@ -468,6 +495,7 @@ function isValidEmail(email: string): boolean {
 
 /**
  * Import a single lead into the GENIUS system
+ * PHASE-2: Now includes lead scoring and enhanced tracking
  */
 export async function importGeniusLead(data: {
   email: string;
@@ -479,7 +507,16 @@ export async function importGeniusLead(data: {
   website?: string;
   leadId?: string;
   source?: string;
-}): Promise<{ success: boolean; leadId?: string; error?: string; existing?: boolean }> {
+  // PHASE-2: Enhanced lead data
+  clinicType?: string;
+  reviewRating?: string;
+  reviewCount?: number;
+  websiteQuality?: number;
+  wealthTier?: string;
+  socialPresence?: boolean;
+  yearsInBusiness?: number;
+  timezone?: string;
+}): Promise<{ success: boolean; leadId?: string; error?: string; existing?: boolean; score?: number }> {
   try {
     if (!data.email || !isValidEmail(data.email)) {
       return { success: false, error: "Invalid email format" };
@@ -491,10 +528,24 @@ export async function importGeniusLead(data: {
       .where(eq(geniusLeads.email, data.email.toLowerCase().trim()));
 
     if (existing) {
-      return { success: true, leadId: existing.id, existing: true };
+      return { success: true, leadId: existing.id, existing: true, score: existing.leadScore };
     }
 
-    // Insert new lead
+    // PHASE-2: Calculate lead score
+    const scoreResult = calculateLeadScore({
+      clinicType: data.clinicType,
+      reviewRating: data.reviewRating,
+      reviewCount: data.reviewCount,
+      websiteQuality: data.websiteQuality,
+      wealthTier: data.wealthTier,
+      socialPresence: data.socialPresence,
+      yearsInBusiness: data.yearsInBusiness,
+    });
+
+    // PHASE-2: Calculate optimal send time
+    const sendTime = calculateSendTime(data.timezone || "America/New_York");
+
+    // Insert new lead with PHASE-2 scoring
     const [lead] = await db.insert(geniusLeads).values({
       email: data.email.toLowerCase().trim(),
       dentistName: data.dentistName || "Dr.",
@@ -508,9 +559,23 @@ export async function importGeniusLead(data: {
       currentDay: 0,
       status: "active",
       nextEmailDue: new Date(), // Due immediately for Day 0
+      // PHASE-2: Lead scoring fields
+      leadScore: scoreResult.score,
+      prioritySegment: scoreResult.segment,
+      clinicType: data.clinicType,
+      wealthTier: data.wealthTier || "medium",
+      websiteQuality: data.websiteQuality || 5,
+      reviewRating: data.reviewRating,
+      reviewCount: data.reviewCount || 0,
+      socialPresence: data.socialPresence || false,
+      yearsInBusiness: data.yearsInBusiness,
+      // PHASE-2: Send time optimization
+      timezone: data.timezone || "America/New_York",
+      preferredSendWindow: sendTime.window,
     }).returning();
 
-    return { success: true, leadId: lead.id, existing: false };
+    log(`Imported lead ${lead.email} with score ${scoreResult.score} (${scoreResult.segment})`, "success");
+    return { success: true, leadId: lead.id, existing: false, score: scoreResult.score };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     log(`Failed to import lead: ${message}`, "error");
@@ -575,34 +640,58 @@ function getTemplate(day: number): EmailTemplate | undefined {
 
 /**
  * Send a single email in the sequence
+ * PHASE-2: Uses template variations with micro-variations for deliverability
  */
 async function sendSequenceEmail(lead: GeniusLead): Promise<{ success: boolean; error?: string }> {
-  const template = getTemplate(lead.currentDay);
-  if (!template) {
-    return { success: false, error: `No template for day ${lead.currentDay}` };
-  }
-
   try {
+    // PHASE-2: Get rotated template variant to avoid spam filters
+    const templateData = await getRotatedTemplate(lead.currentDay, lead.lastTemplateVariant || undefined);
+    
+    // PHASE-2: Calculate send time with randomization
+    const sendTime = calculateSendTime(lead.timezone || "America/New_York", lead.preferredSendWindow || undefined);
+    
+    // PHASE-2: Apply micro-variations to subject and body
+    const personalizedSubject = applyMicroVariations(
+      templateData.subject
+        .replace(/\{\{dentistName\}\}/g, lead.dentistName)
+        .replace(/\{\{clinicName\}\}/g, lead.clinicName || "your clinic")
+        .replace(/\{\{state\}\}/g, lead.state || "")
+    );
+    
+    const personalizedBody = applyMicroVariations(
+      templateData.body
+        .replace(/\{\{dentistName\}\}/g, lead.dentistName)
+        .replace(/\{\{clinicName\}\}/g, lead.clinicName || "your clinic")
+        .replace(/\{\{demoLink\}\}/g, GENIUS_CONFIG.DEMO_LINK)
+        .replace(/\{\{state\}\}/g, lead.state || "")
+    );
+
+    // Generate HTML from body
+    const html = generateEmailHtml(personalizedBody, lead.dentistName);
+
     const result = await sendEmail({
       to: lead.email,
-      subject: template.subject,
-      html: template.getHtml(lead.dentistName),
-      text: template.getBody(lead.dentistName),
+      subject: personalizedSubject,
+      html,
+      text: personalizedBody,
     });
 
     if (!result.ok) {
       return { success: false, error: result.error };
     }
 
-    // Log the email send
+    // Log the email send with PHASE-2 tracking
     await db.insert(geniusEmailSends).values({
       geniusLeadId: lead.id,
       day: lead.currentDay,
-      subject: template.subject,
+      subject: personalizedSubject,
       status: "sent",
+      variantId: templateData.variantId,
+      sendWindow: sendTime.window,
+      sendTimeLocal: sendTime.localTime,
     });
 
-    // Update lead status
+    // Update lead status with PHASE-2 tracking
     const nextDay = lead.currentDay + 1;
     const isComplete = nextDay >= GENIUS_CONFIG.SEQUENCE_DAYS;
     
@@ -613,9 +702,15 @@ async function sendSequenceEmail(lead: GeniusLead): Promise<{ success: boolean; 
         nextEmailDue: isComplete ? null : new Date(Date.now() + 24 * 60 * 60 * 1000), // +24 hours
         emailsSent: lead.emailsSent + 1,
         status: isComplete ? "completed" : "active",
+        lastTemplateVariant: templateData.variantId,
         updatedAt: new Date(),
       })
       .where(eq(geniusLeads.id, lead.id));
+
+    // PHASE-2: Check for buying signals after sending
+    if (hasBuyingSignals(lead)) {
+      await queueDemoInvite(lead.id);
+    }
 
     return { success: true };
   } catch (error) {
@@ -623,6 +718,36 @@ async function sendSequenceEmail(lead: GeniusLead): Promise<{ success: boolean; 
     log(`Failed to send email to ${lead.email}: ${message}`, "error");
     return { success: false, error: message };
   }
+}
+
+/**
+ * Generate HTML email from plain text body
+ */
+function generateEmailHtml(body: string, dentistName: string): string {
+  const htmlBody = body
+    .split('\n\n')
+    .map(p => `<p style="margin: 0 0 16px;">${p.replace(/\n/g, '<br>')}</p>`)
+    .join('');
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #f9fafb; color: #1f2937;">
+  <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px;">
+    ${htmlBody}
+    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+    <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+      <a href="${GENIUS_CONFIG.DEMO_LINK}?unsubscribe=true" style="color: #9ca3af;">Unsubscribe</a> | 
+      ${SITE_NAME} | ${SUPPORT_EMAIL}
+    </p>
+  </div>
+</body>
+</html>
+  `.trim();
 }
 
 // ============================================================================
@@ -801,14 +926,20 @@ export async function runGeniusCycle(): Promise<{
   }
 
   // Get leads due for next email
+  // PHASE-2: Prioritize HIGH SCORE leads first, then HOT leads, then by due time
   const now = new Date();
   const leadsToEmail = await db.select()
     .from(geniusLeads)
     .where(and(
-      eq(geniusLeads.status, "active"),
+      or(eq(geniusLeads.status, "active"), eq(geniusLeads.status, "hot")),
+      eq(geniusLeads.isDead, false),
       lte(geniusLeads.nextEmailDue, now),
     ))
-    .orderBy(geniusLeads.nextEmailDue)
+    .orderBy(
+      desc(geniusLeads.isHot), // Hot leads first
+      desc(geniusLeads.leadScore), // Then high score leads
+      asc(geniusLeads.nextEmailDue) // Then by due time
+    )
     .limit(Math.min(GENIUS_CONFIG.BATCH_SIZE, remainingToday));
 
   if (leadsToEmail.length === 0) {
@@ -1130,3 +1261,118 @@ export async function generateDailyReport(): Promise<{
     alerts,
   };
 }
+
+// ============================================================================
+// PHASE-2: ENHANCED REPORTING & OPTIMIZATION
+// ============================================================================
+
+/**
+ * Get PHASE-2 enhanced statistics
+ */
+export async function getPhase2Stats(): Promise<{
+  leads: {
+    total: number;
+    byScore: Record<string, number>;
+    hot: number;
+    dead: number;
+    premium: number;
+    high: number;
+    standard: number;
+    low: number;
+  };
+  templates: {
+    totalVariants: number;
+    bestPerforming: { day: number; variantId: number; openRate: string } | null;
+    worstPerforming: { day: number; variantId: number; openRate: string } | null;
+  };
+  sendWindows: {
+    morning: { sent: number; opens: number };
+    midday: { sent: number; opens: number };
+    afternoon: { sent: number; opens: number };
+  };
+}> {
+  // Lead stats by segment
+  const [leadStats] = await db.select({
+    total: sql<number>`count(*)::int`,
+    hot: sql<number>`count(*) filter (where is_hot = true)::int`,
+    dead: sql<number>`count(*) filter (where is_dead = true)::int`,
+    premium: sql<number>`count(*) filter (where priority_segment = 'premium')::int`,
+    high: sql<number>`count(*) filter (where priority_segment = 'high')::int`,
+    standard: sql<number>`count(*) filter (where priority_segment = 'standard')::int`,
+    low: sql<number>`count(*) filter (where priority_segment = 'low')::int`,
+  }).from(geniusLeads);
+
+  // Lead count by score
+  const scoreResults = await db.select({
+    score: geniusLeads.leadScore,
+    count: sql<number>`count(*)::int`,
+  })
+    .from(geniusLeads)
+    .groupBy(geniusLeads.leadScore);
+
+  const byScore: Record<string, number> = {};
+  scoreResults.forEach(r => { byScore[`score_${r.score}`] = r.count; });
+
+  // Template performance
+  const templates = await db.select()
+    .from(geniusTemplateVariants)
+    .where(sql`sent_count > 0`)
+    .orderBy(desc(sql`CAST(open_rate AS DECIMAL)`));
+
+  const bestTemplate = templates[0] || null;
+  const worstTemplate = templates[templates.length - 1] || null;
+
+  // Send window performance
+  const [windowStats] = await db.select({
+    morningSent: sql<number>`count(*) filter (where send_window = 'morning')::int`,
+    morningOpens: sql<number>`count(*) filter (where send_window = 'morning' and opened_at is not null)::int`,
+    middaySent: sql<number>`count(*) filter (where send_window = 'midday')::int`,
+    middayOpens: sql<number>`count(*) filter (where send_window = 'midday' and opened_at is not null)::int`,
+    afternoonSent: sql<number>`count(*) filter (where send_window = 'afternoon')::int`,
+    afternoonOpens: sql<number>`count(*) filter (where send_window = 'afternoon' and opened_at is not null)::int`,
+  }).from(geniusEmailSends);
+
+  return {
+    leads: {
+      total: leadStats?.total || 0,
+      byScore,
+      hot: leadStats?.hot || 0,
+      dead: leadStats?.dead || 0,
+      premium: leadStats?.premium || 0,
+      high: leadStats?.high || 0,
+      standard: leadStats?.standard || 0,
+      low: leadStats?.low || 0,
+    },
+    templates: {
+      totalVariants: templates.length,
+      bestPerforming: bestTemplate ? {
+        day: bestTemplate.day,
+        variantId: bestTemplate.variantId,
+        openRate: bestTemplate.openRate || "0",
+      } : null,
+      worstPerforming: worstTemplate && templates.length > 1 ? {
+        day: worstTemplate.day,
+        variantId: worstTemplate.variantId,
+        openRate: worstTemplate.openRate || "0",
+      } : null,
+    },
+    sendWindows: {
+      morning: { sent: windowStats?.morningSent || 0, opens: windowStats?.morningOpens || 0 },
+      midday: { sent: windowStats?.middaySent || 0, opens: windowStats?.middayOpens || 0 },
+      afternoon: { sent: windowStats?.afternoonSent || 0, opens: windowStats?.afternoonOpens || 0 },
+    },
+  };
+}
+
+// ============================================================================
+// PHASE-2: RE-EXPORTS FROM OPTIMIZER
+// ============================================================================
+
+export {
+  initializePhase2,
+  runDailyOptimization,
+  updateLeadStatuses,
+  scoreAndUpdateLead,
+  classifyReplyIntent,
+  queueAutoResponse,
+} from "./geniusOptimizer";

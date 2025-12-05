@@ -35,6 +35,11 @@ import {
   Send,
   Eye,
   MousePointerClick,
+  Flame,
+  Skull,
+  Star,
+  Timer,
+  Sparkles,
 } from "lucide-react";
 
 interface GeniusStatus {
@@ -88,6 +93,38 @@ interface DailyReport {
   alerts: string[];
 }
 
+interface Phase2Status {
+  phase2Active: boolean;
+  optimization: {
+    leads: {
+      total: number;
+      byScore: Record<string, number>;
+      hot: number;
+      dead: number;
+      premium: number;
+      high: number;
+      standard: number;
+      low: number;
+    };
+    templates: {
+      totalVariants: number;
+      bestPerforming: { day: number; variantId: number; openRate: string } | null;
+      worstPerforming: { day: number; variantId: number; openRate: string } | null;
+    };
+    sendWindows: {
+      morning: { sent: number; opens: number };
+      midday: { sent: number; opens: number };
+      afternoon: { sent: number; opens: number };
+    };
+  };
+}
+
+interface LeadSegments {
+  bySegment: Array<{ segment: string | null; count: number; avgScore: string | null }>;
+  byClinicType: Array<{ clinicType: string | null; count: number; avgScore: string | null }>;
+  byStatus: Array<{ isHot: boolean | null; isDead: boolean | null; count: number }>;
+}
+
 export default function AdminGeniusPage() {
   const { toast } = useToast();
   const [bulkLeads, setBulkLeads] = useState("");
@@ -110,6 +147,16 @@ export default function AdminGeniusPage() {
   const { data: report } = useQuery<DailyReport>({
     queryKey: ["/api/genius/report"],
     refetchInterval: 60000,
+  });
+
+  const { data: phase2Status, refetch: refetchPhase2 } = useQuery<Phase2Status>({
+    queryKey: ["/api/genius/phase2/status"],
+    refetchInterval: 30000,
+  });
+
+  const { data: leadSegments, refetch: refetchSegments } = useQuery<LeadSegments>({
+    queryKey: ["/api/genius/phase2/lead-segments"],
+    refetchInterval: 30000,
   });
 
   const startMutation = useMutation({
@@ -182,6 +229,46 @@ export default function AdminGeniusPage() {
     },
     onError: () => {
       toast({ title: "Import failed", variant: "destructive" });
+    },
+  });
+
+  const initPhase2Mutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/genius/phase2/initialize"),
+    onSuccess: () => {
+      toast({ title: "PHASE-2 initialized", description: "Template variants and send windows configured" });
+      refetchPhase2();
+    },
+    onError: () => {
+      toast({ title: "Failed to initialize PHASE-2", variant: "destructive" });
+    },
+  });
+
+  const runOptimizationMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/genius/phase2/optimize"),
+    onSuccess: (data: any) => {
+      toast({ 
+        title: "Optimization complete", 
+        description: `Scored ${data.leadsScored || 0} leads, found ${data.hotMarked || 0} hot leads` 
+      });
+      refetchPhase2();
+      refetchSegments();
+    },
+    onError: () => {
+      toast({ title: "Optimization failed", variant: "destructive" });
+    },
+  });
+
+  const updateStatusesMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/genius/phase2/update-lead-statuses"),
+    onSuccess: (data: any) => {
+      toast({ 
+        title: "Lead statuses updated", 
+        description: `${data.hotMarked || 0} hot, ${data.deadMarked || 0} dead` 
+      });
+      refetchSegments();
+    },
+    onError: () => {
+      toast({ title: "Status update failed", variant: "destructive" });
     },
   });
 
@@ -343,6 +430,10 @@ export default function AdminGeniusPage() {
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="sequence">Sequence Funnel</TabsTrigger>
+            <TabsTrigger value="optimization" className="flex items-center gap-1">
+              <Sparkles className="w-3 h-3" />
+              PHASE-2
+            </TabsTrigger>
             <TabsTrigger value="import">Import Leads</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
@@ -458,6 +549,204 @@ export default function AdminGeniusPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="optimization" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  PHASE-2 Optimization Engine
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Lead scoring, template variants, send-time AI, hot/dead tracking
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => initPhase2Mutation.mutate()}
+                  disabled={initPhase2Mutation.isPending}
+                  data-testid="button-init-phase2"
+                >
+                  <Settings className="w-4 h-4 mr-1" />
+                  {initPhase2Mutation.isPending ? "Initializing..." : "Initialize"}
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={() => runOptimizationMutation.mutate()}
+                  disabled={runOptimizationMutation.isPending}
+                  data-testid="button-run-optimization"
+                >
+                  <Sparkles className="w-4 h-4 mr-1" />
+                  {runOptimizationMutation.isPending ? "Running..." : "Run Optimization"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card data-testid="card-hot-leads">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Hot Leads</CardTitle>
+                  <Flame className="h-4 w-4 text-orange-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-orange-600">
+                    {phase2Status?.optimization.leads.hot || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">High engagement, ready to convert</p>
+                </CardContent>
+              </Card>
+
+              <Card data-testid="card-dead-leads">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Dead Leads</CardTitle>
+                  <Skull className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-muted-foreground">
+                    {phase2Status?.optimization.leads.dead || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">No engagement, marked inactive</p>
+                </CardContent>
+              </Card>
+
+              <Card data-testid="card-premium-leads">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Premium Segment</CardTitle>
+                  <Star className="h-4 w-4 text-yellow-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {phase2Status?.optimization.leads.premium || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Score 8-10, highest priority</p>
+                </CardContent>
+              </Card>
+
+              <Card data-testid="card-template-variants">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Template Variants</CardTitle>
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {phase2Status?.optimization.templates.totalVariants || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">7 per day for A/B testing</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="w-5 h-5" />
+                    Lead Segmentation
+                  </CardTitle>
+                  <CardDescription>Distribution by priority segment</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {[
+                      { label: "Premium (8-10)", count: phase2Status?.optimization.leads.premium || 0, color: "bg-yellow-500" },
+                      { label: "High (6-7)", count: phase2Status?.optimization.leads.high || 0, color: "bg-green-500" },
+                      { label: "Standard (4-5)", count: phase2Status?.optimization.leads.standard || 0, color: "bg-blue-500" },
+                      { label: "Low (1-3)", count: phase2Status?.optimization.leads.low || 0, color: "bg-gray-400" },
+                    ].map(seg => {
+                      const total = phase2Status?.optimization.leads.total || 1;
+                      const pct = (seg.count / total) * 100;
+                      return (
+                        <div key={seg.label} className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">{seg.label}</span>
+                            <span className="font-medium">{seg.count} ({pct.toFixed(1)}%)</span>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div className={`h-full ${seg.color}`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <Separator className="my-4" />
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => updateStatusesMutation.mutate()}
+                    disabled={updateStatusesMutation.isPending}
+                    data-testid="button-update-statuses"
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-1 ${updateStatusesMutation.isPending ? "animate-spin" : ""}`} />
+                    Update Hot/Dead Statuses
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Timer className="w-5 h-5" />
+                    Send Window Performance
+                  </CardTitle>
+                  <CardDescription>Best times for email delivery</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {[
+                      { label: "Morning (8:00 AM)", window: "morning", data: phase2Status?.optimization.sendWindows.morning },
+                      { label: "Midday (11:30 AM)", window: "midday", data: phase2Status?.optimization.sendWindows.midday },
+                      { label: "Afternoon (4:00 PM)", window: "afternoon", data: phase2Status?.optimization.sendWindows.afternoon },
+                    ].map(w => {
+                      const sent = w.data?.sent || 0;
+                      const opens = w.data?.opens || 0;
+                      const openRate = sent > 0 ? (opens / sent) * 100 : 0;
+                      return (
+                        <div key={w.window} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium">{w.label}</p>
+                            <p className="text-xs text-muted-foreground">{sent} sent, {opens} opens</p>
+                          </div>
+                          <Badge variant={openRate > 25 ? "default" : "secondary"}>
+                            {openRate.toFixed(1)}% open rate
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Send times randomized ±15 minutes to avoid spam filters
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Clinic Type Distribution</CardTitle>
+                <CardDescription>Lead segmentation by practice type</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {(leadSegments?.byClinicType || []).map((ct, idx) => (
+                    <div key={idx} className="p-3 border rounded-lg text-center">
+                      <p className="text-2xl font-bold">{ct.count}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{ct.clinicType || "Unknown"}</p>
+                      <Badge variant="outline" className="mt-1 text-xs">
+                        Avg: {ct.avgScore || "N/A"}
+                      </Badge>
+                    </div>
+                  ))}
+                  {(!leadSegments?.byClinicType || leadSegments.byClinicType.length === 0) && (
+                    <p className="col-span-full text-center text-muted-foreground py-6">
+                      No clinic type data yet. Run optimization to score leads.
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

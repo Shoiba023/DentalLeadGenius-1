@@ -21,8 +21,18 @@ import {
   getGeniusStatus,
   getGeniusStats,
   generateDailyReport,
+  getPhase2Stats,
+  initializePhase2,
+  runDailyOptimization,
+  updateLeadStatuses,
   GENIUS_CONFIG,
 } from "./geniusEngine";
+import { 
+  geniusTemplateVariants, 
+  geniusSendWindows, 
+  geniusDomainHealth,
+  geniusResponseQueue,
+} from "@shared/schema";
 import { db } from "./db";
 import { geniusLeads, geniusEmailSends } from "@shared/schema";
 import { desc, sql } from "drizzle-orm";
@@ -362,6 +372,195 @@ router.get("/config", requireAuth, async (req: Request, res: Response) => {
     demoLink: GENIUS_CONFIG.DEMO_LINK,
     sequenceDays: GENIUS_CONFIG.SEQUENCE_DAYS,
   });
+});
+
+// ============================================================================
+// PHASE-2 OPTIMIZATION ENDPOINTS
+// ============================================================================
+
+/**
+ * GET /api/genius/phase2/status
+ * Get PHASE-2 optimization status and statistics
+ */
+router.get("/phase2/status", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const phase2Stats = await getPhase2Stats();
+    const status = await getGeniusStatus();
+    
+    return res.json({
+      phase2Active: true,
+      engineStatus: status,
+      optimization: phase2Stats,
+    });
+  } catch (error) {
+    console.error("PHASE-2 status error:", error);
+    return res.status(500).json({ error: "Failed to get PHASE-2 status" });
+  }
+});
+
+/**
+ * POST /api/genius/phase2/initialize
+ * Initialize PHASE-2 optimization (template variants, send windows, etc.)
+ */
+router.post("/phase2/initialize", requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const result = await initializePhase2();
+    return res.json({
+      success: true,
+      message: "PHASE-2 optimization initialized",
+      ...result,
+    });
+  } catch (error) {
+    console.error("PHASE-2 initialize error:", error);
+    return res.status(500).json({ error: "Failed to initialize PHASE-2" });
+  }
+});
+
+/**
+ * POST /api/genius/phase2/optimize
+ * Run daily optimization cycle (re-score leads, update hot/dead, analyze templates)
+ */
+router.post("/phase2/optimize", requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const result = await runDailyOptimization();
+    return res.json({
+      success: true,
+      message: "Daily optimization complete",
+      ...result,
+    });
+  } catch (error) {
+    console.error("PHASE-2 optimize error:", error);
+    return res.status(500).json({ error: "Failed to run optimization" });
+  }
+});
+
+/**
+ * POST /api/genius/phase2/update-lead-statuses
+ * Update hot/dead lead statuses based on engagement
+ */
+router.post("/phase2/update-lead-statuses", requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const result = await updateLeadStatuses();
+    return res.json({
+      success: true,
+      message: "Lead statuses updated",
+      hotMarked: result.hotMarked,
+      deadMarked: result.deadMarked,
+    });
+  } catch (error) {
+    console.error("Update lead statuses error:", error);
+    return res.status(500).json({ error: "Failed to update lead statuses" });
+  }
+});
+
+/**
+ * GET /api/genius/phase2/templates
+ * Get all template variants with performance metrics
+ */
+router.get("/phase2/templates", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const templates = await db.select()
+      .from(geniusTemplateVariants)
+      .orderBy(geniusTemplateVariants.day, geniusTemplateVariants.variantId);
+    
+    return res.json({ templates });
+  } catch (error) {
+    console.error("Templates error:", error);
+    return res.status(500).json({ error: "Failed to get templates" });
+  }
+});
+
+/**
+ * GET /api/genius/phase2/send-windows
+ * Get send window performance by timezone cluster
+ */
+router.get("/phase2/send-windows", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const windows = await db.select()
+      .from(geniusSendWindows)
+      .orderBy(geniusSendWindows.timezoneCluster, geniusSendWindows.windowLabel);
+    
+    return res.json({ windows });
+  } catch (error) {
+    console.error("Send windows error:", error);
+    return res.status(500).json({ error: "Failed to get send windows" });
+  }
+});
+
+/**
+ * GET /api/genius/phase2/domain-health
+ * Get domain health and deliverability metrics
+ */
+router.get("/phase2/domain-health", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const domains = await db.select().from(geniusDomainHealth);
+    
+    return res.json({ domains });
+  } catch (error) {
+    console.error("Domain health error:", error);
+    return res.status(500).json({ error: "Failed to get domain health" });
+  }
+});
+
+/**
+ * GET /api/genius/phase2/response-queue
+ * Get pending automated responses
+ */
+router.get("/phase2/response-queue", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const queue = await db.select()
+      .from(geniusResponseQueue)
+      .orderBy(desc(geniusResponseQueue.priority), geniusResponseQueue.scheduledFor);
+    
+    return res.json({ queue });
+  } catch (error) {
+    console.error("Response queue error:", error);
+    return res.status(500).json({ error: "Failed to get response queue" });
+  }
+});
+
+/**
+ * GET /api/genius/phase2/lead-segments
+ * Get lead distribution by score and segment
+ */
+router.get("/phase2/lead-segments", requireAuth, async (req: Request, res: Response) => {
+  try {
+    // By segment
+    const bySegment = await db.select({
+      segment: geniusLeads.prioritySegment,
+      count: sql<number>`count(*)::int`,
+      avgScore: sql<number>`avg(lead_score)::numeric(3,1)`,
+    })
+      .from(geniusLeads)
+      .groupBy(geniusLeads.prioritySegment);
+
+    // By clinic type
+    const byClinicType = await db.select({
+      clinicType: geniusLeads.clinicType,
+      count: sql<number>`count(*)::int`,
+      avgScore: sql<number>`avg(lead_score)::numeric(3,1)`,
+    })
+      .from(geniusLeads)
+      .groupBy(geniusLeads.clinicType);
+
+    // Hot vs normal vs dead
+    const byStatus = await db.select({
+      isHot: geniusLeads.isHot,
+      isDead: geniusLeads.isDead,
+      count: sql<number>`count(*)::int`,
+    })
+      .from(geniusLeads)
+      .groupBy(geniusLeads.isHot, geniusLeads.isDead);
+
+    return res.json({
+      bySegment,
+      byClinicType,
+      byStatus,
+    });
+  } catch (error) {
+    console.error("Lead segments error:", error);
+    return res.status(500).json({ error: "Failed to get lead segments" });
+  }
 });
 
 export default router;
