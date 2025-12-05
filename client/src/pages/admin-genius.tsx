@@ -40,6 +40,9 @@ import {
   Star,
   Timer,
   Sparkles,
+  Bot,
+  Activity,
+  Power,
 } from "lucide-react";
 
 interface GeniusStatus {
@@ -125,6 +128,22 @@ interface LeadSegments {
   byStatus: Array<{ isHot: boolean | null; isDead: boolean | null; count: number }>;
 }
 
+interface AutonomousStatus {
+  isAutonomous: boolean;
+  engineStatus: GeniusStatus;
+  phase2Stats: Phase2Status["optimization"];
+  leadQueue: {
+    active: number;
+    completed: number;
+    paused: number;
+  };
+  performance: {
+    consecutiveErrors: number;
+    lastError: string | null;
+    cycleIntervalMs: number;
+  };
+}
+
 export default function AdminGeniusPage() {
   const { toast } = useToast();
   const [bulkLeads, setBulkLeads] = useState("");
@@ -157,6 +176,11 @@ export default function AdminGeniusPage() {
   const { data: leadSegments, refetch: refetchSegments } = useQuery<LeadSegments>({
     queryKey: ["/api/genius/phase2/lead-segments"],
     refetchInterval: 30000,
+  });
+
+  const { data: autonomousStatus, refetch: refetchAutonomous } = useQuery<AutonomousStatus>({
+    queryKey: ["/api/genius/autonomous/status"],
+    refetchInterval: 5000,
   });
 
   const startMutation = useMutation({
@@ -272,6 +296,34 @@ export default function AdminGeniusPage() {
     },
   });
 
+  const startAutonomousMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/genius/autonomous/start"),
+    onSuccess: (data: any) => {
+      toast({ 
+        title: "Autonomous Mode Activated", 
+        description: "GENIUS Phase-2 Ultra Optimization is now running" 
+      });
+      refetchAutonomous();
+      refetchStatus();
+      refetchPhase2();
+    },
+    onError: () => {
+      toast({ title: "Failed to start autonomous mode", variant: "destructive" });
+    },
+  });
+
+  const stopAutonomousMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/genius/autonomous/stop"),
+    onSuccess: () => {
+      toast({ title: "Autonomous Mode Stopped" });
+      refetchAutonomous();
+      refetchStatus();
+    },
+    onError: () => {
+      toast({ title: "Failed to stop autonomous mode", variant: "destructive" });
+    },
+  });
+
   const handleBulkImport = () => {
     const lines = bulkLeads.split("\n").filter(line => line.trim());
     const leads = lines.map(line => {
@@ -358,6 +410,78 @@ export default function AdminGeniusPage() {
             </CardContent>
           </Card>
         )}
+
+        <Card className={autonomousStatus?.isAutonomous 
+          ? "border-green-500 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950" 
+          : "border-primary/20 bg-gradient-to-r from-primary/5 to-purple-500/5"
+        }>
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                  autonomousStatus?.isAutonomous 
+                    ? "bg-green-500 text-white animate-pulse" 
+                    : "bg-primary/10"
+                }`}>
+                  <Bot className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    {autonomousStatus?.isAutonomous ? (
+                      <>
+                        <span className="text-green-600 dark:text-green-400">Phase-2 Ultra Optimization ACTIVE</span>
+                        <Badge variant="default" className="bg-green-500">
+                          <Activity className="w-3 h-3 mr-1" />
+                          Autonomous
+                        </Badge>
+                      </>
+                    ) : (
+                      "Autonomous Mode Available"
+                    )}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {autonomousStatus?.isAutonomous 
+                      ? `Zero-touch operation • ${autonomousStatus.leadQueue?.active || 0} active leads • Cycle every ${(autonomousStatus.performance?.cycleIntervalMs || 120000) / 1000}s`
+                      : "Enable full automation with lead scoring, template rotation, and smart scheduling"
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {autonomousStatus?.isAutonomous ? (
+                  <Button 
+                    variant="destructive" 
+                    onClick={() => stopAutonomousMutation.mutate()}
+                    disabled={stopAutonomousMutation.isPending}
+                    data-testid="button-stop-autonomous"
+                  >
+                    <Power className="w-4 h-4 mr-2" />
+                    {stopAutonomousMutation.isPending ? "Stopping..." : "Stop Autonomous"}
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={() => startAutonomousMutation.mutate()}
+                    disabled={startAutonomousMutation.isPending}
+                    className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
+                    data-testid="button-start-autonomous"
+                  >
+                    <Bot className="w-4 h-4 mr-2" />
+                    {startAutonomousMutation.isPending ? "Activating..." : "Activate Autonomous Mode"}
+                  </Button>
+                )}
+              </div>
+            </div>
+            {autonomousStatus?.isAutonomous && autonomousStatus.performance?.consecutiveErrors > 0 && (
+              <div className="mt-3 p-2 bg-orange-100 dark:bg-orange-900/30 rounded-md">
+                <p className="text-sm text-orange-700 dark:text-orange-300 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  {autonomousStatus.performance.consecutiveErrors} consecutive errors detected
+                  {autonomousStatus.performance.lastError && `: ${autonomousStatus.performance.lastError}`}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card data-testid="card-daily-emails">

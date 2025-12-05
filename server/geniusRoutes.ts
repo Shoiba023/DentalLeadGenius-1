@@ -27,6 +27,12 @@ import {
   updateLeadStatuses,
   GENIUS_CONFIG,
 } from "./geniusEngine";
+import {
+  startAutonomousMode,
+  stopAutonomousMode,
+  getAutonomousStatus,
+  generateAutonomousReport,
+} from "./geniusAutonomous";
 import { 
   geniusTemplateVariants, 
   geniusSendWindows, 
@@ -560,6 +566,66 @@ router.get("/phase2/lead-segments", requireAuth, async (req: Request, res: Respo
   } catch (error) {
     console.error("Lead segments error:", error);
     return res.status(500).json({ error: "Failed to get lead segments" });
+  }
+});
+
+// ============================================================================
+// AUTONOMOUS MODE ENDPOINTS
+// ============================================================================
+
+/**
+ * GET /api/genius/autonomous/status
+ * Get autonomous mode status
+ */
+router.get("/autonomous/status", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const status = await getAutonomousStatus();
+    return res.json(status);
+  } catch (error) {
+    console.error("Autonomous status error:", error);
+    return res.status(500).json({ error: "Failed to get autonomous status" });
+  }
+});
+
+/**
+ * POST /api/genius/autonomous/start
+ * Start GENIUS in full autonomous mode with Phase-2 optimization
+ */
+router.post("/autonomous/start", requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const result = await startAutonomousMode();
+    return res.json(result);
+  } catch (error) {
+    console.error("Autonomous start error:", error);
+    return res.status(500).json({ error: "Failed to start autonomous mode" });
+  }
+});
+
+/**
+ * POST /api/genius/autonomous/stop
+ * Stop autonomous mode
+ */
+router.post("/autonomous/stop", requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const result = await stopAutonomousMode();
+    return res.json(result);
+  } catch (error) {
+    console.error("Autonomous stop error:", error);
+    return res.status(500).json({ error: "Failed to stop autonomous mode" });
+  }
+});
+
+/**
+ * GET /api/genius/autonomous/report
+ * Get comprehensive autonomous performance report
+ */
+router.get("/autonomous/report", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const report = await generateAutonomousReport();
+    return res.json(report);
+  } catch (error) {
+    console.error("Autonomous report error:", error);
+    return res.status(500).json({ error: "Failed to generate report" });
   }
 });
 
