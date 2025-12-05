@@ -2,6 +2,22 @@ import Stripe from 'stripe';
 
 let connectionSettings: any;
 
+// ============================================================================
+// STRIPE MODE CONFIGURATION
+// ============================================================================
+// Set STRIPE_LIVE_MODE=true to force LIVE mode in development
+// When deployed (REPLIT_DEPLOYMENT=1), always uses LIVE mode automatically
+// ============================================================================
+
+export function isStripeLiveMode(): boolean {
+  // Force LIVE mode if environment variable is set
+  if (process.env.STRIPE_LIVE_MODE === 'true') {
+    return true;
+  }
+  // Auto-detect based on deployment status
+  return process.env.REPLIT_DEPLOYMENT === '1';
+}
+
 async function getCredentials() {
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
@@ -15,8 +31,10 @@ async function getCredentials() {
   }
 
   const connectorName = 'stripe';
-  const isProduction = process.env.REPLIT_DEPLOYMENT === '1';
-  const targetEnvironment = isProduction ? 'production' : 'development';
+  const forceLiveMode = isStripeLiveMode();
+  const targetEnvironment = forceLiveMode ? 'production' : 'development';
+  
+  console.log(`[STRIPE] Connecting to ${targetEnvironment.toUpperCase()} environment (LIVE_MODE=${forceLiveMode})`);
 
   const url = new URL(`https://${hostname}/api/v2/connection`);
   url.searchParams.set('include_secrets', 'true');

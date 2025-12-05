@@ -137,13 +137,17 @@ export async function startFullPipeline(mode: OperatingMode = 'normal'): Promise
 
   await new Promise(resolve => setTimeout(resolve, 500));
 
-  // Initialize Stripe Products & Payment Links (TEST MODE)
+  // Initialize Stripe Products & Payment Links
   try {
+    const { isStripeLiveMode } = await import("./stripeClient");
+    const isLive = isStripeLiveMode();
+    const modeLabel = isLive ? "🔴 LIVE MODE" : "🟡 TEST MODE";
+    
     const paymentLinks = await initializeStripeProducts();
     if (paymentLinks.starterMonthly) {
-      details.push(`✅ Stripe: 8 payment links ready (TEST MODE)`);
+      details.push(`✅ Stripe: 8 payment links ready (${modeLabel})`);
       log('');
-      log('💳 STRIPE PAYMENT LINKS (TEST MODE - 8 Total):');
+      log(`💳 STRIPE PAYMENT LINKS (${modeLabel} - 8 Total):`);
       log('   STARTER:');
       log(`     • Monthly ($497/mo):     ${paymentLinks.starterMonthly}`);
       log(`     • Lifetime ($2,970):     ${paymentLinks.starterLifetime}`);

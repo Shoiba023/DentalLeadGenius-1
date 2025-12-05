@@ -245,7 +245,10 @@ async function createPaymentLink(
 // ============================================================================
 
 export async function initializeStripeProducts(): Promise<PaymentLinks> {
-  console.log("[STRIPE] Initializing products and payment links (TEST MODE)...");
+  const { isStripeLiveMode } = await import("./stripeClient");
+  const isLive = isStripeLiveMode();
+  const modeLabel = isLive ? "🔴 LIVE MODE" : "🟡 TEST MODE";
+  console.log(`[STRIPE] Initializing products and payment links (${modeLabel})...`);
   
   try {
     const stripe = await getUncachableStripeClient();
@@ -325,8 +328,11 @@ export async function initializeStripeProducts(): Promise<PaymentLinks> {
     paymentLinks.createdAt = new Date();
 
     console.log("[STRIPE] ═══════════════════════════════════════════════════════════");
-    console.log("[STRIPE]         ALL PAYMENT LINKS READY (TEST MODE)               ");
+    console.log(`[STRIPE]         ALL PAYMENT LINKS READY (${modeLabel})               `);
     console.log("[STRIPE] ═══════════════════════════════════════════════════════════");
+    if (isLive) {
+      console.log("[STRIPE] ⚠️  WARNING: LIVE MODE - REAL PAYMENTS WILL BE PROCESSED!");
+    }
     console.log("[STRIPE] ");
     console.log("[STRIPE] STARTER PLAN:");
     console.log(`[STRIPE]   Monthly ($497/mo):    ${paymentLinks.starterMonthly}`);

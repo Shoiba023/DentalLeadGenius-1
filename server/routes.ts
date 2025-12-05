@@ -4015,10 +4015,13 @@ Submitted At: ${timestamp}`;
   app.get("/api/stripe/payment-links", async (req, res) => {
     try {
       const { getPaymentLinks } = await import("./stripeProducts");
+      const { isStripeLiveMode } = await import("./stripeClient");
       const links = getPaymentLinks();
+      const isLive = isStripeLiveMode();
       
       res.json({
-        mode: process.env.REPLIT_DEPLOYMENT === '1' ? 'LIVE' : 'TEST',
+        mode: isLive ? 'LIVE' : 'TEST',
+        warning: isLive ? 'LIVE MODE - Real payments will be processed!' : null,
         plans: {
           starter: {
             name: "Starter Plan",
