@@ -49,6 +49,64 @@ const DEFAULT_BUDGET: BudgetConfig = {
   hardStopThreshold: 1.0
 };
 
+// LOW-COST MODE: Optimized for minimal resource usage
+export type OperatingMode = 'normal' | 'low-cost' | 'aggressive';
+
+interface LowCostConfig {
+  scraperCitiesPerCycle: number;    // Fewer cities = less processing
+  scraperIntervalMs: number;         // Longer intervals = fewer cycles
+  nurtureIntervalMs: number;
+  demoBotIntervalMs: number;
+  closerBotIntervalMs: number;
+  revenueIntervalMs: number;
+  leadsPerCity: number;              // Fewer leads per city
+}
+
+const MODE_CONFIGS: Record<OperatingMode, LowCostConfig> = {
+  'normal': {
+    scraperCitiesPerCycle: 3,
+    scraperIntervalMs: 600000,       // 10 minutes
+    nurtureIntervalMs: 120000,       // 2 minutes
+    demoBotIntervalMs: 60000,        // 1 minute
+    closerBotIntervalMs: 60000,      // 1 minute
+    revenueIntervalMs: 300000,       // 5 minutes
+    leadsPerCity: 5
+  },
+  'low-cost': {
+    scraperCitiesPerCycle: 2,        // Only 2 cities per cycle
+    scraperIntervalMs: 1800000,      // 30 minutes (3x slower)
+    nurtureIntervalMs: 300000,       // 5 minutes (2.5x slower)
+    demoBotIntervalMs: 180000,       // 3 minutes (3x slower)
+    closerBotIntervalMs: 180000,     // 3 minutes (3x slower)
+    revenueIntervalMs: 600000,       // 10 minutes (2x slower)
+    leadsPerCity: 3                  // Only 3 leads per city
+  },
+  'aggressive': {
+    scraperCitiesPerCycle: 5,
+    scraperIntervalMs: 300000,       // 5 minutes
+    nurtureIntervalMs: 60000,        // 1 minute
+    demoBotIntervalMs: 30000,        // 30 seconds
+    closerBotIntervalMs: 30000,      // 30 seconds
+    revenueIntervalMs: 120000,       // 2 minutes
+    leadsPerCity: 8
+  }
+};
+
+let currentMode: OperatingMode = 'normal';
+
+export function setOperatingMode(mode: OperatingMode): void {
+  currentMode = mode;
+  log(`Operating mode changed to: ${mode.toUpperCase()}`, 'info');
+}
+
+export function getOperatingMode(): OperatingMode {
+  return currentMode;
+}
+
+export function getModeConfig(): LowCostConfig {
+  return MODE_CONFIGS[currentMode];
+}
+
 let masterState: MasterState = {
   isActive: false,
   startedAt: null,

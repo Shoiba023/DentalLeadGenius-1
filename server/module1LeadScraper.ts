@@ -1,5 +1,5 @@
 import { storage } from "./storage";
-import { recordLeadScraped, updateModuleStatus, canSendEmail } from "./masterControlGenius";
+import { recordLeadScraped, updateModuleStatus, canSendEmail, getModeConfig, getOperatingMode } from "./masterControlGenius";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -154,9 +154,15 @@ async function runScraperCycle(): Promise<{ leadsFound: number; leadsAdded: numb
   cycleCount++;
   updateModuleStatus('leadScraper', 'running');
   
-  const citiesToScrape = 3;
+  const modeConfig = getModeConfig();
+  const mode = getOperatingMode();
+  const citiesToScrape = modeConfig.scraperCitiesPerCycle;
+  const leadsPerCity = modeConfig.leadsPerCity;
+  
   let leadsFound = 0;
   let leadsAdded = 0;
+  
+  log(`🔄 Mode: ${mode.toUpperCase()} | Cities: ${citiesToScrape} | Leads/city: ${leadsPerCity}`);
   
   for (let i = 0; i < citiesToScrape; i++) {
     const city = ALL_CITIES[currentCityIndex];
@@ -165,7 +171,7 @@ async function runScraperCycle(): Promise<{ leadsFound: number; leadsAdded: numb
     log(`🔍 Scraping ${city}...`);
     
     try {
-      const leads = await generateMockLeadsForCity(city, 3 + Math.floor(Math.random() * 3));
+      const leads = await generateMockLeadsForCity(city, leadsPerCity);
       leadsFound += leads.length;
       
       const clinics = await storage.getAllClinics();
@@ -191,7 +197,11 @@ export async function startLeadScraper(): Promise<{ success: boolean; message: s
     return { success: false, message: 'Lead Scraper already running' };
   }
 
-  log('🚀 Starting Lead Scraper Engine...');
+  const modeConfig = getModeConfig();
+  const mode = getOperatingMode();
+  const intervalMinutes = modeConfig.scraperIntervalMs / 60000;
+
+  log(`🚀 Starting Lead Scraper Engine (${mode.toUpperCase()} mode)...`);
   isRunning = true;
   updateModuleStatus('leadScraper', 'running');
 
@@ -201,10 +211,10 @@ export async function startLeadScraper(): Promise<{ success: boolean; message: s
     if (isRunning) {
       await runScraperCycle();
     }
-  }, 600000);
+  }, modeConfig.scraperIntervalMs);
 
-  log('✅ Lead Scraper Engine ACTIVE - scanning 75 cities every 10 minutes');
-  return { success: true, message: 'Lead Scraper started' };
+  log(`✅ Lead Scraper Engine ACTIVE - ${mode.toUpperCase()} mode, ${modeConfig.scraperCitiesPerCycle} cities every ${intervalMinutes} minutes`);
+  return { success: true, message: `Lead Scraper started in ${mode} mode` };
 }
 
 export async function stopLeadScraper(): Promise<{ success: boolean; message: string }> {

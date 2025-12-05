@@ -1,4 +1,4 @@
-import { startMasterControl, stopMasterControl, getMasterStatus, getDailyReport } from "./masterControlGenius";
+import { startMasterControl, stopMasterControl, getMasterStatus, getDailyReport, setOperatingMode, getOperatingMode, getModeConfig, type OperatingMode } from "./masterControlGenius";
 import { startLeadScraper, stopLeadScraper, getScraperStatus } from "./module1LeadScraper";
 import { startAutonomousMode, stopAutonomousMode, getAutonomousStatus } from "./geniusAutonomous";
 import { startDemoBot, stopDemoBot, getDemoBotStatus } from "./module3DemoBookingBot";
@@ -35,14 +35,29 @@ function formatUptime(startDate: Date): string {
   return `${hours}h ${minutes}m`;
 }
 
-export async function startFullPipeline(): Promise<{ success: boolean; message: string; details: string[] }> {
+export async function startFullPipeline(mode: OperatingMode = 'normal'): Promise<{ success: boolean; message: string; details: string[] }> {
   if (isPipelineRunning) {
     return { success: false, message: 'Pipeline already running', details: [] };
   }
 
+  // Set operating mode FIRST
+  setOperatingMode(mode);
+  const modeConfig = getModeConfig();
+
   log('═══════════════════════════════════════════════════════════════');
-  log('           STARTING FULL AI SALES PIPELINE                    ');
+  log(`           STARTING FULL AI SALES PIPELINE (${mode.toUpperCase()} MODE)`);
   log('═══════════════════════════════════════════════════════════════');
+  
+  if (mode === 'low-cost') {
+    log('');
+    log('💰 LOW-COST MODE ENABLED:');
+    log(`   • Scraper: ${modeConfig.scraperCitiesPerCycle} cities every ${modeConfig.scraperIntervalMs / 60000} min`);
+    log(`   • Nurture: Every ${modeConfig.nurtureIntervalMs / 60000} min`);
+    log(`   • Demo Bot: Every ${modeConfig.demoBotIntervalMs / 60000} min`);
+    log(`   • Closer: Every ${modeConfig.closerBotIntervalMs / 60000} min`);
+    log(`   • Revenue: Every ${modeConfig.revenueIntervalMs / 60000} min`);
+    log('');
+  }
   
   const details: string[] = [];
   const errors: string[] = [];

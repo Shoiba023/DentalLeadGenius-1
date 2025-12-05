@@ -105,7 +105,7 @@ export default async function runApp(
         log("═══════════════════════════════════════════════════════════════", "PIPELINE");
         
         const { startFullPipeline } = await import("./aiPipeline");
-        const result = await startFullPipeline();
+        const result = await startFullPipeline('low-cost');
         
         if (result.success) {
           log("✅ FULL AI PIPELINE ACTIVE 24/7", "PIPELINE");
