@@ -4011,7 +4011,7 @@ Submitted At: ${timestamp}`;
     }
   });
 
-  // Get LIVE Stripe payment links for all plans
+  // Get all Stripe payment links for all plans (Monthly + Lifetime)
   app.get("/api/stripe/payment-links", async (req, res) => {
     try {
       const { getPaymentLinks } = await import("./stripeProducts");
@@ -4019,30 +4019,54 @@ Submitted At: ${timestamp}`;
       
       res.json({
         mode: process.env.REPLIT_DEPLOYMENT === '1' ? 'LIVE' : 'TEST',
-        links: {
+        plans: {
           starter: {
             name: "Starter Plan",
-            price: "$497/month",
-            url: links.starter,
-            features: ["AI Receptionist 24/7", "Up to 500 leads/month", "Email + SMS outreach"]
+            monthly: {
+              price: "$497/month",
+              url: links.starterMonthly
+            },
+            lifetime: {
+              price: "$2,970 one-time",
+              url: links.starterLifetime
+            },
+            features: ["AI Receptionist 24/7", "Up to 500 leads/month", "Email + SMS outreach", "Basic reporting"]
           },
           pro: {
-            name: "Pro Plan", 
-            price: "$297/month",
-            url: links.pro,
-            features: ["Everything in Starter", "Unlimited leads", "Multi-channel campaigns"]
+            name: "Pro Plan",
+            monthly: {
+              price: "$297/month",
+              url: links.proMonthly
+            },
+            lifetime: {
+              price: "$1,782 one-time",
+              url: links.proLifetime
+            },
+            features: ["Everything in Starter", "Unlimited leads", "Multi-channel campaigns", "Advanced analytics"]
           },
           eliteStandard: {
             name: "Elite Plan",
-            price: "$2,497 one-time",
-            url: links.eliteStandard,
-            features: ["Lifetime access", "White-label branding", "Dedicated success manager"]
+            monthly: {
+              price: "$997/month",
+              url: links.eliteStandardMonthly
+            },
+            lifetime: {
+              price: "$2,497 one-time",
+              url: links.eliteStandardLifetime
+            },
+            features: ["Everything in Pro", "White-label branding", "Dedicated success manager", "Custom AI training"]
           },
           elitePremium: {
             name: "Elite Premium",
-            price: "$4,997 one-time",
-            url: links.elitePremium,
-            features: ["Everything in Elite", "Multi-location support", "Done-for-you setup"]
+            monthly: {
+              price: "$1,497/month",
+              url: links.elitePremiumMonthly
+            },
+            lifetime: {
+              price: "$4,997 one-time",
+              url: links.elitePremiumLifetime
+            },
+            features: ["Everything in Elite", "Multi-location support", "Done-for-you setup", "Custom development hours"]
           }
         },
         createdAt: links.createdAt

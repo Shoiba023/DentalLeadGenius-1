@@ -22,6 +22,7 @@ export const PRODUCTS = {
     name: "DentalLeadGenius Starter",
     description: "AI-powered lead generation for growing dental practices",
     priceMonthly: 49700, // $497.00 in cents
+    priceLifetime: 297000, // $2,970.00 in cents (6 months value)
     features: [
       "AI Receptionist (24/7)",
       "Up to 500 leads/month",
@@ -35,6 +36,7 @@ export const PRODUCTS = {
     name: "DentalLeadGenius Pro",
     description: "Full automation suite for established dental practices",
     priceMonthly: 29700, // $297.00 in cents
+    priceLifetime: 178200, // $1,782.00 in cents (6 months value)
     features: [
       "Everything in Starter",
       "Unlimited leads",
@@ -47,8 +49,9 @@ export const PRODUCTS = {
   ELITE_STANDARD: {
     id: "elite-standard",
     name: "DentalLeadGenius Elite",
-    description: "Lifetime access - Standard tier",
-    priceOneTime: 249700, // $2,497.00 in cents
+    description: "Full-featured tier with premium support",
+    priceMonthly: 99700, // $997.00 in cents
+    priceLifetime: 249700, // $2,497.00 in cents
     features: [
       "Lifetime access",
       "Everything in Pro",
@@ -61,8 +64,9 @@ export const PRODUCTS = {
   ELITE_PREMIUM: {
     id: "elite-premium",
     name: "DentalLeadGenius Elite Premium",
-    description: "Lifetime access - Premium tier with extra features",
-    priceOneTime: 499700, // $4,997.00 in cents
+    description: "Ultimate tier with done-for-you setup",
+    priceMonthly: 149700, // $1,497.00 in cents
+    priceLifetime: 499700, // $4,997.00 in cents
     features: [
       "Everything in Elite Standard",
       "Multi-location support",
@@ -79,6 +83,19 @@ export const PRODUCTS = {
 // ============================================================================
 
 interface PaymentLinks {
+  // Starter Plan
+  starterMonthly: string | null;
+  starterLifetime: string | null;
+  // Pro Plan
+  proMonthly: string | null;
+  proLifetime: string | null;
+  // Elite Standard
+  eliteStandardMonthly: string | null;
+  eliteStandardLifetime: string | null;
+  // Elite Premium
+  elitePremiumMonthly: string | null;
+  elitePremiumLifetime: string | null;
+  // Legacy fields for backward compatibility
   starter: string | null;
   pro: string | null;
   eliteStandard: string | null;
@@ -87,6 +104,14 @@ interface PaymentLinks {
 }
 
 let paymentLinks: PaymentLinks = {
+  starterMonthly: null,
+  starterLifetime: null,
+  proMonthly: null,
+  proLifetime: null,
+  eliteStandardMonthly: null,
+  eliteStandardLifetime: null,
+  elitePremiumMonthly: null,
+  elitePremiumLifetime: null,
   starter: null,
   pro: null,
   eliteStandard: null,
@@ -220,64 +245,104 @@ async function createPaymentLink(
 // ============================================================================
 
 export async function initializeStripeProducts(): Promise<PaymentLinks> {
-  console.log("[STRIPE] Initializing LIVE products and payment links...");
+  console.log("[STRIPE] Initializing products and payment links (TEST MODE)...");
   
   try {
     const stripe = await getUncachableStripeClient();
 
-    // Create/get Starter product and price
+    // =========================================================================
+    // STARTER PLAN - Monthly + Lifetime
+    // =========================================================================
     const starterProductId = await createOrGetProduct(stripe, PRODUCTS.STARTER);
-    const starterPriceId = await createOrGetPrice(
-      stripe, 
-      starterProductId, 
-      PRODUCTS.STARTER.priceMonthly, 
-      true,
-      'starter'
+    
+    // Starter Monthly ($497/mo)
+    const starterMonthlyPriceId = await createOrGetPrice(
+      stripe, starterProductId, PRODUCTS.STARTER.priceMonthly, true, 'starter-monthly'
     );
-    paymentLinks.starter = await createPaymentLink(stripe, starterPriceId, "Starter ($497/mo)");
+    paymentLinks.starterMonthly = await createPaymentLink(stripe, starterMonthlyPriceId, "Starter Monthly ($497/mo)");
+    paymentLinks.starter = paymentLinks.starterMonthly; // Legacy
 
-    // Create/get Pro product and price
+    // Starter Lifetime ($2,970)
+    const starterLifetimePriceId = await createOrGetPrice(
+      stripe, starterProductId, PRODUCTS.STARTER.priceLifetime, false, 'starter-lifetime'
+    );
+    paymentLinks.starterLifetime = await createPaymentLink(stripe, starterLifetimePriceId, "Starter Lifetime ($2,970)");
+
+    // =========================================================================
+    // PRO PLAN - Monthly + Lifetime
+    // =========================================================================
     const proProductId = await createOrGetProduct(stripe, PRODUCTS.PRO);
-    const proPriceId = await createOrGetPrice(
-      stripe, 
-      proProductId, 
-      PRODUCTS.PRO.priceMonthly, 
-      true,
-      'pro'
+    
+    // Pro Monthly ($297/mo)
+    const proMonthlyPriceId = await createOrGetPrice(
+      stripe, proProductId, PRODUCTS.PRO.priceMonthly, true, 'pro-monthly'
     );
-    paymentLinks.pro = await createPaymentLink(stripe, proPriceId, "Pro ($297/mo)");
+    paymentLinks.proMonthly = await createPaymentLink(stripe, proMonthlyPriceId, "Pro Monthly ($297/mo)");
+    paymentLinks.pro = paymentLinks.proMonthly; // Legacy
 
-    // Create/get Elite Standard product and price
+    // Pro Lifetime ($1,782)
+    const proLifetimePriceId = await createOrGetPrice(
+      stripe, proProductId, PRODUCTS.PRO.priceLifetime, false, 'pro-lifetime'
+    );
+    paymentLinks.proLifetime = await createPaymentLink(stripe, proLifetimePriceId, "Pro Lifetime ($1,782)");
+
+    // =========================================================================
+    // ELITE STANDARD - Monthly + Lifetime
+    // =========================================================================
     const eliteStdProductId = await createOrGetProduct(stripe, PRODUCTS.ELITE_STANDARD);
-    const eliteStdPriceId = await createOrGetPrice(
-      stripe, 
-      eliteStdProductId, 
-      PRODUCTS.ELITE_STANDARD.priceOneTime, 
-      false,
-      'elite-standard'
+    
+    // Elite Standard Monthly ($997/mo)
+    const eliteStdMonthlyPriceId = await createOrGetPrice(
+      stripe, eliteStdProductId, PRODUCTS.ELITE_STANDARD.priceMonthly, true, 'elite-standard-monthly'
     );
-    paymentLinks.eliteStandard = await createPaymentLink(stripe, eliteStdPriceId, "Elite Standard ($2,497)");
+    paymentLinks.eliteStandardMonthly = await createPaymentLink(stripe, eliteStdMonthlyPriceId, "Elite Monthly ($997/mo)");
 
-    // Create/get Elite Premium product and price
-    const elitePremProductId = await createOrGetProduct(stripe, PRODUCTS.ELITE_PREMIUM);
-    const elitePremPriceId = await createOrGetPrice(
-      stripe, 
-      elitePremProductId, 
-      PRODUCTS.ELITE_PREMIUM.priceOneTime, 
-      false,
-      'elite-premium'
+    // Elite Standard Lifetime ($2,497)
+    const eliteStdLifetimePriceId = await createOrGetPrice(
+      stripe, eliteStdProductId, PRODUCTS.ELITE_STANDARD.priceLifetime, false, 'elite-standard-lifetime'
     );
-    paymentLinks.elitePremium = await createPaymentLink(stripe, elitePremPriceId, "Elite Premium ($4,997)");
+    paymentLinks.eliteStandardLifetime = await createPaymentLink(stripe, eliteStdLifetimePriceId, "Elite Lifetime ($2,497)");
+    paymentLinks.eliteStandard = paymentLinks.eliteStandardLifetime; // Legacy
+
+    // =========================================================================
+    // ELITE PREMIUM - Monthly + Lifetime
+    // =========================================================================
+    const elitePremProductId = await createOrGetProduct(stripe, PRODUCTS.ELITE_PREMIUM);
+    
+    // Elite Premium Monthly ($1,497/mo)
+    const elitePremMonthlyPriceId = await createOrGetPrice(
+      stripe, elitePremProductId, PRODUCTS.ELITE_PREMIUM.priceMonthly, true, 'elite-premium-monthly'
+    );
+    paymentLinks.elitePremiumMonthly = await createPaymentLink(stripe, elitePremMonthlyPriceId, "Elite Premium Monthly ($1,497/mo)");
+
+    // Elite Premium Lifetime ($4,997)
+    const elitePremLifetimePriceId = await createOrGetPrice(
+      stripe, elitePremProductId, PRODUCTS.ELITE_PREMIUM.priceLifetime, false, 'elite-premium-lifetime'
+    );
+    paymentLinks.elitePremiumLifetime = await createPaymentLink(stripe, elitePremLifetimePriceId, "Elite Premium Lifetime ($4,997)");
+    paymentLinks.elitePremium = paymentLinks.elitePremiumLifetime; // Legacy
 
     paymentLinks.createdAt = new Date();
 
     console.log("[STRIPE] ═══════════════════════════════════════════════════════════");
-    console.log("[STRIPE]              LIVE PAYMENT LINKS READY                      ");
+    console.log("[STRIPE]         ALL PAYMENT LINKS READY (TEST MODE)               ");
     console.log("[STRIPE] ═══════════════════════════════════════════════════════════");
-    console.log(`[STRIPE] Starter ($497/mo):       ${paymentLinks.starter}`);
-    console.log(`[STRIPE] Pro ($297/mo):           ${paymentLinks.pro}`);
-    console.log(`[STRIPE] Elite ($2,497):          ${paymentLinks.eliteStandard}`);
-    console.log(`[STRIPE] Elite Premium ($4,997):  ${paymentLinks.elitePremium}`);
+    console.log("[STRIPE] ");
+    console.log("[STRIPE] STARTER PLAN:");
+    console.log(`[STRIPE]   Monthly ($497/mo):    ${paymentLinks.starterMonthly}`);
+    console.log(`[STRIPE]   Lifetime ($2,970):    ${paymentLinks.starterLifetime}`);
+    console.log("[STRIPE] ");
+    console.log("[STRIPE] PRO PLAN:");
+    console.log(`[STRIPE]   Monthly ($297/mo):    ${paymentLinks.proMonthly}`);
+    console.log(`[STRIPE]   Lifetime ($1,782):    ${paymentLinks.proLifetime}`);
+    console.log("[STRIPE] ");
+    console.log("[STRIPE] ELITE STANDARD:");
+    console.log(`[STRIPE]   Monthly ($997/mo):    ${paymentLinks.eliteStandardMonthly}`);
+    console.log(`[STRIPE]   Lifetime ($2,497):    ${paymentLinks.eliteStandardLifetime}`);
+    console.log("[STRIPE] ");
+    console.log("[STRIPE] ELITE PREMIUM:");
+    console.log(`[STRIPE]   Monthly ($1,497/mo):  ${paymentLinks.elitePremiumMonthly}`);
+    console.log(`[STRIPE]   Lifetime ($4,997):    ${paymentLinks.elitePremiumLifetime}`);
     console.log("[STRIPE] ═══════════════════════════════════════════════════════════");
 
     return paymentLinks;

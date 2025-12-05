@@ -137,17 +137,25 @@ export async function startFullPipeline(mode: OperatingMode = 'normal'): Promise
 
   await new Promise(resolve => setTimeout(resolve, 500));
 
-  // Initialize Stripe LIVE Products & Payment Links
+  // Initialize Stripe Products & Payment Links (TEST MODE)
   try {
     const paymentLinks = await initializeStripeProducts();
-    if (paymentLinks.starter) {
-      details.push(`✅ Stripe LIVE: Payment links ready`);
+    if (paymentLinks.starterMonthly) {
+      details.push(`✅ Stripe: 8 payment links ready (TEST MODE)`);
       log('');
-      log('💳 STRIPE PAYMENT LINKS (LIVE MODE):');
-      log(`   • Starter ($497/mo): ${paymentLinks.starter}`);
-      log(`   • Pro ($297/mo): ${paymentLinks.pro}`);
-      log(`   • Elite ($2,497): ${paymentLinks.eliteStandard}`);
-      log(`   • Elite Premium ($4,997): ${paymentLinks.elitePremium}`);
+      log('💳 STRIPE PAYMENT LINKS (TEST MODE - 8 Total):');
+      log('   STARTER:');
+      log(`     • Monthly ($497/mo):     ${paymentLinks.starterMonthly}`);
+      log(`     • Lifetime ($2,970):     ${paymentLinks.starterLifetime}`);
+      log('   PRO:');
+      log(`     • Monthly ($297/mo):     ${paymentLinks.proMonthly}`);
+      log(`     • Lifetime ($1,782):     ${paymentLinks.proLifetime}`);
+      log('   ELITE STANDARD:');
+      log(`     • Monthly ($997/mo):     ${paymentLinks.eliteStandardMonthly}`);
+      log(`     • Lifetime ($2,497):     ${paymentLinks.eliteStandardLifetime}`);
+      log('   ELITE PREMIUM:');
+      log(`     • Monthly ($1,497/mo):   ${paymentLinks.elitePremiumMonthly}`);
+      log(`     • Lifetime ($4,997):     ${paymentLinks.elitePremiumLifetime}`);
     }
   } catch (error) {
     log(`⚠️ Stripe initialization skipped: ${error}`);
