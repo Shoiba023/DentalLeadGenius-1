@@ -626,6 +626,79 @@ async function sendSequenceEmail(lead: GeniusLead): Promise<{ success: boolean; 
 // ============================================================================
 
 /**
+ * Check budget thresholds and auto-pause if necessary
+ * Returns { canSend: boolean, reason?: string }
+ */
+async function checkBudgetThresholds(): Promise<{ canSend: boolean; reason?: string }> {
+  const threshold = GENIUS_CONFIG.PAUSE_THRESHOLD_PERCENT / 100; // 0.7 = 70%
+
+  // Get today's date range for daily count from DB
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  // Count emails sent today from DB (authoritative source)
+  const [dailyCount] = await db.select({
+    count: sql<number>`count(*)::int`,
+  })
+    .from(geniusEmailSends)
+    .where(and(
+      gte(geniusEmailSends.sentAt, todayStart),
+      lte(geniusEmailSends.sentAt, todayEnd),
+      eq(geniusEmailSends.status, "sent"),
+    ));
+
+  const emailsSentTodayFromDB = dailyCount?.count || 0;
+  
+  // Update in-memory counter to match DB (sync)
+  geniusState.emailsSentToday = emailsSentTodayFromDB;
+
+  // Check daily limit - HARD STOP at 100%
+  if (emailsSentTodayFromDB >= GENIUS_CONFIG.DAILY_EMAIL_LIMIT) {
+    return { canSend: false, reason: `Daily limit reached: ${emailsSentTodayFromDB}/${GENIUS_CONFIG.DAILY_EMAIL_LIMIT} emails` };
+  }
+
+  // Check daily 70% threshold - AUTO-PAUSE
+  const dailyPercentUsed = emailsSentTodayFromDB / GENIUS_CONFIG.DAILY_EMAIL_LIMIT;
+  if (dailyPercentUsed >= threshold) {
+    pauseGeniusEngine(`Daily budget at ${Math.round(dailyPercentUsed * 100)}% - approaching limit`);
+    return { canSend: false, reason: `Daily budget at ${Math.round(dailyPercentUsed * 100)}% - auto-paused at 70% threshold` };
+  }
+
+  // Get monthly count from DB
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const [monthlyCount] = await db.select({
+    count: sql<number>`count(*)::int`,
+  })
+    .from(geniusEmailSends)
+    .where(and(
+      gte(geniusEmailSends.sentAt, monthStart),
+      eq(geniusEmailSends.status, "sent"),
+    ));
+
+  const emailsSentThisMonth = monthlyCount?.count || 0;
+  const estimatedMonthlyCostCents = emailsSentThisMonth * GENIUS_CONFIG.EMAIL_COST_CENTS;
+  
+  // Check monthly budget - HARD STOP at 100%
+  if (estimatedMonthlyCostCents >= GENIUS_CONFIG.MONTHLY_EMAIL_BUDGET_CENTS) {
+    return { canSend: false, reason: `Monthly budget exhausted: $${(estimatedMonthlyCostCents / 100).toFixed(2)} of $${(GENIUS_CONFIG.MONTHLY_EMAIL_BUDGET_CENTS / 100).toFixed(2)}` };
+  }
+
+  // Check monthly 70% threshold - AUTO-PAUSE
+  const monthlyPercentUsed = estimatedMonthlyCostCents / GENIUS_CONFIG.MONTHLY_EMAIL_BUDGET_CENTS;
+  if (monthlyPercentUsed >= threshold) {
+    pauseGeniusEngine(`Monthly budget at ${Math.round(monthlyPercentUsed * 100)}% - approaching limit`);
+    return { canSend: false, reason: `Monthly budget at ${Math.round(monthlyPercentUsed * 100)}% - auto-paused at 70% threshold` };
+  }
+
+  return { canSend: true };
+}
+
+/**
  * Run one cycle of the GENIUS automation
  */
 export async function runGeniusCycle(): Promise<{
@@ -646,8 +719,20 @@ export async function runGeniusCycle(): Promise<{
     };
   }
 
-  // Check daily limit
-  const remainingToday = GENIUS_CONFIG.DAILY_EMAIL_LIMIT - geniusState.emailsSentToday;
+  // Check budget thresholds (from DB - authoritative source)
+  const budgetCheck = await checkBudgetThresholds();
+  if (!budgetCheck.canSend) {
+    log(`Budget check failed: ${budgetCheck.reason}`, "warn");
+    return {
+      success: false,
+      emailsSent: 0,
+      errors: 0,
+      message: budgetCheck.reason || "Budget limit reached",
+    };
+  }
+
+  // Calculate remaining emails for today (with buffer for safety)
+  const remainingToday = Math.max(0, GENIUS_CONFIG.DAILY_EMAIL_LIMIT - geniusState.emailsSentToday);
   if (remainingToday <= 0) {
     return {
       success: false,
@@ -681,6 +766,12 @@ export async function runGeniusCycle(): Promise<{
   let errors = 0;
 
   for (const lead of leadsToEmail) {
+    // Re-check budget before each send for safety (prevents over-sending)
+    if (geniusState.emailsSentToday >= GENIUS_CONFIG.DAILY_EMAIL_LIMIT) {
+      log(`Daily limit reached mid-cycle after ${sent} sends`, "warn");
+      break;
+    }
+
     // Stagger sends slightly for deliverability
     if (sent > 0) {
       await new Promise(resolve => setTimeout(resolve, 200)); // 200ms between emails

@@ -106,6 +106,49 @@ The `server/marketingSync.ts` service provides fully autonomous email outreach t
 - `POST /api/marketing-sync/stop` - Stop the engine
 - `POST /api/marketing-sync/run-now` - Trigger manual cycle
 
+### GENIUS Email Automation Engine (7-Day Sales Sequence)
+The `server/geniusEngine.ts` service provides a sophisticated 7-day email sequence system for converting dental leads:
+
+**7-Day Email Sequence Templates**:
+- **Day 0 - Warm-up**: Short 3-line hook email about losing 30-50 patients/month
+- **Day 1 - Proof**: AI receptionist benefits (24/7 booking, insurance handling)
+- **Day 2 - Fear**: Missed calls = $300-$600 lost daily (pain point)
+- **Day 3 - Social Proof**: Case study - how one clinic added $14,200/month
+- **Day 4 - Objection Killer**: "We already have a receptionist" (solved)
+- **Day 5 - Urgency**: Final 24 hours for early pricing access
+- **Day 6 - Final Call**: Last chance - installs in 3 minutes
+
+**Budget Controls (Hard Limits)**:
+- Daily Email Limit: 1,666 emails/day
+- Monthly Email Budget: $100
+- Weekly Replit Budget: $80
+- Auto-Pause Threshold: 70% of any budget
+
+**Database Tables**:
+- `genius_leads`: Tracks leads through sequence (email, day, status, engagement)
+- `genius_email_sends`: Log of all emails sent (status, opens, clicks)
+- `genius_daily_stats`: Daily performance metrics
+- `genius_config`: Engine configuration storage
+
+**Admin Dashboard**: `/dashboard/genius`
+- Real-time engine status and controls (start/stop/pause/resume)
+- Lead distribution by sequence day visualization
+- Import leads via CSV or API
+- Budget tracking and alerts
+
+**API Endpoints** (Authenticated):
+- `GET /api/genius/status` - Engine status and daily counters
+- `GET /api/genius/stats` - Detailed statistics (leads, emails, budget)
+- `GET /api/genius/report` - Daily performance report with alerts
+- `GET /api/genius/leads` - Paginated lead list
+- `POST /api/genius/import-lead` - Single lead import
+- `POST /api/genius/import-leads` - Bulk import (up to 500)
+- `POST /api/genius/start` - Start engine (admin only)
+- `POST /api/genius/stop` - Stop engine (admin only)
+- `POST /api/genius/pause` - Pause with reason (admin only)
+- `POST /api/genius/resume` - Resume engine (admin only)
+- `POST /api/genius/run-now` - Trigger manual cycle (admin only)
+
 ### External API (Lead Import)
 A production-grade API allows idempotent lead imports from external tools like DentalMapsHelper. It supports single and bulk imports, using bearer token authentication and deduplication strategies based on `googleMapsUrl` or `email + city + country`.
 

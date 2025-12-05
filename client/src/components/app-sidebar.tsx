@@ -1,4 +1,4 @@
-import { Home, Users, Send, Building2, BarChart3, LogOut, Calendar, Clock, UserPlus, Rocket, LineChart } from "lucide-react";
+import { Home, Users, Send, Building2, BarChart3, LogOut, Calendar, Clock, UserPlus, Rocket, LineChart, Zap } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -64,6 +64,11 @@ const adminMenuItems = [
     title: "Sales Pipeline",
     url: "/dashboard/pipeline",
     icon: BarChart3,
+  },
+  {
+    title: "GENIUS Automation",
+    url: "/dashboard/genius",
+    icon: Zap,
   },
 ];
 

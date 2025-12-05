@@ -640,6 +640,7 @@ export class DatabaseStorage implements IStorage {
         onboardingCompleted: clinics.onboardingCompleted,
         externalId: clinics.externalId,
         googleMapsUrl: clinics.googleMapsUrl,
+        lastEmailedAt: clinics.lastEmailedAt,
         createdAt: clinics.createdAt,
         updatedAt: clinics.updatedAt,
       })
