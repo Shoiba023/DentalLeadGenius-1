@@ -96,25 +96,42 @@ export default async function runApp(
   }, () => {
     log(`serving on port ${port}`);
     
-    // GENIUS Autonomous Mode - Phase-2 Ultra Optimization
+    // Full AI Sales Pipeline - 5 Modules + Master Control
     // Auto-start after 5 seconds to allow database connections to stabilize
     setTimeout(async () => {
       try {
-        log("🚀 Starting GENIUS Autonomous Mode...", "GENIUS");
-        const result = await startAutonomousMode();
+        log("═══════════════════════════════════════════════════════════════", "PIPELINE");
+        log("       🚀 STARTING FULL AI SALES PIPELINE                     ", "PIPELINE");
+        log("═══════════════════════════════════════════════════════════════", "PIPELINE");
+        
+        const { startFullPipeline } = await import("./aiPipeline");
+        const result = await startFullPipeline();
+        
         if (result.success) {
-          log("✅ GENIUS Phase-2 Ultra Optimization ACTIVE", "GENIUS");
-          log(`   - Daily limit: 1,666 emails`, "GENIUS");
-          log(`   - Monthly budget: $100`, "GENIUS");
-          log(`   - Cycle interval: 2 minutes`, "GENIUS");
-          log(`   - Lead scoring: 1-10 scale`, "GENIUS");
-          log(`   - Template variants: 7 per day`, "GENIUS");
-          log(`   - Send windows: 8AM, 11:30AM, 4PM`, "GENIUS");
+          log("✅ FULL AI PIPELINE ACTIVE 24/7", "PIPELINE");
+          log("", "PIPELINE");
+          log("Pipeline Flow:", "PIPELINE");
+          log("  Lead Scraper → Nurture Engine → Demo Bot → Closer → Revenue", "PIPELINE");
+          log("", "PIPELINE");
+          log("Module Cycles:", "PIPELINE");
+          log("  • Lead Scraper:     Every 10 minutes (75 cities)", "PIPELINE");
+          log("  • Nurture Engine:   Every 2 minutes (7-day emails)", "PIPELINE");
+          log("  • Demo Booking Bot: Every 1 minute (warm leads)", "PIPELINE");
+          log("  • Closer Bot:       Every 1 minute (demos → deals)", "PIPELINE");
+          log("  • Revenue Engine:   Every 5 minutes (invoices)", "PIPELINE");
+          log("  • Client Success:   Every 24 hours (reports)", "PIPELINE");
+          log("", "PIPELINE");
+          log("Budget Controls:", "PIPELINE");
+          log("  • Daily email limit: 1,666", "PIPELINE");
+          log("  • Auto-pause at 70%", "PIPELINE");
+          log("  • Hard stop at 100%", "PIPELINE");
+          log("═══════════════════════════════════════════════════════════════", "PIPELINE");
         } else {
-          log(`⚠️ GENIUS startup: ${result.message}`, "GENIUS");
+          log(`⚠️ Pipeline startup: ${result.message}`, "PIPELINE");
+          result.details.forEach(d => log(`   ${d}`, "PIPELINE"));
         }
       } catch (error) {
-        log(`❌ GENIUS startup error: ${error}`, "GENIUS");
+        log(`❌ Pipeline startup error: ${error}`, "PIPELINE");
       }
     }, 5000);
   });
