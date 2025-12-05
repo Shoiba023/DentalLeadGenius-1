@@ -424,6 +424,9 @@ let geniusState = {
   lastCycleAt: null as Date | null,
   emailsSentToday: 0,
   todayDate: new Date().toDateString(),
+  // Tracks if 70% threshold has already triggered auto-pause
+  // Reset when usage drops below threshold or new day starts
+  thresholdPauseFired: false,
 };
 
 // ============================================================================
@@ -446,7 +449,8 @@ function resetDailyCounterIfNeeded() {
   if (geniusState.todayDate !== today) {
     geniusState.emailsSentToday = 0;
     geniusState.todayDate = today;
-    log("Daily counter reset for new day", "info");
+    geniusState.thresholdPauseFired = false; // Reset threshold flag for new day
+    log("Daily counter and threshold flag reset for new day", "info");
   }
 }
 
@@ -626,10 +630,20 @@ async function sendSequenceEmail(lead: GeniusLead): Promise<{ success: boolean; 
 // ============================================================================
 
 /**
- * Check budget thresholds and auto-pause if necessary
- * Returns { canSend: boolean, reason?: string }
+ * Get current budget status from DB (authoritative source)
+ * Returns current counts and whether hard limits are reached
  */
-async function checkBudgetThresholds(): Promise<{ canSend: boolean; reason?: string }> {
+async function getBudgetStatusFromDB(): Promise<{
+  emailsSentToday: number;
+  emailsSentThisMonth: number;
+  estimatedMonthlyCostCents: number;
+  dailyPercentUsed: number;
+  monthlyPercentUsed: number;
+  dailyHardLimitReached: boolean;
+  monthlyHardLimitReached: boolean;
+  dailyThresholdExceeded: boolean;
+  monthlyThresholdExceeded: boolean;
+}> {
   const threshold = GENIUS_CONFIG.PAUSE_THRESHOLD_PERCENT / 100; // 0.7 = 70%
 
   // Get today's date range for daily count from DB
@@ -649,22 +663,7 @@ async function checkBudgetThresholds(): Promise<{ canSend: boolean; reason?: str
       eq(geniusEmailSends.status, "sent"),
     ));
 
-  const emailsSentTodayFromDB = dailyCount?.count || 0;
-  
-  // Update in-memory counter to match DB (sync)
-  geniusState.emailsSentToday = emailsSentTodayFromDB;
-
-  // Check daily limit - HARD STOP at 100%
-  if (emailsSentTodayFromDB >= GENIUS_CONFIG.DAILY_EMAIL_LIMIT) {
-    return { canSend: false, reason: `Daily limit reached: ${emailsSentTodayFromDB}/${GENIUS_CONFIG.DAILY_EMAIL_LIMIT} emails` };
-  }
-
-  // Check daily 70% threshold - AUTO-PAUSE
-  const dailyPercentUsed = emailsSentTodayFromDB / GENIUS_CONFIG.DAILY_EMAIL_LIMIT;
-  if (dailyPercentUsed >= threshold) {
-    pauseGeniusEngine(`Daily budget at ${Math.round(dailyPercentUsed * 100)}% - approaching limit`);
-    return { canSend: false, reason: `Daily budget at ${Math.round(dailyPercentUsed * 100)}% - auto-paused at 70% threshold` };
-  }
+  const emailsSentToday = dailyCount?.count || 0;
 
   // Get monthly count from DB
   const monthStart = new Date();
@@ -682,19 +681,78 @@ async function checkBudgetThresholds(): Promise<{ canSend: boolean; reason?: str
 
   const emailsSentThisMonth = monthlyCount?.count || 0;
   const estimatedMonthlyCostCents = emailsSentThisMonth * GENIUS_CONFIG.EMAIL_COST_CENTS;
-  
-  // Check monthly budget - HARD STOP at 100%
-  if (estimatedMonthlyCostCents >= GENIUS_CONFIG.MONTHLY_EMAIL_BUDGET_CENTS) {
-    return { canSend: false, reason: `Monthly budget exhausted: $${(estimatedMonthlyCostCents / 100).toFixed(2)} of $${(GENIUS_CONFIG.MONTHLY_EMAIL_BUDGET_CENTS / 100).toFixed(2)}` };
-  }
 
-  // Check monthly 70% threshold - AUTO-PAUSE
+  const dailyPercentUsed = emailsSentToday / GENIUS_CONFIG.DAILY_EMAIL_LIMIT;
   const monthlyPercentUsed = estimatedMonthlyCostCents / GENIUS_CONFIG.MONTHLY_EMAIL_BUDGET_CENTS;
-  if (monthlyPercentUsed >= threshold) {
-    pauseGeniusEngine(`Monthly budget at ${Math.round(monthlyPercentUsed * 100)}% - approaching limit`);
-    return { canSend: false, reason: `Monthly budget at ${Math.round(monthlyPercentUsed * 100)}% - auto-paused at 70% threshold` };
+
+  return {
+    emailsSentToday,
+    emailsSentThisMonth,
+    estimatedMonthlyCostCents,
+    dailyPercentUsed,
+    monthlyPercentUsed,
+    dailyHardLimitReached: emailsSentToday >= GENIUS_CONFIG.DAILY_EMAIL_LIMIT,
+    monthlyHardLimitReached: estimatedMonthlyCostCents >= GENIUS_CONFIG.MONTHLY_EMAIL_BUDGET_CENTS,
+    dailyThresholdExceeded: dailyPercentUsed >= threshold,
+    monthlyThresholdExceeded: monthlyPercentUsed >= threshold,
+  };
+}
+
+/**
+ * Check budget thresholds - enforces hard limits and optionally triggers auto-pause
+ * Returns { canSend: boolean, reason?: string }
+ * @param triggerAutoPause - if true, auto-pauses when 70% threshold exceeded (first crossing only)
+ * 
+ * LOGIC:
+ * - Hard limits (100%) always block sends regardless of pause state
+ * - 70% threshold triggers ONE-TIME auto-pause, tracked by thresholdPauseFired flag
+ * - After manual resume, thresholdPauseFired remains true so no re-pause occurs
+ * - Flag resets when: new day starts OR usage drops below 70% OR engine is stopped
+ */
+async function checkBudgetThresholds(triggerAutoPause: boolean = true): Promise<{ canSend: boolean; reason?: string }> {
+  const budget = await getBudgetStatusFromDB();
+  
+  // Update in-memory counter to match DB (sync)
+  geniusState.emailsSentToday = budget.emailsSentToday;
+
+  // Reset thresholdPauseFired if usage dropped below threshold (allows re-triggering if usage rises again)
+  if (!budget.dailyThresholdExceeded && !budget.monthlyThresholdExceeded) {
+    geniusState.thresholdPauseFired = false;
   }
 
+  // HARD STOP at 100% - always blocks, no resume possible
+  if (budget.dailyHardLimitReached) {
+    return { canSend: false, reason: `HARD LIMIT: Daily limit reached ${budget.emailsSentToday}/${GENIUS_CONFIG.DAILY_EMAIL_LIMIT} emails` };
+  }
+
+  if (budget.monthlyHardLimitReached) {
+    return { canSend: false, reason: `HARD LIMIT: Monthly budget exhausted $${(budget.estimatedMonthlyCostCents / 100).toFixed(2)} of $${(GENIUS_CONFIG.MONTHLY_EMAIL_BUDGET_CENTS / 100).toFixed(2)}` };
+  }
+
+  // 70% THRESHOLD - triggers ONE-TIME auto-pause, but manual resume allows sends until 100%
+  // Only trigger auto-pause if:
+  // 1. triggerAutoPause is true (first check of cycle, not per-send guard)
+  // 2. Engine is not already paused
+  // 3. thresholdPauseFired is false (haven't auto-paused yet for this threshold crossing)
+  
+  const shouldAutoPause = triggerAutoPause && !geniusState.isPaused && !geniusState.thresholdPauseFired;
+  
+  if (budget.dailyThresholdExceeded && shouldAutoPause) {
+    geniusState.thresholdPauseFired = true; // Mark as fired so resume works
+    pauseGeniusEngine(`Daily budget at ${Math.round(budget.dailyPercentUsed * 100)}% - approaching limit. Resume to continue until 100%.`);
+    return { canSend: false, reason: `Daily budget at ${Math.round(budget.dailyPercentUsed * 100)}% - auto-paused at 70% threshold` };
+  }
+
+  if (budget.monthlyThresholdExceeded && shouldAutoPause) {
+    geniusState.thresholdPauseFired = true; // Mark as fired so resume works
+    pauseGeniusEngine(`Monthly budget at ${Math.round(budget.monthlyPercentUsed * 100)}% - approaching limit. Resume to continue until 100%.`);
+    return { canSend: false, reason: `Monthly budget at ${Math.round(budget.monthlyPercentUsed * 100)}% - auto-paused at 70% threshold` };
+  }
+
+  // If we're above threshold but:
+  // - manually resumed (thresholdPauseFired is true, isPaused is false), OR
+  // - threshold check disabled (triggerAutoPause is false)
+  // Allow sends until hard limit (100%)
   return { canSend: true };
 }
 
@@ -766,9 +824,15 @@ export async function runGeniusCycle(): Promise<{
   let errors = 0;
 
   for (const lead of leadsToEmail) {
-    // Re-check budget before each send for safety (prevents over-sending)
-    if (geniusState.emailsSentToday >= GENIUS_CONFIG.DAILY_EMAIL_LIMIT) {
-      log(`Daily limit reached mid-cycle after ${sent} sends`, "warn");
+    // Re-check budget thresholds BEFORE EACH SEND (from DB - authoritative source)
+    // This catches mid-cycle hard limit crossings immediately
+    // triggerAutoPause=false since:
+    // 1. First cycle check already handled auto-pause at 70%
+    // 2. After manual resume, we want to allow sends until 100% hard limit
+    const perSendBudgetCheck = await checkBudgetThresholds(false);
+    if (!perSendBudgetCheck.canSend) {
+      // This only triggers when HARD LIMIT (100%) is reached
+      log(`HARD LIMIT reached mid-cycle after ${sent} sends: ${perSendBudgetCheck.reason}`, "warn");
       break;
     }
 
@@ -780,7 +844,8 @@ export async function runGeniusCycle(): Promise<{
     const result = await sendSequenceEmail(lead);
     if (result.success) {
       sent++;
-      geniusState.emailsSentToday++;
+      // geniusState.emailsSentToday is synced from DB on each checkBudgetThresholds() call
+      // This keeps the counter accurate even with concurrent sends from other processes
     } else {
       errors++;
       log(`Send failed for ${lead.email}: ${result.error}`, "error");
@@ -843,6 +908,7 @@ export function stopGeniusEngine(): { success: boolean; message: string } {
   }
 
   geniusState.isRunning = false;
+  geniusState.thresholdPauseFired = false; // Reset threshold flag when stopping
   log("GENIUS engine stopped", "warn");
   return { success: true, message: "GENIUS engine stopped" };
 }
