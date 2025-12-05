@@ -1037,7 +1037,7 @@ export const geniusLeads = pgTable("genius_leads", {
   phone: text("phone"),
   website: text("website"),
   currentDay: integer("current_day").default(0).notNull(), // 0-6 for 7-day sequence
-  status: text("status").default("active").notNull(), // active, paused, completed, unsubscribed, bounced
+  status: text("status").default("active").notNull(), // active, paused, completed, unsubscribed, bounced, dead, hot
   lastEmailSentAt: timestamp("last_email_sent_at"),
   nextEmailDue: timestamp("next_email_due"),
   emailsSent: integer("emails_sent").default(0).notNull(),
@@ -1049,11 +1049,53 @@ export const geniusLeads = pgTable("genius_leads", {
   importedAt: timestamp("imported_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  
+  // ============ PHASE-2: LEAD SCORING ============
+  leadScore: integer("lead_score").default(5).notNull(), // 1-10 score
+  prioritySegment: text("priority_segment").default("standard"), // premium, high, standard, low
+  clinicType: text("clinic_type"), // general, cosmetic, implant, orthodontic, pediatric, multi-location
+  wealthTier: text("wealth_tier").default("medium"), // high, medium, low (based on location)
+  websiteQuality: integer("website_quality").default(5), // 1-10 based on modern design, SSL, mobile-friendly
+  reviewRating: text("review_rating"), // Google rating (4.5, 4.8, etc.)
+  reviewCount: integer("review_count").default(0), // Number of reviews
+  yearsInBusiness: integer("years_in_business"), // Estimated years
+  socialPresence: boolean("social_presence").default(false), // Has social media
+  techAdoptionScore: integer("tech_adoption_score").default(5), // 1-10 likelihood of adopting tech
+  
+  // ============ PHASE-2: TIMEZONE & SEND TIME ============
+  timezone: text("timezone").default("America/New_York"),
+  preferredSendWindow: text("preferred_send_window").default("morning"), // morning, midday, afternoon
+  bestOpenTime: text("best_open_time"), // Learned optimal time (e.g., "08:30")
+  lastOpenAt: timestamp("last_open_at"),
+  
+  // ============ PHASE-2: HOT/DEAD LEAD TRACKING ============
+  isHot: boolean("is_hot").default(false).notNull(), // 3+ opens, clicks, or replied
+  isDead: boolean("is_dead").default(false).notNull(), // 0 opens after 10 days, bounced, complained
+  deadReason: text("dead_reason"), // bounced, complained, uninterested, no_engagement
+  nextEligibleSendAt: timestamp("next_eligible_send_at"), // For paused/dead leads (90 days)
+  lastEngagementAt: timestamp("last_engagement_at"),
+  
+  // ============ PHASE-2: RESPONSE HANDLING ============
+  lastReplyAt: timestamp("last_reply_at"),
+  lastIntent: text("last_intent"), // info_request, pricing_request, not_interested, positive, call_request
+  buyingSignalAt: timestamp("buying_signal_at"), // When buying signals detected
+  followUpSent: boolean("follow_up_sent").default(false),
+  demoInviteSent: boolean("demo_invite_sent").default(false),
+  demoReminderSent: boolean("demo_reminder_sent").default(false),
+  
+  // ============ PHASE-2: TEMPLATE TRACKING ============
+  lastTemplateVariant: integer("last_template_variant").default(1), // 1-7 for rotation
+  totalBounces: integer("total_bounces").default(0),
+  totalComplaints: integer("total_complaints").default(0),
 }, (table) => ({
   emailUniqueIdx: uniqueIndex("genius_leads_email_unique").on(table.email),
   statusIdx: index("genius_leads_status_idx").on(table.status),
   currentDayIdx: index("genius_leads_current_day_idx").on(table.currentDay),
   nextEmailDueIdx: index("genius_leads_next_email_due_idx").on(table.nextEmailDue),
+  leadScoreIdx: index("genius_leads_score_idx").on(table.leadScore),
+  isHotIdx: index("genius_leads_is_hot_idx").on(table.isHot),
+  isDeadIdx: index("genius_leads_is_dead_idx").on(table.isDead),
+  prioritySegmentIdx: index("genius_leads_priority_idx").on(table.prioritySegment),
 }));
 
 export const insertGeniusLeadSchema = createInsertSchema(geniusLeads).omit({
@@ -1079,12 +1121,167 @@ export const geniusEmailSends = pgTable("genius_email_sends", {
   clickedAt: timestamp("clicked_at"),
   bouncedAt: timestamp("bounced_at"),
   sentAt: timestamp("sent_at").defaultNow().notNull(),
+  
+  // ============ PHASE-2: ENHANCED TRACKING ============
+  variantId: integer("variant_id").default(1), // 1-7 for template variations
+  sendWindow: text("send_window"), // morning, midday, afternoon
+  sendTimeLocal: text("send_time_local"), // Local time when sent (e.g., "08:15")
+  delivered: boolean("delivered").default(false),
+  complained: boolean("complained").default(false),
+  complainedAt: timestamp("complained_at"),
+  replyAt: timestamp("reply_at"),
+  intentTag: text("intent_tag"), // info_request, pricing, not_interested, positive, call_request
+  followUpSent: boolean("follow_up_sent").default(false),
+  demoInviteSent: boolean("demo_invite_sent").default(false),
+  openCount: integer("open_count").default(0), // Track multiple opens
+  clickCount: integer("click_count").default(0), // Track multiple clicks
 }, (table) => ({
   geniusLeadIdIdx: index("genius_email_sends_lead_id_idx").on(table.geniusLeadId),
   dayIdx: index("genius_email_sends_day_idx").on(table.day),
   statusIdx: index("genius_email_sends_status_idx").on(table.status),
   sentAtIdx: index("genius_email_sends_sent_at_idx").on(table.sentAt),
+  variantIdIdx: index("genius_email_sends_variant_idx").on(table.variantId),
+  sendWindowIdx: index("genius_email_sends_window_idx").on(table.sendWindow),
 }));
+
+// ============================================================================
+// PHASE-2: TEMPLATE VARIANTS - 7 variations per sequence day
+// ============================================================================
+export const geniusTemplateVariants = pgTable("genius_template_variants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  day: integer("day").notNull(), // 0-6 for each sequence day
+  variantId: integer("variant_id").notNull(), // 1-7 for variations
+  subject: text("subject").notNull(),
+  bodyTemplate: text("body_template").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  // Performance tracking
+  sentCount: integer("sent_count").default(0).notNull(),
+  openCount: integer("open_count").default(0).notNull(),
+  clickCount: integer("click_count").default(0).notNull(),
+  replyCount: integer("reply_count").default(0).notNull(),
+  bounceCount: integer("bounce_count").default(0).notNull(),
+  complaintCount: integer("complaint_count").default(0).notNull(),
+  // Calculated metrics
+  openRate: text("open_rate").default("0"), // Stored as percentage string
+  clickRate: text("click_rate").default("0"),
+  replyRate: text("reply_rate").default("0"),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  dayVariantIdx: uniqueIndex("genius_template_day_variant_unique").on(table.day, table.variantId),
+  isActiveIdx: index("genius_template_active_idx").on(table.isActive),
+  openRateIdx: index("genius_template_open_rate_idx").on(table.openRate),
+}));
+
+export const insertGeniusTemplateVariantSchema = createInsertSchema(geniusTemplateVariants).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertGeniusTemplateVariant = z.infer<typeof insertGeniusTemplateVariantSchema>;
+export type GeniusTemplateVariant = typeof geniusTemplateVariants.$inferSelect;
+
+// ============================================================================
+// PHASE-2: SEND WINDOWS - Timezone-based optimal send times
+// ============================================================================
+export const geniusSendWindows = pgTable("genius_send_windows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timezoneCluster: text("timezone_cluster").notNull(), // "US-East", "US-Central", "US-Pacific", etc.
+  windowLabel: text("window_label").notNull(), // morning, midday, afternoon
+  baseTimeLocal: text("base_time_local").notNull(), // "08:00", "11:30", "16:00"
+  spreadMinutes: integer("spread_minutes").default(15).notNull(), // ±15 min randomization
+  // Performance tracking
+  totalSent: integer("total_sent").default(0).notNull(),
+  totalOpens: integer("total_opens").default(0).notNull(),
+  totalClicks: integer("total_clicks").default(0).notNull(),
+  avgOpenRate: text("avg_open_rate").default("0"),
+  avgClickRate: text("avg_click_rate").default("0"),
+  isOptimal: boolean("is_optimal").default(false), // Marked as best performing
+  lastAnalyzedAt: timestamp("last_analyzed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  timezoneWindowIdx: uniqueIndex("genius_send_window_unique").on(table.timezoneCluster, table.windowLabel),
+  isOptimalIdx: index("genius_send_window_optimal_idx").on(table.isOptimal),
+}));
+
+export const insertGeniusSendWindowSchema = createInsertSchema(geniusSendWindows).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertGeniusSendWindow = z.infer<typeof insertGeniusSendWindowSchema>;
+export type GeniusSendWindow = typeof geniusSendWindows.$inferSelect;
+
+// ============================================================================
+// PHASE-2: DOMAIN HEALTH - Deliverability tracking
+// ============================================================================
+export const geniusDomainHealth = pgTable("genius_domain_health", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  domain: text("domain").notNull().unique(),
+  isActive: boolean("is_active").default(true).notNull(),
+  warmupStage: integer("warmup_stage").default(1).notNull(), // 1-5 (1=new, 5=fully warmed)
+  dailySendLimit: integer("daily_send_limit").default(50).notNull(), // Starts low, increases
+  // Health metrics
+  totalSent: integer("total_sent").default(0).notNull(),
+  totalBounced: integer("total_bounced").default(0).notNull(),
+  totalComplaints: integer("total_complaints").default(0).notNull(),
+  bounceRate: text("bounce_rate").default("0"), // Stored as percentage
+  complaintRate: text("complaint_rate").default("0"),
+  // Thresholds
+  bounceThreshold: text("bounce_threshold").default("4"), // Auto-throttle at 4%
+  complaintThreshold: text("complaint_threshold").default("0.2"), // Auto-switch at 0.2%
+  // Tracking
+  isThrottled: boolean("is_throttled").default(false),
+  lastSwitchedAt: timestamp("last_switched_at"),
+  lastHealthCheckAt: timestamp("last_health_check_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  isActiveIdx: index("genius_domain_health_active_idx").on(table.isActive),
+  warmupStageIdx: index("genius_domain_health_warmup_idx").on(table.warmupStage),
+}));
+
+export const insertGeniusDomainHealthSchema = createInsertSchema(geniusDomainHealth).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertGeniusDomainHealth = z.infer<typeof insertGeniusDomainHealthSchema>;
+export type GeniusDomainHealth = typeof geniusDomainHealth.$inferSelect;
+
+// ============================================================================
+// PHASE-2: RESPONSE QUEUE - Pending automated responses
+// ============================================================================
+export const geniusResponseQueue = pgTable("genius_response_queue", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  geniusLeadId: varchar("genius_lead_id").notNull().references(() => geniusLeads.id),
+  triggerType: text("trigger_type").notNull(), // reply_info, reply_pricing, reply_positive, reply_not_interested, buying_signal, demo_reminder
+  priority: integer("priority").default(5).notNull(), // 1-10 (10 = highest)
+  scheduledFor: timestamp("scheduled_for").notNull(),
+  responseTemplate: text("response_template").notNull(),
+  status: text("status").default("pending").notNull(), // pending, sent, failed, cancelled
+  attemptCount: integer("attempt_count").default(0).notNull(),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  sentAt: timestamp("sent_at"),
+  error: text("error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  statusIdx: index("genius_response_queue_status_idx").on(table.status),
+  scheduledForIdx: index("genius_response_queue_scheduled_idx").on(table.scheduledFor),
+  priorityIdx: index("genius_response_queue_priority_idx").on(table.priority),
+  leadIdIdx: index("genius_response_queue_lead_idx").on(table.geniusLeadId),
+}));
+
+export const insertGeniusResponseQueueSchema = createInsertSchema(geniusResponseQueue).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertGeniusResponseQueue = z.infer<typeof insertGeniusResponseQueueSchema>;
+export type GeniusResponseQueue = typeof geniusResponseQueue.$inferSelect;
 
 export const insertGeniusEmailSendSchema = createInsertSchema(geniusEmailSends).omit({
   id: true,
@@ -1110,6 +1307,56 @@ export const geniusDailyStats = pgTable("genius_daily_stats", {
   emailBudgetUsed: integer("email_budget_used").default(0).notNull(), // cents
   replitBudgetUsed: integer("replit_budget_used").default(0).notNull(), // cents
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  
+  // ============ PHASE-2: ENHANCED DAILY STATS ============
+  // Lead metrics
+  highScoreLeads: integer("high_score_leads").default(0), // Leads with score >= 7
+  hotLeads: integer("hot_leads").default(0),
+  deadLeads: integer("dead_leads").default(0),
+  newLeadsToday: integer("new_leads_today").default(0),
+  
+  // Email performance by sequence day
+  day0Sent: integer("day_0_sent").default(0),
+  day1Sent: integer("day_1_sent").default(0),
+  day2Sent: integer("day_2_sent").default(0),
+  day3Sent: integer("day_3_sent").default(0),
+  day4Sent: integer("day_4_sent").default(0),
+  day5Sent: integer("day_5_sent").default(0),
+  day6Sent: integer("day_6_sent").default(0),
+  
+  // Calculated rates
+  openRate: text("open_rate").default("0"),
+  clickRate: text("click_rate").default("0"),
+  replyRate: text("reply_rate").default("0"),
+  bounceRate: text("bounce_rate").default("0"),
+  
+  // Best performers
+  bestSubjectLine: text("best_subject_line"),
+  bestTemplateDay: integer("best_template_day"),
+  bestSendWindow: text("best_send_window"),
+  worstTemplateDay: integer("worst_template_day"),
+  
+  // Domain health snapshot
+  activeDomains: integer("active_domains").default(1),
+  throttledDomains: integer("throttled_domains").default(0),
+  domainHealthScore: text("domain_health_score").default("100"),
+  
+  // Demo conversions by day
+  demosFromDay0: integer("demos_from_day_0").default(0),
+  demosFromDay1: integer("demos_from_day_1").default(0),
+  demosFromDay2: integer("demos_from_day_2").default(0),
+  demosFromDay3: integer("demos_from_day_3").default(0),
+  demosFromDay4: integer("demos_from_day_4").default(0),
+  demosFromDay5: integer("demos_from_day_5").default(0),
+  demosFromDay6: integer("demos_from_day_6").default(0),
+  
+  // AI improvements
+  templatesRewritten: integer("templates_rewritten").default(0),
+  sendTimeAdjustments: integer("send_time_adjustments").default(0),
+  leadsRescored: integer("leads_rescored").default(0),
+  
+  // JSON summary for detailed analysis
+  detailedMetrics: jsonb("detailed_metrics"),
 }, (table) => ({
   dateUniqueIdx: uniqueIndex("genius_daily_stats_date_unique").on(table.date),
 }));
@@ -1146,11 +1393,19 @@ export const geniusLeadsRelations = relations(geniusLeads, ({ one, many }) => ({
     references: [leads.id],
   }),
   emailSends: many(geniusEmailSends),
+  responseQueue: many(geniusResponseQueue),
 }));
 
 export const geniusEmailSendsRelations = relations(geniusEmailSends, ({ one }) => ({
   geniusLead: one(geniusLeads, {
     fields: [geniusEmailSends.geniusLeadId],
+    references: [geniusLeads.id],
+  }),
+}));
+
+export const geniusResponseQueueRelations = relations(geniusResponseQueue, ({ one }) => ({
+  geniusLead: one(geniusLeads, {
+    fields: [geniusResponseQueue.geniusLeadId],
     references: [geniusLeads.id],
   }),
 }));
