@@ -10,6 +10,7 @@ import express, {
 import { registerRoutes } from "./routes";
 import { startAutomation } from "./automatedOutreach";
 import { startMarketingSync } from "./marketingSync";
+import { startAutonomousMode, getAutonomousStatus } from "./geniusAutonomous";
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -95,10 +96,26 @@ export default async function runApp(
   }, () => {
     log(`serving on port ${port}`);
     
-    // ⛔ EMAIL MARKETING DISABLED - Awaiting new marketing plan
-    // All email automation, sequences, and campaigns are paused
-    // Do NOT enable until new prompts are provided
-    log("⛔ EMAIL MARKETING STOPPED - All outreach disabled", "system");
-    log("⛔ Awaiting new marketing plan before resuming", "system");
+    // GENIUS Autonomous Mode - Phase-2 Ultra Optimization
+    // Auto-start after 5 seconds to allow database connections to stabilize
+    setTimeout(async () => {
+      try {
+        log("🚀 Starting GENIUS Autonomous Mode...", "GENIUS");
+        const result = await startAutonomousMode();
+        if (result.success) {
+          log("✅ GENIUS Phase-2 Ultra Optimization ACTIVE", "GENIUS");
+          log(`   - Daily limit: 1,666 emails`, "GENIUS");
+          log(`   - Monthly budget: $100`, "GENIUS");
+          log(`   - Cycle interval: 2 minutes`, "GENIUS");
+          log(`   - Lead scoring: 1-10 scale`, "GENIUS");
+          log(`   - Template variants: 7 per day`, "GENIUS");
+          log(`   - Send windows: 8AM, 11:30AM, 4PM`, "GENIUS");
+        } else {
+          log(`⚠️ GENIUS startup: ${result.message}`, "GENIUS");
+        }
+      } catch (error) {
+        log(`❌ GENIUS startup error: ${error}`, "GENIUS");
+      }
+    }, 5000);
   });
 }
