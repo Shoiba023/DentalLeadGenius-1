@@ -95,24 +95,10 @@ export default async function runApp(
   }, () => {
     log(`serving on port ${port}`);
     
-    // ✅ GENIUS AUTO-MODE - 24/7 Email Outreach (syncs every 1 minute)
-    // Sends AI-personalized emails to eligible clinics with 72-hour cooldown
-    // Always includes demo link: https://dental-lead-genius-1-shoibaali10.replit.app/demo
-    setTimeout(() => {
-      const result = startMarketingSync();
-      if (result.success) {
-        log("╔═══════════════════════════════════════════════════════════════╗", "genius");
-        log("║  🚀 GENIUS AUTO-MODE ACTIVE - SYNCING EVERY 1 MINUTE          ║", "genius");
-        log("║  • Up to 10 clinics per cycle (staggered delivery)            ║", "genius");
-        log("║  • 72-hour cooldown per clinic (no spam)                      ║", "genius");
-        log("║  • AI-personalized emails with demo link                      ║", "genius");
-        log("║  • USA & Canada clinics only                                  ║", "genius");
-        log("╚═══════════════════════════════════════════════════════════════╝", "genius");
-      } else {
-        log(`Genius Auto-Mode: ${result.message}`, "genius");
-      }
-    }, 10000); // Wait 10 seconds to ensure database is ready
-    
-    log("✅ Genius Auto-Mode enabled - syncing every 1 minute", "system");
+    // ⛔ EMAIL MARKETING DISABLED - Awaiting new marketing plan
+    // All email automation, sequences, and campaigns are paused
+    // Do NOT enable until new prompts are provided
+    log("⛔ EMAIL MARKETING STOPPED - All outreach disabled", "system");
+    log("⛔ Awaiting new marketing plan before resuming", "system");
   });
 }
