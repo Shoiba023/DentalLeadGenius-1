@@ -97,42 +97,65 @@ export default async function runApp(
     log(`serving on port ${port}`);
     
     // Full AI Sales Pipeline - 5 Modules + Master Control
-    // Auto-start after 5 seconds to allow database connections to stabilize
-    setTimeout(async () => {
-      try {
-        log("═══════════════════════════════════════════════════════════════", "PIPELINE");
-        log("       🚀 STARTING FULL AI SALES PIPELINE                     ", "PIPELINE");
-        log("═══════════════════════════════════════════════════════════════", "PIPELINE");
-        
-        const { startFullPipeline } = await import("./aiPipeline");
-        const result = await startFullPipeline('low-cost');
-        
-        if (result.success) {
-          log("✅ FULL AI PIPELINE ACTIVE 24/7", "PIPELINE");
-          log("", "PIPELINE");
-          log("Pipeline Flow:", "PIPELINE");
-          log("  Lead Scraper → Nurture Engine → Demo Bot → Closer → Revenue", "PIPELINE");
-          log("", "PIPELINE");
-          log("Module Cycles:", "PIPELINE");
-          log("  • Lead Scraper:     Every 10 minutes (75 cities)", "PIPELINE");
-          log("  • Nurture Engine:   Every 2 minutes (7-day emails)", "PIPELINE");
-          log("  • Demo Booking Bot: Every 1 minute (warm leads)", "PIPELINE");
-          log("  • Closer Bot:       Every 1 minute (demos → deals)", "PIPELINE");
-          log("  • Revenue Engine:   Every 5 minutes (invoices)", "PIPELINE");
-          log("  • Client Success:   Every 24 hours (reports)", "PIPELINE");
-          log("", "PIPELINE");
-          log("Budget Controls:", "PIPELINE");
-          log("  • Daily email limit: 1,666", "PIPELINE");
-          log("  • Auto-pause at 70%", "PIPELINE");
-          log("  • Hard stop at 100%", "PIPELINE");
+    // Check if automation is enabled (default: disabled for safety)
+    const automationEnabled = process.env.AUTOMATION_ENABLED === 'true';
+    
+    if (!automationEnabled) {
+      log("═══════════════════════════════════════════════════════════════", "PIPELINE");
+      log("       ⏸️  AUTOMATION DISABLED                                  ", "PIPELINE");
+      log("═══════════════════════════════════════════════════════════════", "PIPELINE");
+      log("", "PIPELINE");
+      log("All automated engines are OFF. To enable:", "PIPELINE");
+      log("  Set AUTOMATION_ENABLED=true in environment variables", "PIPELINE");
+      log("", "PIPELINE");
+      log("Disabled modules:", "PIPELINE");
+      log("  • Lead Scraper Engine", "PIPELINE");
+      log("  • Nurture Engine (GENIUS)", "PIPELINE");
+      log("  • Demo Booking Bot", "PIPELINE");
+      log("  • Closer Bot", "PIPELINE");
+      log("  • Revenue Engine", "PIPELINE");
+      log("  • Client Success Bot", "PIPELINE");
+      log("  • Lead Warming Engine", "PIPELINE");
+      log("  • Marketing Sync Engine", "PIPELINE");
+      log("═══════════════════════════════════════════════════════════════", "PIPELINE");
+    } else {
+      // Auto-start after 5 seconds to allow database connections to stabilize
+      setTimeout(async () => {
+        try {
           log("═══════════════════════════════════════════════════════════════", "PIPELINE");
-        } else {
-          log(`⚠️ Pipeline startup: ${result.message}`, "PIPELINE");
-          result.details.forEach(d => log(`   ${d}`, "PIPELINE"));
+          log("       🚀 STARTING FULL AI SALES PIPELINE                     ", "PIPELINE");
+          log("═══════════════════════════════════════════════════════════════", "PIPELINE");
+          
+          const { startFullPipeline } = await import("./aiPipeline");
+          const result = await startFullPipeline('low-cost');
+          
+          if (result.success) {
+            log("✅ FULL AI PIPELINE ACTIVE 24/7", "PIPELINE");
+            log("", "PIPELINE");
+            log("Pipeline Flow:", "PIPELINE");
+            log("  Lead Scraper → Nurture Engine → Demo Bot → Closer → Revenue", "PIPELINE");
+            log("", "PIPELINE");
+            log("Module Cycles:", "PIPELINE");
+            log("  • Lead Scraper:     Every 10 minutes (75 cities)", "PIPELINE");
+            log("  • Nurture Engine:   Every 2 minutes (7-day emails)", "PIPELINE");
+            log("  • Demo Booking Bot: Every 1 minute (warm leads)", "PIPELINE");
+            log("  • Closer Bot:       Every 1 minute (demos → deals)", "PIPELINE");
+            log("  • Revenue Engine:   Every 5 minutes (invoices)", "PIPELINE");
+            log("  • Client Success:   Every 24 hours (reports)", "PIPELINE");
+            log("", "PIPELINE");
+            log("Budget Controls:", "PIPELINE");
+            log("  • Daily email limit: 1,666", "PIPELINE");
+            log("  • Auto-pause at 70%", "PIPELINE");
+            log("  • Hard stop at 100%", "PIPELINE");
+            log("═══════════════════════════════════════════════════════════════", "PIPELINE");
+          } else {
+            log(`⚠️ Pipeline startup: ${result.message}`, "PIPELINE");
+            result.details.forEach(d => log(`   ${d}`, "PIPELINE"));
+          }
+        } catch (error) {
+          log(`❌ Pipeline startup error: ${error}`, "PIPELINE");
         }
-      } catch (error) {
-        log(`❌ Pipeline startup error: ${error}`, "PIPELINE");
-      }
-    }, 5000);
+      }, 5000);
+    }
   });
 }

@@ -106,3 +106,4 @@ integrations = ["javascript_openai_ai_integrations:1.0.0", "javascript_database:
 
 [userenv.shared]
 STRIPE_LIVE_MODE = "false"
+AUTOMATION_ENABLED = "false"
