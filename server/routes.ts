@@ -107,6 +107,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // Project export download endpoint
+  app.get("/download/dental-app-export.zip", (req, res) => {
+    const zipPath = path.join(process.cwd(), "dental-app-export.zip");
+    if (fs.existsSync(zipPath)) {
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", "attachment; filename=dental-app-export.zip");
+      res.sendFile(zipPath);
+    } else {
+      res.status(404).json({ error: "Export file not found" });
+    }
+  });
+
   // Email health check endpoint - tests Resend configuration via Replit connector
   // GET /health/email - Check if Resend is configured and connection works
   // POST /health/email - Send a test email to support address
