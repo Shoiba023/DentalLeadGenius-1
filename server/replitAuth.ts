@@ -1,7 +1,4 @@
 // Referenced from javascript_log_in_with_replit blueprint
-import * as client from "openid-client";
-import { Strategy, type VerifyFunction } from "openid-client/passport";
-
 import passport from "passport";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
@@ -12,11 +9,27 @@ import { storage } from "./storage";
 // Check if running on Replit (has REPL_ID)
 const isReplitEnvironment = !!process.env.REPL_ID;
 
+// Dynamic imports for openid-client (only loaded when needed)
+let client: typeof import("openid-client") | null = null;
+let Strategy: typeof import("openid-client/passport").Strategy | null = null;
+
+async function loadOidcDependencies() {
+  if (!isReplitEnvironment) {
+    throw new Error("OIDC not available outside Replit");
+  }
+  if (!client) {
+    client = await import("openid-client");
+  }
+  if (!Strategy) {
+    const passportModule = await import("openid-client/passport");
+    Strategy = passportModule.Strategy;
+  }
+  return { client, Strategy };
+}
+
 const getOidcConfig = memoize(
   async () => {
-    if (!isReplitEnvironment) {
-      throw new Error("OIDC not available outside Replit");
-    }
+    const { client } = await loadOidcDependencies();
     return await client.discovery(
       new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
       process.env.REPL_ID!
@@ -49,7 +62,7 @@ export function getSession() {
 
 function updateUserSession(
   user: any,
-  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
+  tokens: any
 ) {
   user.claims = tokens.claims();
   user.access_token = tokens.access_token;
@@ -100,10 +113,12 @@ export async function setupAuth(app: Express) {
     return;
   }
 
+  // Load OIDC dependencies dynamically (only on Replit)
+  const { client: oidcClient, Strategy: OidcStrategy } = await loadOidcDependencies();
   const config = await getOidcConfig();
 
-  const verify: VerifyFunction = async (
-    tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
+  const verify = async (
+    tokens: any,
     verified: passport.AuthenticateCallback
   ) => {
     const user = {};
@@ -119,7 +134,7 @@ export async function setupAuth(app: Express) {
   const ensureStrategy = (domain: string) => {
     const strategyName = `replitauth:${domain}`;
     if (!registeredStrategies.has(strategyName)) {
-      const strategy = new Strategy(
+      const strategy = new OidcStrategy!(
         {
           name: strategyName,
           config,
@@ -155,7 +170,7 @@ export async function setupAuth(app: Express) {
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
       res.redirect(
-        client.buildEndSessionUrl(config, {
+        oidcClient.buildEndSessionUrl(config, {
           client_id: process.env.REPL_ID!,
           post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
         }).href
@@ -183,8 +198,9 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   }
 
   try {
+    const { client: oidcClient } = await loadOidcDependencies();
     const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
+    const tokenResponse = await oidcClient.refreshTokenGrant(config, refreshToken);
     updateUserSession(user, tokenResponse);
     return next();
   } catch (error) {
