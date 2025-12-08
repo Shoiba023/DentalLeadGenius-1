@@ -5,7 +5,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { generateChatResponse, generateOutreachDraft, generateDemoResponse, type DemoMode } from "./openai";
+import { generateChatResponse, generateOutreachDraft, generateDemoResponse, type DemoMode, isOpenAIConfigured, OpenAINotConfiguredError } from "./openai";
 import { insertLeadSchema, insertClinicSchema, insertBookingSchema, insertSequenceSchema, insertSequenceStepSchema, insertSequenceEnrollmentSchema, loginSchema, createUserSchema } from "@shared/schema";
 import { z } from "zod";
 import { standardLimiter, strictLimiter, authLimiter, apiLimiter, logFailedAttempt, sanitizeInput, validateEmail, validatePhone } from "./rateLimit";
@@ -2434,14 +2434,33 @@ Submitted At: ${timestamp}`;
   // Request: { message: string, mode: "receptionist" | "treatment" | "recall" | "marketing", sessionId: string }
   // Response: { reply: string }
   app.post("/api/ai", async (req, res) => {
+    console.log("[AI DEMO] Request received:", { 
+      path: req.path, 
+      method: req.method,
+      hasMessage: !!req.body?.message,
+      mode: req.body?.mode,
+      openaiConfigured: isOpenAIConfigured()
+    });
+
     try {
+      // Check if OpenAI is configured BEFORE processing the request
+      if (!isOpenAIConfigured()) {
+        console.error("[AI DEMO] OpenAI not configured - missing API key");
+        return res.status(503).json({ 
+          reply: "AI service is not configured. Please contact support.",
+          error: "OPENAI_API_KEY not set"
+        });
+      }
+
       const { message, mode, sessionId } = req.body;
 
       if (!message || typeof message !== "string") {
+        console.log("[AI DEMO] Validation failed: message required");
         return res.status(400).json({ error: "Message is required" });
       }
 
       if (!mode || !["receptionist", "treatment", "recall", "marketing"].includes(mode)) {
+        console.log("[AI DEMO] Validation failed: invalid mode", mode);
         return res.status(400).json({ error: "Valid mode is required (receptionist, treatment, recall, marketing)" });
       }
 
@@ -2458,7 +2477,9 @@ Submitted At: ${timestamp}`;
       conversationHistory.push({ role: "user", content: message });
 
       // Generate AI response with mode-specific behavior
+      console.log("[AI DEMO] Generating response for mode:", mode);
       const reply = await generateDemoResponse(conversationHistory, mode as DemoMode);
+      console.log("[AI DEMO] Response generated successfully, length:", reply.length);
 
       // Add AI response to history
       conversationHistory.push({ role: "assistant", content: reply });
@@ -2471,7 +2492,21 @@ Submitted At: ${timestamp}`;
 
       res.json({ reply, sessionId: session });
     } catch (error) {
-      console.error("AI demo error:", error);
+      // Log the full error for debugging
+      console.error("[AI DEMO] Error:", error);
+      
+      // Check if it's a configuration error
+      if (error instanceof OpenAINotConfiguredError) {
+        return res.status(503).json({ 
+          reply: "AI service is not configured. Please contact support.",
+          error: "OpenAI not configured"
+        });
+      }
+      
+      // Check for OpenAI API errors
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("[AI DEMO] Error message:", errorMessage);
+      
       res.status(500).json({ 
         reply: "The demo AI is momentarily unavailable. Please try again in a few seconds.",
         error: "AI service temporarily unavailable"

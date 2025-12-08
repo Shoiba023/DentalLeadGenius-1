@@ -228,6 +228,15 @@ export default function Demo() {
         mode,
         sessionId,
       });
+      
+      // Log response status for debugging
+      if (!response.ok) {
+        console.error("[AI Demo] API error:", response.status, response.statusText);
+        const errorData = await response.json().catch(() => ({}));
+        console.error("[AI Demo] Error data:", errorData);
+        throw new Error(errorData.error || `API error: ${response.status}`);
+      }
+      
       return response.json();
     },
     onSuccess: (data) => {
@@ -243,7 +252,8 @@ export default function Demo() {
         },
       ]);
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("[AI Demo] Mutation error:", error);
       setMessages((prev) => [
         ...prev,
         {

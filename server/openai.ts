@@ -5,36 +5,58 @@ import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@shared/config";
 // Lazy-initialized OpenAI client (only created when first needed)
 let openai: OpenAI | null = null;
 let openaiInitialized = false;
+let openaiConfigError: string | null = null;
+
+/**
+ * Check if OpenAI is configured (has API key)
+ * Use this to check availability before calling AI functions
+ */
+export function isOpenAIConfigured(): boolean {
+  // Check for any available OpenAI API key
+  const hasReplitKey = !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+  const hasStandardKey = !!process.env.OPENAI_API_KEY;
+  return hasReplitKey || hasStandardKey;
+}
 
 function getOpenAIClient(): OpenAI {
   if (!openaiInitialized) {
     openaiInitialized = true;
     
+    // Log environment for debugging
+    const isReplitEnvironment = !!process.env.REPL_ID;
+    console.log("[OpenAI] Initializing client...");
+    console.log("[OpenAI] Environment: " + (isReplitEnvironment ? "Replit" : "External (Render/other)"));
+    console.log("[OpenAI] REPL_ID present:", !!process.env.REPL_ID);
+    console.log("[OpenAI] AI_INTEGRATIONS_OPENAI_API_KEY present:", !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY);
+    console.log("[OpenAI] OPENAI_API_KEY present:", !!process.env.OPENAI_API_KEY);
+    
     // Detect environment and configure OpenAI client accordingly
     // - On Replit: Uses AI Integrations service (AI_INTEGRATIONS_OPENAI_*)
     // - On Render/other: Uses standard OpenAI API (OPENAI_API_KEY)
-    const isReplitEnvironment = !!process.env.REPL_ID;
     const openaiConfig: { apiKey?: string; baseURL?: string } = {};
 
     if (isReplitEnvironment && process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
       // Replit AI Integrations
       openaiConfig.baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
       openaiConfig.apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+      console.log("[OpenAI] Using Replit AI Integrations");
     } else if (process.env.OPENAI_API_KEY) {
       // Standard OpenAI API
       openaiConfig.apiKey = process.env.OPENAI_API_KEY;
+      console.log("[OpenAI] Using standard OpenAI API key");
     }
 
     if (openaiConfig.apiKey) {
       openai = new OpenAI(openaiConfig);
+      console.log("[OpenAI] Client initialized successfully");
     } else {
-      console.warn("[OpenAI] No API key configured. AI features will be unavailable.");
-      console.warn("[OpenAI] Set OPENAI_API_KEY environment variable to enable AI features.");
+      openaiConfigError = "No OpenAI API key configured. Set OPENAI_API_KEY environment variable.";
+      console.error("[OpenAI] ERROR: " + openaiConfigError);
     }
   }
 
   if (!openai) {
-    throw new Error("OpenAI is not configured. Set OPENAI_API_KEY environment variable.");
+    throw new Error(openaiConfigError || "OpenAI is not configured. Set OPENAI_API_KEY environment variable.");
   }
 
   return openai;
@@ -195,8 +217,21 @@ Example: "I can help you create a spring whitening campaign! Something like: 'Sp
 export type DemoMode = "receptionist" | "treatment" | "recall" | "marketing";
 
 /**
+ * Custom error class for OpenAI configuration issues
+ */
+export class OpenAINotConfiguredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "OpenAINotConfiguredError";
+  }
+}
+
+/**
  * Generate AI response for the live demo page with mode-specific behavior.
  * Supports 4 modes: receptionist, treatment, recall, marketing
+ * 
+ * Throws OpenAINotConfiguredError if API key is missing
+ * Throws other errors for API failures
  */
 export async function generateDemoResponse(
   messages: Array<{ role: "user" | "assistant"; content: string }>,
@@ -204,21 +239,19 @@ export async function generateDemoResponse(
 ): Promise<string> {
   const systemPrompt = AI_DEMO_MODES[mode] || AI_DEMO_MODES.receptionist;
 
-  try {
-    const response = await getOpenAIClient().chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages.slice(-10), // Keep last 10 messages for context
-      ],
-      max_completion_tokens: 400,
-    });
+  // This will throw if OpenAI is not configured
+  const client = getOpenAIClient();
+  
+  const response = await client.chat.completions.create({
+    model: "gpt-4o",
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...messages.slice(-10), // Keep last 10 messages for context
+    ],
+    max_completion_tokens: 400,
+  });
 
-    return response.choices[0]?.message?.content || "I apologize, but I'm having trouble responding right now. Please try again.";
-  } catch (error) {
-    console.error("AI demo response error:", error);
-    return "The demo AI is momentarily unavailable. Please try again in a few seconds.";
-  }
+  return response.choices[0]?.message?.content || "I apologize, but I'm having trouble responding right now. Please try again.";
 }
 
 export async function generateOutreachDraft(type: "email" | "sms" | "whatsapp"): Promise<{ subject?: string; message: string }> {
