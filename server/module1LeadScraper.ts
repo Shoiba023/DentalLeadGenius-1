@@ -2,10 +2,23 @@ import { storage } from "./storage";
 import { recordLeadScraped, updateModuleStatus, canSendEmail, getModeConfig, getOperatingMode } from "./masterControlGenius";
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
-});
+// Lazy-initialized OpenAI client
+let openaiClient: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!openaiClient) {
+    const isReplit = !!process.env.REPL_ID;
+    const apiKey = isReplit 
+      ? process.env.AI_INTEGRATIONS_OPENAI_API_KEY 
+      : process.env.OPENAI_API_KEY;
+    const baseURL = isReplit ? process.env.AI_INTEGRATIONS_OPENAI_BASE_URL : undefined;
+    
+    if (!apiKey) {
+      throw new Error("OpenAI API key not configured");
+    }
+    openaiClient = new OpenAI({ apiKey, baseURL });
+  }
+  return openaiClient;
+}
 
 const USA_CITIES = [
   "New York, NY", "Los Angeles, CA", "Chicago, IL", "Houston, TX", "Phoenix, AZ",

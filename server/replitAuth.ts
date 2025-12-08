@@ -6,15 +6,17 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-// Check if running on Replit (has REPL_ID)
-const isReplitEnvironment = !!process.env.REPL_ID;
+// Runtime check for Replit environment (must be a function, not a constant)
+function isReplitEnvironment(): boolean {
+  return !!process.env.REPL_ID;
+}
 
 // Dynamic imports for openid-client (only loaded when needed)
 let client: typeof import("openid-client") | null = null;
 let Strategy: typeof import("openid-client/passport").Strategy | null = null;
 
 async function loadOidcDependencies() {
-  if (!isReplitEnvironment) {
+  if (!isReplitEnvironment()) {
     throw new Error("OIDC not available outside Replit");
   }
   if (!client) {
@@ -89,7 +91,7 @@ export async function setupAuth(app: Express) {
   app.use(passport.session());
 
   // Skip Replit OIDC setup if not running on Replit
-  if (!isReplitEnvironment) {
+  if (!isReplitEnvironment()) {
     console.log("[AUTH] Running outside Replit - OIDC disabled, using email/password auth only");
     
     passport.serializeUser((user: Express.User, cb) => cb(null, user));
@@ -180,6 +182,17 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  // For non-Replit environments (email/password auth), check session
+  if (!isReplitEnvironment()) {
+    // Session-based auth check
+    const session = req.session as any;
+    if (session?.isAuthenticated && session?.userId) {
+      return next();
+    }
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  // Replit OIDC authentication
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {

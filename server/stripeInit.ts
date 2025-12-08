@@ -30,6 +30,7 @@ export async function initStripe() {
       stripeSync = await getStripeSync();
     } catch (err) {
       console.log('Stripe not configured - skipping webhook and sync setup');
+      stripeInitialized = true;
       return;
     }
 
@@ -63,5 +64,6 @@ export async function initStripe() {
     stripeInitialized = true;
   } catch (error) {
     console.error('Failed to initialize Stripe:', error);
+    stripeInitialized = true; // Prevent repeated attempts
   }
 }

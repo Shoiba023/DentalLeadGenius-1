@@ -2,47 +2,42 @@
 import OpenAI from "openai";
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@shared/config";
 
-// Detect environment and configure OpenAI client accordingly
-// - On Replit: Uses AI Integrations service (AI_INTEGRATIONS_OPENAI_*)
-// - On Render/other: Uses standard OpenAI API (OPENAI_API_KEY)
-const isReplitEnvironment = !!process.env.REPL_ID;
-
-// Lazy-initialized OpenAI client (only created when first used)
-let openaiClient: OpenAI | null = null;
-let openaiConfigured = false;
+// Lazy-initialized OpenAI client (only created when first needed)
+let openai: OpenAI | null = null;
+let openaiInitialized = false;
 
 function getOpenAIClient(): OpenAI {
-  if (openaiClient) {
-    return openaiClient;
+  if (!openaiInitialized) {
+    openaiInitialized = true;
+    
+    // Detect environment and configure OpenAI client accordingly
+    // - On Replit: Uses AI Integrations service (AI_INTEGRATIONS_OPENAI_*)
+    // - On Render/other: Uses standard OpenAI API (OPENAI_API_KEY)
+    const isReplitEnvironment = !!process.env.REPL_ID;
+    const openaiConfig: { apiKey?: string; baseURL?: string } = {};
+
+    if (isReplitEnvironment && process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+      // Replit AI Integrations
+      openaiConfig.baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+      openaiConfig.apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    } else if (process.env.OPENAI_API_KEY) {
+      // Standard OpenAI API
+      openaiConfig.apiKey = process.env.OPENAI_API_KEY;
+    }
+
+    if (openaiConfig.apiKey) {
+      openai = new OpenAI(openaiConfig);
+    } else {
+      console.warn("[OpenAI] No API key configured. AI features will be unavailable.");
+      console.warn("[OpenAI] Set OPENAI_API_KEY environment variable to enable AI features.");
+    }
   }
 
-  const config: { apiKey?: string; baseURL?: string } = {};
-
-  if (isReplitEnvironment && process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
-    // Replit AI Integrations
-    config.baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-    config.apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-    openaiConfigured = true;
-  } else if (process.env.OPENAI_API_KEY) {
-    // Standard OpenAI API
-    config.apiKey = process.env.OPENAI_API_KEY;
-    openaiConfigured = true;
-  } else {
-    console.warn("[OpenAI] No API key configured. Set OPENAI_API_KEY environment variable.");
-    // Create client with dummy key to avoid crash - actual calls will fail gracefully
-    config.apiKey = "not-configured";
-    openaiConfigured = false;
+  if (!openai) {
+    throw new Error("OpenAI is not configured. Set OPENAI_API_KEY environment variable.");
   }
 
-  openaiClient = new OpenAI(config);
-  return openaiClient;
-}
-
-// Check if OpenAI is properly configured
-export function isOpenAIConfigured(): boolean {
-  // Force initialization to check config
-  getOpenAIClient();
-  return openaiConfigured;
+  return openai;
 }
 
 // Sales chatbot system prompt - Updated to reflect INSTANT demo delivery
@@ -122,29 +117,20 @@ export async function generateChatResponse(
   type: "sales" | "patient",
   clinicName?: string
 ): Promise<string> {
-  if (!isOpenAIConfigured()) {
-    return "AI features are currently unavailable. Please configure OPENAI_API_KEY.";
-  }
-
   const systemPrompt = type === "sales"
     ? SALES_SYSTEM_PROMPT
     : PATIENT_SYSTEM_PROMPT.replace("{CLINIC_NAME}", clinicName || "our dental clinic");
 
-  try {
-    const response = await getOpenAIClient().chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages,
-      ],
-      max_completion_tokens: 500,
-    });
+  const response = await getOpenAIClient().chat.completions.create({
+    model: "gpt-4o", // Using GPT-4o for high-quality chat responses
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...messages,
+    ],
+    max_completion_tokens: 500,
+  });
 
-    return response.choices[0]?.message?.content || "I apologize, but I'm having trouble responding right now. Please try again.";
-  } catch (error) {
-    console.error("Chat response error:", error);
-    return "I apologize, but I'm having trouble responding right now. Please try again.";
-  }
+  return response.choices[0]?.message?.content || "I apologize, but I'm having trouble responding right now. Please try again.";
 }
 
 // ============================================================================
@@ -216,10 +202,6 @@ export async function generateDemoResponse(
   messages: Array<{ role: "user" | "assistant"; content: string }>,
   mode: DemoMode
 ): Promise<string> {
-  if (!isOpenAIConfigured()) {
-    return "AI demo is currently unavailable. Please configure OPENAI_API_KEY.";
-  }
-
   const systemPrompt = AI_DEMO_MODES[mode] || AI_DEMO_MODES.receptionist;
 
   try {
@@ -227,7 +209,7 @@ export async function generateDemoResponse(
       model: "gpt-4o",
       messages: [
         { role: "system", content: systemPrompt },
-        ...messages.slice(-10),
+        ...messages.slice(-10), // Keep last 10 messages for context
       ],
       max_completion_tokens: 400,
     });
@@ -240,13 +222,6 @@ export async function generateDemoResponse(
 }
 
 export async function generateOutreachDraft(type: "email" | "sms" | "whatsapp"): Promise<{ subject?: string; message: string }> {
-  if (!isOpenAIConfigured()) {
-    return {
-      subject: type === "email" ? "Transform Your Dental Practice" : undefined,
-      message: "AI content generation is currently unavailable. Please configure OPENAI_API_KEY.",
-    };
-  }
-
   const DEMO_URL = `${SITE_URL}/demo`;
   let prompt: string;
   
@@ -271,32 +246,24 @@ IMPORTANT: Do NOT include any emojis, emoticons, or special unicode symbols what
 Format as JSON with just a "message" field.`;
   }
 
-  try {
-    const response = await getOpenAIClient().chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      max_completion_tokens: 300,
-    });
+  const response = await getOpenAIClient().chat.completions.create({
+    model: "gpt-4o",
+    messages: [{ role: "user", content: prompt }],
+    response_format: { type: "json_object" },
+    max_completion_tokens: 300,
+  });
 
-    const content = response.choices[0]?.message?.content || "{}";
-    const parsed = JSON.parse(content);
+  const content = response.choices[0]?.message?.content || "{}";
+  const parsed = JSON.parse(content);
 
-    if (type === "email") {
-      return {
-        subject: parsed.subject || "Transform Your Dental Practice with AI",
-        message: parsed.message + "\n\nTo unsubscribe, reply with 'UNSUBSCRIBE'.",
-      };
-    }
-
+  if (type === "email") {
     return {
-      message: (parsed.message || "DentalLeadGenius: Get 10x more leads with AI. Get instant access: [link]") + " Reply STOP to opt out.",
-    };
-  } catch (error) {
-    console.error("Outreach draft generation error:", error);
-    return {
-      subject: type === "email" ? "Transform Your Dental Practice with AI" : undefined,
-      message: "Unable to generate AI content. Please try again.",
+      subject: parsed.subject || "Transform Your Dental Practice with AI",
+      message: parsed.message + "\n\nTo unsubscribe, reply with 'UNSUBSCRIBE'.",
     };
   }
+
+  return {
+    message: (parsed.message || "DentalLeadGenius: Get 10x more leads with AI. Get instant access: [link]") + " Reply STOP to opt out.",
+  };
 }

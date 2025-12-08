@@ -31,11 +31,23 @@ let intervalId: NodeJS.Timeout | null = null;
 let lastCycleAt: Date | null = null;
 let cycleCount = 0;
 
-// OpenAI client for AI-powered email generation
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+// Lazy-initialized OpenAI client
+let openaiClient: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!openaiClient) {
+    const isReplit = !!process.env.REPL_ID;
+    const apiKey = isReplit 
+      ? process.env.AI_INTEGRATIONS_OPENAI_API_KEY 
+      : process.env.OPENAI_API_KEY;
+    const baseURL = isReplit ? process.env.AI_INTEGRATIONS_OPENAI_BASE_URL : undefined;
+    
+    if (!apiKey) {
+      throw new Error("OpenAI API key not configured");
+    }
+    openaiClient = new OpenAI({ apiKey, baseURL });
+  }
+  return openaiClient;
+}
 
 /**
  * Generate a unique cycle ID for tracking
@@ -87,7 +99,7 @@ Generate the email in this JSON format:
 }`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-4o",
       messages: [
         {

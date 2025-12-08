@@ -9,11 +9,23 @@ import OpenAI from "openai";
 import { storage } from "./storage";
 import type { Lead, Clinic, ChatbotMessage } from "@shared/schema";
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+// Lazy-initialized OpenAI client
+let openaiClient: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!openaiClient) {
+    const isReplit = !!process.env.REPL_ID;
+    const apiKey = isReplit 
+      ? process.env.AI_INTEGRATIONS_OPENAI_API_KEY 
+      : process.env.OPENAI_API_KEY;
+    const baseURL = isReplit ? process.env.AI_INTEGRATIONS_OPENAI_BASE_URL : undefined;
+    
+    if (!apiKey) {
+      throw new Error("OpenAI API key not configured");
+    }
+    openaiClient = new OpenAI({ apiKey, baseURL });
+  }
+  return openaiClient;
+}
 
 export interface ReplySuggestion {
   id: string;
@@ -78,7 +90,7 @@ ${context.previousMessages.join('\n')}` : ""}
 Generate 3 professional email reply suggestions.`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-4o",
       messages: [
         { role: "system", content: systemPrompt },
@@ -130,7 +142,7 @@ Guidelines:
 Return as JSON: { "replies": ["Reply 1", "Reply 2", "Reply 3"] }`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-4o",
       messages: [
         { role: "system", content: systemPrompt },
@@ -183,7 +195,7 @@ Return as JSON array:
 ]`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-4o",
       messages: [
         { role: "system", content: systemPrompt },
@@ -246,7 +258,7 @@ Return as JSON array:
 ]`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-4o",
       messages: [
         { role: "system", content: systemPrompt },

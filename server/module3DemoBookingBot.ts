@@ -4,10 +4,23 @@ import { eq, desc, and, gte } from "drizzle-orm";
 import { recordDemoBooked, updateModuleStatus, canSendEmail, recordEmailSent } from "./masterControlGenius";
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
-});
+// Lazy-initialized OpenAI client
+let openaiClient: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!openaiClient) {
+    const isReplit = !!process.env.REPL_ID;
+    const apiKey = isReplit 
+      ? process.env.AI_INTEGRATIONS_OPENAI_API_KEY 
+      : process.env.OPENAI_API_KEY;
+    const baseURL = isReplit ? process.env.AI_INTEGRATIONS_OPENAI_BASE_URL : undefined;
+    
+    if (!apiKey) {
+      throw new Error("OpenAI API key not configured");
+    }
+    openaiClient = new OpenAI({ apiKey, baseURL });
+  }
+  return openaiClient;
+}
 
 async function getGeniusLead(id: string) {
   const [lead] = await db.select().from(geniusLeads).where(eq(geniusLeads.id, id));
@@ -79,7 +92,7 @@ async function generateBotResponse(context: ConversationContext, userMessage: st
   ];
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages,
       max_tokens: 200,
