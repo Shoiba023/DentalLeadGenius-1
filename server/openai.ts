@@ -4,59 +4,99 @@ import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@shared/config";
 
 // Lazy-initialized OpenAI client (only created when first needed)
 let openai: OpenAI | null = null;
-let openaiInitialized = false;
 let openaiConfigError: string | null = null;
 
 /**
+ * Custom error class for OpenAI configuration issues
+ */
+export class OpenAINotConfiguredError extends Error {
+  public code = "OPENAI_NOT_CONFIGURED";
+  constructor(message: string) {
+    super(message);
+    this.name = "OpenAINotConfiguredError";
+  }
+}
+
+/**
+ * Custom error class for OpenAI API call failures
+ */
+export class OpenAIAPIError extends Error {
+  public code = "OPENAI_API_ERROR";
+  public originalError?: Error;
+  constructor(message: string, originalError?: Error) {
+    super(message);
+    this.name = "OpenAIAPIError";
+    this.originalError = originalError;
+  }
+}
+
+/**
  * Check if OpenAI is configured (has API key)
- * Use this to check availability before calling AI functions
+ * Re-checks environment variables each time (not cached)
  */
 export function isOpenAIConfigured(): boolean {
-  // Check for any available OpenAI API key
-  const hasReplitKey = !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
   const hasStandardKey = !!process.env.OPENAI_API_KEY;
-  return hasReplitKey || hasStandardKey;
+  const hasReplitKey = !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+  return hasStandardKey || hasReplitKey;
+}
+
+/**
+ * Get detailed OpenAI configuration status for diagnostics
+ */
+export function getOpenAIStatus(): { configured: boolean; source: string; details: string } {
+  const hasStandardKey = !!process.env.OPENAI_API_KEY;
+  const hasReplitKey = !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+  const isReplit = !!process.env.REPL_ID;
+  
+  if (hasStandardKey) {
+    return { configured: true, source: "OPENAI_API_KEY", details: "Standard OpenAI API key configured" };
+  }
+  if (isReplit && hasReplitKey) {
+    return { configured: true, source: "AI_INTEGRATIONS", details: "Replit AI Integrations configured" };
+  }
+  if (hasReplitKey && !isReplit) {
+    return { configured: false, source: "NONE", details: "AI_INTEGRATIONS key found but REPL_ID missing (not on Replit). Set OPENAI_API_KEY instead." };
+  }
+  return { configured: false, source: "NONE", details: "No API key found. Set OPENAI_API_KEY environment variable." };
 }
 
 function getOpenAIClient(): OpenAI {
-  if (!openaiInitialized) {
-    openaiInitialized = true;
-    
-    // Log environment for debugging
-    const isReplitEnvironment = !!process.env.REPL_ID;
+  // Always check configuration fresh (environment variables can change)
+  const status = getOpenAIStatus();
+  
+  // Log on first call or when not yet initialized
+  if (!openai) {
     console.log("[OpenAI] Initializing client...");
-    console.log("[OpenAI] Environment: " + (isReplitEnvironment ? "Replit" : "External (Render/other)"));
+    console.log("[OpenAI] Environment:", process.env.REPL_ID ? "Replit" : "External (Render/other)");
     console.log("[OpenAI] REPL_ID present:", !!process.env.REPL_ID);
-    console.log("[OpenAI] AI_INTEGRATIONS_OPENAI_API_KEY present:", !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY);
     console.log("[OpenAI] OPENAI_API_KEY present:", !!process.env.OPENAI_API_KEY);
-    
-    // Detect environment and configure OpenAI client accordingly
-    // - On Replit: Uses AI Integrations service (AI_INTEGRATIONS_OPENAI_*)
-    // - On Render/other: Uses standard OpenAI API (OPENAI_API_KEY)
-    const openaiConfig: { apiKey?: string; baseURL?: string } = {};
+    console.log("[OpenAI] AI_INTEGRATIONS_OPENAI_API_KEY present:", !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY);
+    console.log("[OpenAI] Status:", status.details);
+  }
+  
+  if (!status.configured) {
+    openaiConfigError = status.details;
+    console.error("[OpenAI] ERROR:", openaiConfigError);
+    throw new OpenAINotConfiguredError(openaiConfigError);
+  }
 
-    if (isReplitEnvironment && process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
-      // Replit AI Integrations
+  // Create client if not exists or if we need to reinitialize
+  if (!openai) {
+    const openaiConfig: { apiKey?: string; baseURL?: string } = {};
+    
+    // PRIORITY: Standard OPENAI_API_KEY first (works everywhere)
+    // Then fall back to Replit AI Integrations (only on Replit)
+    if (process.env.OPENAI_API_KEY) {
+      openaiConfig.apiKey = process.env.OPENAI_API_KEY;
+      console.log("[OpenAI] Using standard OPENAI_API_KEY");
+    } else if (process.env.REPL_ID && process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
       openaiConfig.baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
       openaiConfig.apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
       console.log("[OpenAI] Using Replit AI Integrations");
-    } else if (process.env.OPENAI_API_KEY) {
-      // Standard OpenAI API
-      openaiConfig.apiKey = process.env.OPENAI_API_KEY;
-      console.log("[OpenAI] Using standard OpenAI API key");
     }
 
-    if (openaiConfig.apiKey) {
-      openai = new OpenAI(openaiConfig);
-      console.log("[OpenAI] Client initialized successfully");
-    } else {
-      openaiConfigError = "No OpenAI API key configured. Set OPENAI_API_KEY environment variable.";
-      console.error("[OpenAI] ERROR: " + openaiConfigError);
-    }
-  }
-
-  if (!openai) {
-    throw new Error(openaiConfigError || "OpenAI is not configured. Set OPENAI_API_KEY environment variable.");
+    openai = new OpenAI(openaiConfig);
+    console.log("[OpenAI] Client initialized successfully");
   }
 
   return openai;
@@ -215,16 +255,6 @@ Example: "I can help you create a spring whitening campaign! Something like: 'Sp
 };
 
 export type DemoMode = "receptionist" | "treatment" | "recall" | "marketing";
-
-/**
- * Custom error class for OpenAI configuration issues
- */
-export class OpenAINotConfiguredError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "OpenAINotConfiguredError";
-  }
-}
 
 /**
  * Generate AI response for the live demo page with mode-specific behavior.

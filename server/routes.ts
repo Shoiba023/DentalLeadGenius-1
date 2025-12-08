@@ -5,7 +5,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { generateChatResponse, generateOutreachDraft, generateDemoResponse, type DemoMode, isOpenAIConfigured, OpenAINotConfiguredError } from "./openai";
+import { generateChatResponse, generateOutreachDraft, generateDemoResponse, type DemoMode, isOpenAIConfigured, getOpenAIStatus, OpenAINotConfiguredError, OpenAIAPIError } from "./openai";
 import { insertLeadSchema, insertClinicSchema, insertBookingSchema, insertSequenceSchema, insertSequenceStepSchema, insertSequenceEnrollmentSchema, loginSchema, createUserSchema } from "@shared/schema";
 import { z } from "zod";
 import { standardLimiter, strictLimiter, authLimiter, apiLimiter, logFailedAttempt, sanitizeInput, validateEmail, validatePhone } from "./rateLimit";
@@ -2513,23 +2513,61 @@ Submitted At: ${timestamp}`;
       res.json({ reply, sessionId: session });
     } catch (error) {
       // Log the full error for debugging
-      console.error("[AI DEMO] Error:", error);
-      
-      // Check if it's a configuration error
-      if (error instanceof OpenAINotConfiguredError) {
-        return res.status(503).json({ 
-          reply: "AI service is not configured. Please contact support.",
-          error: "OpenAI not configured"
-        });
-      }
-      
-      // Check for OpenAI API errors
+      console.error("[AI DEMO] Error caught:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error("[AI DEMO] Error message:", errorMessage);
       
+      // Check if it's a configuration error (API key not set)
+      if (error instanceof OpenAINotConfiguredError) {
+        const status = getOpenAIStatus();
+        console.error("[AI DEMO] Configuration error - OpenAI status:", status);
+        return res.status(503).json({ 
+          ok: false,
+          code: "OPENAI_NOT_CONFIGURED",
+          message: status.details,
+          reply: null
+        });
+      }
+      
+      // Check for OpenAI API errors (rate limit, invalid key, etc.)
+      if (error instanceof OpenAIAPIError) {
+        console.error("[AI DEMO] OpenAI API error:", errorMessage);
+        return res.status(502).json({ 
+          ok: false,
+          code: "OPENAI_API_ERROR",
+          message: errorMessage,
+          reply: null
+        });
+      }
+      
+      // Check for specific OpenAI error types
+      if (errorMessage.includes("401") || errorMessage.includes("invalid_api_key") || errorMessage.includes("Incorrect API key")) {
+        console.error("[AI DEMO] Invalid API key error detected");
+        return res.status(502).json({ 
+          ok: false,
+          code: "OPENAI_INVALID_KEY",
+          message: "OpenAI API key is invalid. Please check your OPENAI_API_KEY.",
+          reply: null
+        });
+      }
+      
+      if (errorMessage.includes("429") || errorMessage.includes("rate_limit")) {
+        console.error("[AI DEMO] Rate limit error detected");
+        return res.status(429).json({ 
+          ok: false,
+          code: "OPENAI_RATE_LIMIT",
+          message: "AI service is rate limited. Please try again in a moment.",
+          reply: null
+        });
+      }
+      
+      // Generic API error - provide details for debugging
+      console.error("[AI DEMO] Unexpected error:", errorMessage);
       res.status(500).json({ 
-        reply: "The demo AI is momentarily unavailable. Please try again in a few seconds.",
-        error: "AI service temporarily unavailable"
+        ok: false,
+        code: "AI_ERROR",
+        message: `AI service error: ${errorMessage}`,
+        reply: null
       });
     }
   });

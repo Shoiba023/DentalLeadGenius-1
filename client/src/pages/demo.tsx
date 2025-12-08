@@ -229,15 +229,20 @@ export default function Demo() {
         sessionId,
       });
       
-      // Log response status for debugging
+      // Parse response even if not ok - we need the error details
+      const data = await response.json().catch(() => ({ ok: false, code: "NETWORK_ERROR", message: "Network error" }));
+      
+      // Log response for debugging
       if (!response.ok) {
-        console.error("[AI Demo] API error:", response.status, response.statusText);
-        const errorData = await response.json().catch(() => ({}));
-        console.error("[AI Demo] Error data:", errorData);
-        throw new Error(errorData.error || `API error: ${response.status}`);
+        console.error("[AI Demo] API error:", response.status, data);
+        // Throw with structured error info
+        const error = new Error(data.message || `API error: ${response.status}`) as any;
+        error.code = data.code || "UNKNOWN";
+        error.apiMessage = data.message;
+        throw error;
       }
       
-      return response.json();
+      return data;
     },
     onSuccess: (data) => {
       if (data.sessionId && !sessionId) {
@@ -252,14 +257,34 @@ export default function Demo() {
         },
       ]);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("[AI Demo] Mutation error:", error);
+      
+      // Map error codes to user-friendly messages
+      let errorMessage: string;
+      const code = error.code || "";
+      
+      if (code === "OPENAI_NOT_CONFIGURED") {
+        errorMessage = "The AI service is not configured on the server. Please contact support or check server logs.";
+      } else if (code === "OPENAI_INVALID_KEY") {
+        errorMessage = "The AI API key is invalid. Please contact support to resolve this issue.";
+      } else if (code === "OPENAI_RATE_LIMIT") {
+        errorMessage = "The AI service is busy right now. Please try again in a moment.";
+      } else if (code === "OPENAI_API_ERROR") {
+        errorMessage = "The AI service encountered an error. Please try again.";
+      } else if (code === "NETWORK_ERROR") {
+        errorMessage = "Unable to connect to the server. Please check your connection and try again.";
+      } else {
+        // Only use "momentarily unavailable" for truly unknown/temporary errors
+        errorMessage = error.apiMessage || "An unexpected error occurred. Please try again.";
+      }
+      
       setMessages((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: "The demo AI is momentarily unavailable. Please try again in a few seconds.",
+          content: errorMessage,
         },
       ]);
     },
