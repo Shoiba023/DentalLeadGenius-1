@@ -107,6 +107,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // Detailed API health check for Render deployment diagnostics
+  app.get("/api/health", (req, res) => {
+    const isReplit = !!process.env.REPL_ID;
+    const openaiConfigured = isOpenAIConfigured();
+    const databaseConfigured = !!process.env.DATABASE_URL;
+    
+    res.status(200).json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      environment: isReplit ? "replit" : "external",
+      services: {
+        openai: openaiConfigured ? "configured" : "NOT CONFIGURED - Set OPENAI_API_KEY",
+        database: databaseConfigured ? "configured" : "NOT CONFIGURED - Set DATABASE_URL",
+        email: process.env.RESEND_API_KEY ? "configured" : "not configured",
+        stripe: process.env.STRIPE_SECRET_KEY ? "configured" : "not configured",
+      },
+      nodeEnv: process.env.NODE_ENV || "development",
+    });
+  });
+
   // Project export download endpoint
   app.get("/download/dental-app-export.zip", (req, res) => {
     const zipPath = path.join(process.cwd(), "dental-app-export.zip");
