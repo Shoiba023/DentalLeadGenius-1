@@ -1,13 +1,26 @@
-// Referenced from javascript_openai_ai_integrations blueprint
+// OpenAI integration - supports both Replit AI Integrations and standard OpenAI API
 import OpenAI from "openai";
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@shared/config";
 
-// This is using Replit's AI Integrations service, which provides OpenAI-compatible API access without requiring your own OpenAI API key.
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
-});
+// Detect environment and configure OpenAI client accordingly
+// - On Replit: Uses AI Integrations service (AI_INTEGRATIONS_OPENAI_*)
+// - On Render/other: Uses standard OpenAI API (OPENAI_API_KEY)
+const isReplitEnvironment = !!process.env.REPL_ID;
+
+const openaiConfig: { apiKey?: string; baseURL?: string } = {};
+
+if (isReplitEnvironment && process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+  // Replit AI Integrations
+  openaiConfig.baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+  openaiConfig.apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+} else if (process.env.OPENAI_API_KEY) {
+  // Standard OpenAI API
+  openaiConfig.apiKey = process.env.OPENAI_API_KEY;
+} else {
+  console.warn("[OpenAI] No API key configured. Set OPENAI_API_KEY environment variable.");
+}
+
+const openai = new OpenAI(openaiConfig);
 
 // Sales chatbot system prompt - Updated to reflect INSTANT demo delivery
 const SALES_SYSTEM_PROMPT = `You are Sarah, a friendly and persuasive sales specialist for ${SITE_NAME}, an AI-powered lead generation platform for dental clinics.

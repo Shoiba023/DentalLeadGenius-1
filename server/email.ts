@@ -1,18 +1,21 @@
 /**
  * Email Service
  * 
- * Handles all email sending using Resend via Replit's connector system.
+ * Handles all email sending using Resend.
+ * Supports both Replit's connector system and standard RESEND_API_KEY.
  * 
- * NO EXTERNAL SMTP OR ENVIRONMENT VARIABLES REQUIRED.
- * Uses Replit's built-in Resend integration for secure email delivery.
+ * On Replit: Uses Replit's built-in Resend integration
+ * On Render/other: Uses RESEND_API_KEY environment variable
  */
 
 import { Resend } from "resend";
 import { SITE_NAME, SITE_URL, SUPPORT_EMAIL, EMAIL_FROM_NAME, SITE_TAGLINE } from "@shared/config";
 
 // ============================================================================
-// RESEND CLIENT INITIALIZATION (Replit Connector)
+// RESEND CLIENT INITIALIZATION
 // ============================================================================
+
+const isReplitEnvironment = !!process.env.REPL_ID;
 
 interface ResendConnectionSettings {
   settings: {
@@ -24,10 +27,25 @@ interface ResendConnectionSettings {
 let connectionSettings: ResendConnectionSettings | null = null;
 
 /**
- * Get Resend credentials from Replit's connector system.
- * This fetches the API key and from_email dynamically.
+ * Get Resend credentials - supports both Replit connector and standard env vars.
  */
 async function getCredentials(): Promise<{ apiKey: string; fromEmail: string }> {
+  // If running outside Replit, use standard environment variable
+  if (!isReplitEnvironment) {
+    const apiKey = process.env.RESEND_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY environment variable not set');
+    }
+    
+    console.log('[EMAIL] Using standard Resend API key (non-Replit environment)');
+    return {
+      apiKey: apiKey,
+      fromEmail: process.env.RESEND_FROM_EMAIL || SUPPORT_EMAIL
+    };
+  }
+
+  // Replit connector flow
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY 
     ? 'repl ' + process.env.REPL_IDENTITY 
@@ -78,7 +96,7 @@ async function getResendClient(): Promise<{ client: Resend; fromEmail: string }>
 }
 
 /**
- * Check if Resend is configured (via Replit connector).
+ * Check if Resend is configured (via Replit connector or RESEND_API_KEY).
  */
 export async function isEmailConfigured(): Promise<boolean> {
   try {

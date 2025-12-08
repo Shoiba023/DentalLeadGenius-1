@@ -3,22 +3,39 @@ import Stripe from 'stripe';
 let connectionSettings: any;
 
 // ============================================================================
-// STRIPE MODE CONFIGURATION
+// STRIPE CONFIGURATION - Supports both Replit connectors and standard API keys
 // ============================================================================
-// Set STRIPE_LIVE_MODE=true to force LIVE mode in development
-// When deployed (REPLIT_DEPLOYMENT=1), always uses LIVE mode automatically
+// On Replit: Uses Replit's connector system
+// On Render/other: Uses STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY env vars
 // ============================================================================
 
+const isReplitEnvironment = !!process.env.REPL_ID;
+
 export function isStripeLiveMode(): boolean {
-  // Force LIVE mode if environment variable is set
   if (process.env.STRIPE_LIVE_MODE === 'true') {
     return true;
   }
-  // Auto-detect based on deployment status
-  return process.env.REPLIT_DEPLOYMENT === '1';
+  return process.env.REPLIT_DEPLOYMENT === '1' || process.env.NODE_ENV === 'production';
 }
 
 async function getCredentials() {
+  // If running outside Replit, use standard environment variables
+  if (!isReplitEnvironment) {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY;
+    
+    if (!secretKey) {
+      throw new Error('STRIPE_SECRET_KEY environment variable not set');
+    }
+    
+    console.log('[STRIPE] Using standard API keys (non-Replit environment)');
+    return {
+      publishableKey: publishableKey || '',
+      secretKey: secretKey,
+    };
+  }
+
+  // Replit connector flow
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? 'repl ' + process.env.REPL_IDENTITY
