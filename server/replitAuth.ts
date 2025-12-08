@@ -9,8 +9,14 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
+// Check if running on Replit (has REPL_ID)
+const isReplitEnvironment = !!process.env.REPL_ID;
+
 const getOidcConfig = memoize(
   async () => {
+    if (!isReplitEnvironment) {
+      throw new Error("OIDC not available outside Replit");
+    }
     return await client.discovery(
       new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
       process.env.REPL_ID!
@@ -68,6 +74,31 @@ export async function setupAuth(app: Express) {
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Skip Replit OIDC setup if not running on Replit
+  if (!isReplitEnvironment) {
+    console.log("[AUTH] Running outside Replit - OIDC disabled, using email/password auth only");
+    
+    passport.serializeUser((user: Express.User, cb) => cb(null, user));
+    passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+    
+    // Provide stub routes that redirect to email login
+    app.get("/api/login", (req, res) => {
+      res.redirect("/auth");
+    });
+    
+    app.get("/api/callback", (req, res) => {
+      res.redirect("/auth");
+    });
+    
+    app.get("/api/logout", (req, res) => {
+      req.logout(() => {
+        res.redirect("/");
+      });
+    });
+    
+    return;
+  }
 
   const config = await getOidcConfig();
 
