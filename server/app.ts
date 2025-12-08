@@ -85,10 +85,10 @@ export default async function runApp(
   await setup(app, server);
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
+  // On Replit: use 5000 (other ports are firewalled)
+  // On Render/other: use PORT env var or default to 3000
+  const defaultPort = process.env.REPL_ID ? '5000' : '3000';
+  const port = parseInt(process.env.PORT || defaultPort, 10);
   server.listen({
     port,
     host: "0.0.0.0",
