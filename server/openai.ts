@@ -7,20 +7,43 @@ import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@shared/config";
 // - On Render/other: Uses standard OpenAI API (OPENAI_API_KEY)
 const isReplitEnvironment = !!process.env.REPL_ID;
 
-const openaiConfig: { apiKey?: string; baseURL?: string } = {};
+// Lazy-initialized OpenAI client (only created when first used)
+let openaiClient: OpenAI | null = null;
+let openaiConfigured = false;
 
-if (isReplitEnvironment && process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
-  // Replit AI Integrations
-  openaiConfig.baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-  openaiConfig.apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-} else if (process.env.OPENAI_API_KEY) {
-  // Standard OpenAI API
-  openaiConfig.apiKey = process.env.OPENAI_API_KEY;
-} else {
-  console.warn("[OpenAI] No API key configured. Set OPENAI_API_KEY environment variable.");
+function getOpenAIClient(): OpenAI {
+  if (openaiClient) {
+    return openaiClient;
+  }
+
+  const config: { apiKey?: string; baseURL?: string } = {};
+
+  if (isReplitEnvironment && process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+    // Replit AI Integrations
+    config.baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+    config.apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    openaiConfigured = true;
+  } else if (process.env.OPENAI_API_KEY) {
+    // Standard OpenAI API
+    config.apiKey = process.env.OPENAI_API_KEY;
+    openaiConfigured = true;
+  } else {
+    console.warn("[OpenAI] No API key configured. Set OPENAI_API_KEY environment variable.");
+    // Create client with dummy key to avoid crash - actual calls will fail gracefully
+    config.apiKey = "not-configured";
+    openaiConfigured = false;
+  }
+
+  openaiClient = new OpenAI(config);
+  return openaiClient;
 }
 
-const openai = new OpenAI(openaiConfig);
+// Check if OpenAI is properly configured
+export function isOpenAIConfigured(): boolean {
+  // Force initialization to check config
+  getOpenAIClient();
+  return openaiConfigured;
+}
 
 // Sales chatbot system prompt - Updated to reflect INSTANT demo delivery
 const SALES_SYSTEM_PROMPT = `You are Sarah, a friendly and persuasive sales specialist for ${SITE_NAME}, an AI-powered lead generation platform for dental clinics.
@@ -99,20 +122,29 @@ export async function generateChatResponse(
   type: "sales" | "patient",
   clinicName?: string
 ): Promise<string> {
+  if (!isOpenAIConfigured()) {
+    return "AI features are currently unavailable. Please configure OPENAI_API_KEY.";
+  }
+
   const systemPrompt = type === "sales"
     ? SALES_SYSTEM_PROMPT
     : PATIENT_SYSTEM_PROMPT.replace("{CLINIC_NAME}", clinicName || "our dental clinic");
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o", // Using GPT-4o for high-quality chat responses
-    messages: [
-      { role: "system", content: systemPrompt },
-      ...messages,
-    ],
-    max_completion_tokens: 500,
-  });
+  try {
+    const response = await getOpenAIClient().chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...messages,
+      ],
+      max_completion_tokens: 500,
+    });
 
-  return response.choices[0]?.message?.content || "I apologize, but I'm having trouble responding right now. Please try again.";
+    return response.choices[0]?.message?.content || "I apologize, but I'm having trouble responding right now. Please try again.";
+  } catch (error) {
+    console.error("Chat response error:", error);
+    return "I apologize, but I'm having trouble responding right now. Please try again.";
+  }
 }
 
 // ============================================================================
@@ -184,14 +216,18 @@ export async function generateDemoResponse(
   messages: Array<{ role: "user" | "assistant"; content: string }>,
   mode: DemoMode
 ): Promise<string> {
+  if (!isOpenAIConfigured()) {
+    return "AI demo is currently unavailable. Please configure OPENAI_API_KEY.";
+  }
+
   const systemPrompt = AI_DEMO_MODES[mode] || AI_DEMO_MODES.receptionist;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAIClient().chat.completions.create({
       model: "gpt-4o",
       messages: [
         { role: "system", content: systemPrompt },
-        ...messages.slice(-10), // Keep last 10 messages for context
+        ...messages.slice(-10),
       ],
       max_completion_tokens: 400,
     });
@@ -204,6 +240,13 @@ export async function generateDemoResponse(
 }
 
 export async function generateOutreachDraft(type: "email" | "sms" | "whatsapp"): Promise<{ subject?: string; message: string }> {
+  if (!isOpenAIConfigured()) {
+    return {
+      subject: type === "email" ? "Transform Your Dental Practice" : undefined,
+      message: "AI content generation is currently unavailable. Please configure OPENAI_API_KEY.",
+    };
+  }
+
   const DEMO_URL = `${SITE_URL}/demo`;
   let prompt: string;
   
@@ -228,24 +271,32 @@ IMPORTANT: Do NOT include any emojis, emoticons, or special unicode symbols what
 Format as JSON with just a "message" field.`;
   }
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o",
-    messages: [{ role: "user", content: prompt }],
-    response_format: { type: "json_object" },
-    max_completion_tokens: 300,
-  });
+  try {
+    const response = await getOpenAIClient().chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 300,
+    });
 
-  const content = response.choices[0]?.message?.content || "{}";
-  const parsed = JSON.parse(content);
+    const content = response.choices[0]?.message?.content || "{}";
+    const parsed = JSON.parse(content);
 
-  if (type === "email") {
+    if (type === "email") {
+      return {
+        subject: parsed.subject || "Transform Your Dental Practice with AI",
+        message: parsed.message + "\n\nTo unsubscribe, reply with 'UNSUBSCRIBE'.",
+      };
+    }
+
     return {
-      subject: parsed.subject || "Transform Your Dental Practice with AI",
-      message: parsed.message + "\n\nTo unsubscribe, reply with 'UNSUBSCRIBE'.",
+      message: (parsed.message || "DentalLeadGenius: Get 10x more leads with AI. Get instant access: [link]") + " Reply STOP to opt out.",
+    };
+  } catch (error) {
+    console.error("Outreach draft generation error:", error);
+    return {
+      subject: type === "email" ? "Transform Your Dental Practice with AI" : undefined,
+      message: "Unable to generate AI content. Please try again.",
     };
   }
-
-  return {
-    message: (parsed.message || "DentalLeadGenius: Get 10x more leads with AI. Get instant access: [link]") + " Reply STOP to opt out.",
-  };
 }
