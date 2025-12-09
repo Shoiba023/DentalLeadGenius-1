@@ -1,0 +1,72 @@
+You are a senior frontend + Stripe integration engineer working in this exact Replit project.
+
+CRITICAL PRODUCTION BUG (EXACT ISSUE):
+
+The pricing UI visuals are correct, BUT the Stripe checkout is REVERSED on the live Render site.
+
+Production URL (where the bug happens):
+https://dentalleadgenius-1.onrender.com
+
+CURRENT BEHAVIOR (WRONG):
+- Clicking "Monthly Subscription ($1,497/month)" opens Stripe checkout for $4,997 one-time ❌
+- Clicking "One-Time Setup Fee ($4,997)" opens Stripe checkout for $1,497/month ❌
+
+EXPECTED BEHAVIOR (MUST FIX):
+- Monthly button → Stripe monthly price ($1,497/month)
+- One-time button → Stripe one-time setup ($4,997 one-time)
+
+THIS IS NOT A STRIPE DASHBOARD ISSUE.
+THIS IS A FRONTEND → STRIPE LINK / PRICE ID MAPPING BUG.
+
+YOUR TASKS (FOLLOW STRICTLY):
+
+1. LOCATE STRIPE INTEGRATION
+- Find where Stripe checkout URLs or price IDs are defined in this codebase.
+- Identify the variables for:
+  - Monthly subscription price / link
+  - One-time setup price / link
+
+2. FIX THE MAPPING
+- Ensure the "Monthly Subscription ($1,497/month)" button uses ONLY the monthly Price ID / URL.
+- Ensure the "One-Time Setup Fee ($4,997)" button uses ONLY the one-time setup Price ID / URL.
+- Do NOT rely on array index order or toggles that can flip accidentally.
+- Use explicit constants, for example:
+  - STRIPE_MONTHLY_PRICE_ID (for $1,497/month)
+  - STRIPE_SETUP_PRICE_ID (for $4,997 one-time)
+- Make sure there is no situation where the two get swapped again.
+
+3. VERIFY LOCALLY IN REPLIT
+- Run the app in Replit.
+- Click the Monthly button and confirm Stripe shows $1,497/month.
+- Click the One-time button and confirm Stripe shows $4,997 one-time.
+- Test multiple times and toggles to confirm the mapping NEVER reverses.
+
+4. DO NOT CHANGE:
+- UI design
+- Prices ($1,497 and $4,997)
+- Copy/text
+- Stripe dashboard settings or products/prices in Stripe itself
+
+5. PREPARE FOR RENDER (GIT MANDATORY)
+- After fixing the bug, you MUST:
+  - Stage all relevant files.
+  - Commit with this message exactly:
+    "Fix Stripe checkout mapping (monthly vs one-time reversed)"
+  - Push to GitHub (origin/main), so Render can deploy the latest commit.
+- If Replit security blocks git commands, PRINT for me the exact shell commands I should run in the Shell tab to:
+  - Stage all files
+  - Commit with the message above
+  - Push to origin/main
+
+6. FINAL CONFIRMATION (REPORT AT THE END)
+When you are done, you MUST clearly report:
+- Which file(s) you changed (with paths).
+- How the Stripe mapping now works (which button → which Stripe price).
+- That the code is committed and pushed to GitHub and is ready for deployment on Render.
+- Confirm that after deploy, the bug on:
+  https://dentalleadgenius-1.onrender.com
+will be fixed (Monthly → $1,497/month, One-time → $4,997 one-time).
+
+Do NOT stop after “local fix only”.
+The goal is: FIX THE MAPPING + PUSH CLEAN CODE TO GITHUB so I can redeploy on Render with correct Stripe behavior.
+```0
