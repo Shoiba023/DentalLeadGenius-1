@@ -84,8 +84,9 @@ const PRICING_PLANS: PricingPlan[] = [
       "Email Outreach",
       "Up to 500 leads/month",
     ],
-    monthlyLink: "https://buy.stripe.com/dRm8wQ2zr9m0fdh3WU0ZW02",
-    onetimeLink: "https://buy.stripe.com/dRmeVea1T41GfdheBy0ZW01",
+    // FIXED: Swapped links - monthlyLink now points to monthly subscription, onetimeLink to setup fee
+    monthlyLink: "https://buy.stripe.com/dRmeVea1T41GfdheBy0ZW01",
+    onetimeLink: "https://buy.stripe.com/dRm8wQ2zr9m0fdh3WU0ZW02",
     highlight: false,
   },
   {
@@ -99,8 +100,9 @@ const PRICING_PLANS: PricingPlan[] = [
       "Automated Follow-ups",
       "Up to 2,000 leads/month",
     ],
-    monthlyLink: "https://buy.stripe.com/5kQ8wQ2zr2XC3uzeBy0ZW04",
-    onetimeLink: "https://buy.stripe.com/eVq9AUa1T7dS7KP8da0ZW03",
+    // FIXED: Swapped links - monthlyLink now points to monthly subscription, onetimeLink to setup fee
+    monthlyLink: "https://buy.stripe.com/eVq9AUa1T7dS7KP8da0ZW03",
+    onetimeLink: "https://buy.stripe.com/5kQ8wQ2zr2XC3uzeBy0ZW04",
     highlight: true,
   },
   {
@@ -114,8 +116,9 @@ const PRICING_PLANS: PricingPlan[] = [
       "Patient AI Chatbots",
       "Unlimited leads",
     ],
-    monthlyLink: "https://buy.stripe.com/eVq9AU1vn1Tye9d9he0ZW05",
-    onetimeLink: "https://buy.stripe.com/4gMfZi6PHaq49SXctq0ZW06",
+    // FIXED: Swapped links - monthlyLink now points to monthly subscription, onetimeLink to setup fee
+    monthlyLink: "https://buy.stripe.com/4gMfZi6PHaq49SXctq0ZW06",
+    onetimeLink: "https://buy.stripe.com/eVq9AU1vn1Tye9d9he0ZW05",
     highlight: false,
   },
 ];

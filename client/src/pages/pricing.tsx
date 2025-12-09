@@ -33,18 +33,19 @@ import logoFull from "@/assets/logo/logo-full.png";
 import { SITE_NAME, SUPPORT_EMAIL } from "@shared/config";
 import { Footer } from "@/components/footer";
 
+// FIXED: Swapped links - monthly now points to monthly subscription, setup to one-time setup fee
 const STRIPE_PAYMENT_LINKS: Record<string, { monthly: string; setup: string }> = {
   essential: {
-    monthly: "https://buy.stripe.com/dRm8wQ2zr9m0fdh3WU0ZW02",
-    setup: "https://buy.stripe.com/dRmeVea1T41GfdheBy0ZW01",
+    monthly: "https://buy.stripe.com/dRmeVea1T41GfdheBy0ZW01",
+    setup: "https://buy.stripe.com/dRm8wQ2zr9m0fdh3WU0ZW02",
   },
   growth: {
-    monthly: "https://buy.stripe.com/5kQ8wQ2zr2XC3uzeBy0ZW04",
-    setup: "https://buy.stripe.com/eVq9AUa1T7dS7KP8da0ZW03",
+    monthly: "https://buy.stripe.com/eVq9AUa1T7dS7KP8da0ZW03",
+    setup: "https://buy.stripe.com/5kQ8wQ2zr2XC3uzeBy0ZW04",
   },
   elite: {
-    monthly: "https://buy.stripe.com/eVq9AU1vn1Tye9d9he0ZW05",
-    setup: "https://buy.stripe.com/4gMfZi6PHaq49SXctq0ZW06",
+    monthly: "https://buy.stripe.com/4gMfZi6PHaq49SXctq0ZW06",
+    setup: "https://buy.stripe.com/eVq9AU1vn1Tye9d9he0ZW05",
   },
 };
 
