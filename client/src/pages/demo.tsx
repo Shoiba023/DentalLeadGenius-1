@@ -84,9 +84,9 @@ const PRICING_PLANS: PricingPlan[] = [
       "Email Outreach",
       "Up to 500 leads/month",
     ],
-    // FIXED: Swapped links - monthlyLink now points to monthly subscription, onetimeLink to setup fee
-    monthlyLink: "https://buy.stripe.com/dRmeVea1T41GfdheBy0ZW01",
-    onetimeLink: "https://buy.stripe.com/dRm8wQ2zr9m0fdh3WU0ZW02",
+    // CORRECTED: monthlyLink=$497/mo, onetimeLink=$1,997 setup
+    monthlyLink: "https://buy.stripe.com/dRm8wQ2zr9m0fdh3WU0ZW02",
+    onetimeLink: "https://buy.stripe.com/dRmeVea1T41GfdheBy0ZW01",
     highlight: false,
   },
   {
@@ -100,9 +100,9 @@ const PRICING_PLANS: PricingPlan[] = [
       "Automated Follow-ups",
       "Up to 2,000 leads/month",
     ],
-    // FIXED: Swapped links - monthlyLink now points to monthly subscription, onetimeLink to setup fee
-    monthlyLink: "https://buy.stripe.com/eVq9AUa1T7dS7KP8da0ZW03",
-    onetimeLink: "https://buy.stripe.com/5kQ8wQ2zr2XC3uzeBy0ZW04",
+    // CORRECTED: monthlyLink=$997/mo, onetimeLink=$2,997 setup
+    monthlyLink: "https://buy.stripe.com/5kQ8wQ2zr2XC3uzeBy0ZW04",
+    onetimeLink: "https://buy.stripe.com/eVq9AUa1T7dS7KP8da0ZW03",
     highlight: true,
   },
   {
