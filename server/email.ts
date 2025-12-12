@@ -1111,51 +1111,48 @@ Shoiba
       throw new Error(`Unsupported automation day: ${day}`);
     }
 
-
-  // ============================================================================
+// ===============================================================
 // TEST EMAIL (for /health/email endpoint)
-// ============================================================================
+// ===============================================================
 
 /**
  * Send a test email to verify Resend configuration.
  */
-export async function sendTestEmail(
-  toOverride?: string
-): Promise<{ success: boolean; message: string }> {
+export async function sendTestEmail(toOverride?: string): Promise<{ success: boolean; message: string }> {
+
   const recipient = toOverride || SUPPORT_EMAIL;
 
   const result = await sendEmail({
-    to: recipient,
-    subject: `[TEST] ${SITE_NAME} Email Configuration Test`,
-    html: `
-      <div style="font-family: Arial, sans-serif; padding: 20px;">
-        <h2>Email Configuration Test</h2>
-        <p>This is a test email from <strong>${SITE_NAME}</strong>.</p>
-        <p>If you received this email, your Resend integration is working correctly.</p>
-        <p style="color: #666; font-size: 12px;">
-          Sent at: ${new Date().toISOString()}
-        </p>
-      </div>
-    `,
-    text: `Email Configuration Test
+      to: recipient,
+      subject: `[TEST] ${SITE_NAME} Email Configuration Test`,
+      html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2>Email Configuration Test</h2>
+              <p>This is a test email from <strong>${SITE_NAME}</strong>.</p>
+              <p>If you received this email, your Resend integration is working correctly.</p>
+              <p style="color: #666; font-size: 12px;">
+                  Sent at: ${(new Date()).toISOString()}
+              </p>
+          </div>
+      `,
+      text: `Email Configuration Test
 
 This is a test email from ${SITE_NAME}.
 If you received this email, your Resend integration is working correctly.
 
-Sent at: ${new Date().toISOString()}`,
+Sent at: ${(new Date()).toISOString()}
+      `,
   });
 
   if (result.ok) {
-    return {
-      success: true,
-      message: `Test email sent successfully to ${recipient}`,
-    };
+      return {
+          success: true,
+          message: `Test email sent successfully to ${recipient}`,
+      };
   } else {
-    return {
-      success: false,
-      message:
-        result.error ||
-        "Failed to send test email. Check server logs for details.",
-    };
+      return {
+          success: false,
+          message: result.error || "Failed to send test email. Check server logs for details.",
+      };
   }
 }
