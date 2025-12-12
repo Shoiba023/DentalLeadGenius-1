@@ -738,7 +738,6 @@ Shoiba
 
   return result.ok;
    }
-  }
  }
 // ===============================================================
 // TEST EMAIL (for /health/email endpoint)
