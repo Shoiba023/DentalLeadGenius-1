@@ -9,9 +9,9 @@ export interface NurtureEmail {
 }
 
 export const nurtureEmails: NurtureEmail[] = [
-  // -------------------------------------------------------
-  // DAY 1 — Welcome + Free Kit Delivery
-  // -------------------------------------------------------
+  // ======================================================
+  // DAY 1 – Welcome + Free Kit Delivery
+  // ======================================================
   {
     day: 1,
     subject: "Welcome! Your Free Dental Growth Kit is Inside 🦷✨",
@@ -21,11 +21,11 @@ export const nurtureEmails: NurtureEmail[] = [
       <p>Your practice is now one step closer to:</p>
       <ul>
         <li>30% more appointments</li>
-        <li>Instant AI responses to all patient inquiries</li>
+        <li>Instant AI responses to all patient enquiries</li>
         <li>Fully automated reminders + follow-ups</li>
       </ul>
-      <p><a href="{{demoLink}}" style="font-size:18px;font-weight:bold;">Click here to download your kit</a></p>
-      <p>More powerful insights are coming your way—stay tuned!</p>
+      <p><a href="{{demoLink}}" style="font-size:18px; font-weight:bold;">Click here to download your kit</a></p>
+      <p>More powerful insights are coming your way – stay tuned!</p>
     `,
     text: `
 Welcome to DentalLeadGenius!
@@ -38,9 +38,9 @@ More insights are coming tomorrow!
     `
   },
 
-  // -------------------------------------------------------
-  // DAY 2 — Social Proof + Trust
-  // -------------------------------------------------------
+  // ======================================================
+  // DAY 2 – Social Proof + Trust
+  // ======================================================
   {
     day: 2,
     subject: "How Clinics Added 40–60 Extra Appointments With Automation",
@@ -62,113 +62,133 @@ See the live demo: {{demoLink}}
     `
   },
 
-  // -------------------------------------------------------
-  // DAY 3 — AI Receptionist Demo
-  // -------------------------------------------------------
+  // ======================================================
+  // DAY 3 – AI Receptionist Demo
+  // ======================================================
   {
     day: 3,
     subject: "Meet Your 24/7 AI Receptionist 🤖",
     html: `
-      <h2>Your Clinic's Hardest-Working Staff Member</h2>
+      <h2>Your Clinic’s Hardest-Working Staff Member</h2>
       <p>This AI Receptionist:</p>
       <ul>
         <li>Answers instantly</li>
         <li>Books appointments automatically</li>
-        <li>Handles missed calls</li>
-        <li>Replies on SMS, Email & WhatsApp</li>
+        <li>Handles FAQs without bothering your front desk</li>
       </ul>
-      <p>No hiring. No training. No sick days.</p>
-      <p><a href="{{demoLink}}">Try the AI Receptionist</a></p>
+      <p><a href="{{demoLink}}">Watch how the AI Receptionist works in real time</a></p>
     `,
     text: `
-Meet your 24/7 AI Receptionist.
+Your 24/7 AI Receptionist is ready to take calls and book patients.
 
-See how it answers instantly and books appointments: {{demoLink}}
+Watch the live demo: {{demoLink}}
     `
   },
 
-  // -------------------------------------------------------
-  // DAY 4 — Missed Calls Pain Point
-  // -------------------------------------------------------
+  // ======================================================
+  // DAY 4 – No-Show + Cancellation Saver
+  // ======================================================
   {
     day: 4,
-    subject: "How Many Patients Did You Lose Last Month?",
+    subject: "Stop No-Shows From Silently Killing Your Schedule",
     html: `
-      <h2>Missed Calls = Lost Patients</h2>
-      <p>Most clinics lose 20–40 patients every month… silently.</p>
-      <p>But yours don’t have to.</p>
-      <p>AI follows up instantly — even after a missed call.</p>
-      <p><a href="{{demoLink}}">Recover missed calls automatically</a></p>
+      <h2>Recover Lost Revenue From No-Shows</h2>
+      <p>Our automation flow:</p>
+      <ul>
+        <li>Sends friendly reminders before every visit</li>
+        <li>Re-engages missed and cancelled appointments</li>
+        <li>Fills empty slots with warm leads automatically</li>
+      </ul>
+      <p><a href="{{demoLink}}">See how the no-show recovery sequence works</a></p>
     `,
     text: `
-Most clinics lose 20–40 patients monthly due to missed calls.
+No-show and cancelled appointments don’t need to be lost revenue.
 
-Recover them automatically: {{demoLink}}
+See the recovery sequence: {{demoLink}}
     `
   },
 
-  // -------------------------------------------------------
-  // DAY 5 — Limited Time Offer
-  // -------------------------------------------------------
+  // ======================================================
+  // DAY 5 – Missed Call Saver + Lead Capture
+  // ======================================================
   {
     day: 5,
-    subject: "Claim Your Limited-Time Automation Boost ⚡",
+    subject: "Turn Every Missed Call Into a Potential Booking ☎️",
     html: `
-      <h2>Your Automation Upgrade</h2>
-      <p>For a limited time, new clinics get:</p>
+      <h2>Never Lose a Patient Because You Were Busy</h2>
+      <p>When a call is missed, DentalLeadGenius:</p>
       <ul>
-        <li>Free AI receptionist setup</li>
-        <li>Free 7-day nurture campaign installation</li>
-        <li>50% off the first month</li>
+        <li>Texts the patient back within seconds</li>
+        <li>Answers common questions with AI</li>
+        <li>Offers to book an appointment right away</li>
       </ul>
-      <p><a href="{{demoLink}}">Claim your upgrade</a></p>
+      <p><a href="{{demoLink}}">Watch the missed-call recovery in action</a></p>
     `,
     text: `
-Limited-time automation upgrade available.
+Every missed call can be turned into a conversation and a possible booking.
 
-Claim your setup: {{demoLink}}
+See how it works: {{demoLink}}
     `
   },
 
-  // -------------------------------------------------------
-  // DAY 6 — Book a Call
-  // -------------------------------------------------------
+  // ======================================================
+  // DAY 6 – ROI & Numbers
+  // ======================================================
   {
     day: 6,
-    subject: "Want a 10-Minute Walkthrough? (Most Clinics Say Yes)",
+    subject: "What Kind of ROI Can Your Clinic Expect?",
     html: `
-      <h2>Let's Walk Through Your Clinic's Growth Plan</h2>
-      <p>In 10 minutes, we’ll show you:</p>
+      <h2>Numbers That Matter to Your Practice</h2>
+      <p>Clinics using DentalLeadGenius typically see:</p>
       <ul>
-        <li>Where your clinic is losing revenue</li>
-        <li>How automation can fix it instantly</li>
-        <li>How many new bookings you can expect</li>
+        <li>3–5x return on their monthly investment</li>
+        <li>Higher case acceptance from better follow-up</li>
+        <li>More predictable, stable monthly revenue</li>
       </ul>
-      <p><a href="{{demoLink}}">Book your walkthrough</a></p>
+      <p><a href="{{demoLink}}">Use our simple ROI calculator for your clinic</a></p>
     `,
     text: `
-Want a personalized growth plan?
+Clinics see on average 3–5x return on their automation investment.
 
-Book your walkthrough: {{demoLink}}
+Try the ROI calculator: {{demoLink}}
     `
   },
 
-  // -------------------------------------------------------
-  // DAY 7 — Final Scarcity + Emotional Close
-  // -------------------------------------------------------
+  // ======================================================
+  // DAY 7 – Call to Action / Strategy Session
+  // ======================================================
   {
     day: 7,
-    subject: "Last Chance — Your Automation Kit Expires Tonight",
+    subject: "Ready to See This Working for Your Clinic Next Week?",
     html: `
-      <h2>This Is Your Final Reminder</h2>
-      <p>Your access to the full automation kit expires tonight.</p>
-      <p>If you're serious about growing your clinic, this is the moment.</p>
-      <p><a href="{{demoLink}}">Activate your automation before it expires</a></p>
+      <h2>Let’s Map Out Your Automation Plan</h2>
+      <p>On a short strategy call we will:</p>
+      <ul>
+        <li>Review your current lead + booking process</li>
+        <li>Identify the fastest wins automation can bring</li>
+        <li>Show you exactly how DentalLeadGenius plugs in</li>
+      </ul>
+      <p><a href="{{demoLink}}">Click here to book your strategy session</a></p>
+      <p>There’s no obligation – this is simply to see if it’s a fit for your clinic.</p>
     `,
     text: `
-Final reminder — your automation kit expires tonight.
+Want to see this working for your clinic?
 
-Activate now: {{demoLink}}
+Book a short strategy session: {{demoLink}}
     `
   }
 ];
+
+// ======================================================
+// Helper: get template by day (1–7)
+// If day is invalid, fallback to the last email in the sequence.
+// ======================================================
+export function getNurtureTemplate(day: number): NurtureEmail {
+  const found = nurtureEmails.find((t) => t.day === day);
+  if (found) {
+    return found;
+  }
+
+  // fallback – last email in the array
+  return nurtureEmails[nurtureEmails.length - 1];
+}
