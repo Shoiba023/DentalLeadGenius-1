@@ -686,16 +686,12 @@ export const NURTURE_TEMPLATES: EmailTemplate[] = [
   day5FinalCTA
 ];
 
-/**
- * Get template by day number
- */
-export function getNurtureTemplateByDay(dayNumber: number): EmailTemplate | undefined {
-  return NURTURE_TEMPLATES.find(t => t.dayNumber === dayNumber);
-}
+export function getNurtureTemplate(day: number) {
+  const template = NURTURE_TEMPLATES.find(t => t.day === day);
 
-/**
- * Get all nurture templates
- */
-export function getAllNurtureTemplates(): EmailTemplate[] {
-  return NURTURE_TEMPLATES;
+  if (!template) {
+    throw new Error(`No nurture template found for day ${day}`);
+  }
+
+  return template;
 }
