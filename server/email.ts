@@ -783,3 +783,43 @@ Sent at: ${(new Date()).toISOString()}
       };
   }
 }
+// ===============================================
+// SEND DEMO LINK EMAIL (Used in routes.ts)
+// ===============================================
+export async function sendDemoLinkEmail(toEmail: string, demoLink: string) {
+  try {
+    const subject = "Your Live Demo Link for DentalLeadGenius";
+    const html = `
+      <h2>Your Demo is Ready 🎉</h2>
+      <p>Click the link below to access your live demo:</p>
+      <p><a href="${demoLink}" style="font-size:18px; font-weight:bold;">Open Demo</a></p>
+      <p>If you have any questions, feel free to reply to this email.</p>
+    `;
+
+    const text = `
+Your demo is ready!
+
+Open here: ${demoLink}
+
+Let us know if you need help.
+    `;
+
+    const resend = await getResendClient();
+
+    await resend.emails.send({
+      to: toEmail,
+      from: SUPPORT_EMAIL,
+      subject,
+      html,
+      text
+    });
+
+    console.log("[EMAIL] Demo link sent successfully →", toEmail);
+
+    return true;
+
+  } catch (error) {
+    console.error("[EMAIL ERROR] sendDemoLinkEmail:", error);
+    return false;
+  }
+}
