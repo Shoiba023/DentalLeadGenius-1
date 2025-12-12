@@ -1057,17 +1057,7 @@ Shoiba
     default: {
       throw new Error(`Unsupported automation day: ${day}`);
     }
-  }
 
-  const result = await sendEmail({
-    to,
-    subject,
-    html: htmlContent,
-    text: textContent,
-  });
-
-  return result.ok;
-}
 // ============================================================================
 // DEMO LINK EMAIL
 // ============================================================================
