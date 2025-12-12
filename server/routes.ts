@@ -55,7 +55,7 @@ import crypto from "crypto";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { initStripe } from "./stripeInit";
-import { sendDemoLinkEmail, sendLeadNotificationEmail, sendTestEmail, isEmailConfigured, sendEmail, testEmailConnection } from "./email";
+import { sendDemoLinkEmail, sendLeadNotificationEmail, sendTestEmail, isEmailConfigured, sendEmail, testEmailConnection, sendNurtureEmail} from "./email";
 import { SITE_NAME } from "@shared/config";
 
 // Configure multer for file uploads
