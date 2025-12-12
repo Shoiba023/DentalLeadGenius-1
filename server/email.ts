@@ -1110,6 +1110,7 @@ Shoiba
     default: {
       throw new Error(`Unsupported automation day: ${day}`);
     }
+  }
 
 // ===============================================================
 // TEST EMAIL (for /health/email endpoint)
