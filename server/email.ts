@@ -166,6 +166,59 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ ok: boolea
   }
 }
 
+// ============================================================
+// 7-DAY NURTURE CAMPAIGN EMAIL SENDER
+// ============================================================
+
+interface NurtureEmailContext {
+  clinicName?: string;
+  doctorName?: string;
+  city?: string;
+  demoUrl?: string;
+  ctaUrl?: string;
+  offerName?: string;
+}
+
+interface SendNurtureEmailOptions {
+  to: string;
+  day: number;              // 1–7
+  context?: NurtureEmailContext;
+}
+
+/**
+ * Send a single nurture email for the given day number (1–7).
+ * Uses templates from ./Nurture/emailTemplates.ts
+ */
+export async function sendNurtureEmail(
+  options: SendNurtureEmailOptions
+): Promise<{ ok: boolean; error?: string }> {
+  const { to, day, context } = options;
+
+  const template = getNurtureTemplate(day, {
+    clinicName: context?.clinicName,
+    doctorName: context?.doctorName,
+    city: context?.city,
+    demoUrl: context?.demoUrl,
+    ctaUrl: context?.ctaUrl,
+    offerName: context?.offerName,
+  });
+
+  if (!template) {
+    const msg = `Nurture template not found for day ${day}`;
+    console.error(msg);
+    return { ok: false, error: msg };
+  }
+
+  const { subject, html, text } = template;
+
+  return await sendEmail({
+    to,
+    subject,
+    html,
+    text,
+  });
+}
+
 // ============================================================================
 // SUPPORT EMAIL UTILITY
 // ============================================================================
