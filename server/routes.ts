@@ -3365,6 +3365,69 @@ Submitted At: ${timestamp}`;
     }
   });
   
+  // ============================================================================
+// NEW: Send a single 7-day nurture email (GENIUS automated sequence)
+// ============================================================================
+app.post("/api/nurture/send", isAuthenticated, strictLimiter, async (req: any, res: any) => {
+  try {
+    const {
+      to,
+      day,
+      clinicName,
+      doctorName,
+      city,
+      demoUrl,
+      ctaUrl,
+      offerName,
+    } = req.body || {};
+
+    if (!to || day === undefined || day === null) {
+      return res.status(400).json({
+        ok: false,
+        message: "Missing required fields: 'to' and 'day'",
+      });
+    }
+
+    const dayNumber = Number(day);
+    if (!Number.isInteger(dayNumber) || dayNumber < 1 || dayNumber > 7) {
+      return res.status(400).json({
+        ok: false,
+        message: "Invalid 'day' value. Must be 1–7",
+      });
+    }
+
+    const result = await sendNurtureEmail({
+      to,
+      day: dayNumber,
+      context: {
+        clinicName,
+        doctorName,
+        city,
+        demoUrl,
+        ctaUrl,
+        offerName,
+      },
+    });
+
+    if (!result.ok) {
+      return res.status(500).json({
+        ok: false,
+        message: result.error || "Failed to send nurture email",
+      });
+    }
+
+    return res.json({
+      ok: true,
+      message: `Nurture email for day ${day} sent successfully.`,
+    });
+  } catch (error) {
+    console.error("[API] /api/nurture/send error:", error);
+    return res.status(500).json({
+      ok: false,
+      message: "Unexpected error sending nurture email",
+    });
+  }
+});
   // Create nurture campaign for clinic
   app.post("/api/nurture/campaigns", isAuthenticated, async (req: any, res) => {
     try {
