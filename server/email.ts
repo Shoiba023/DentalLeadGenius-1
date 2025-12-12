@@ -10,7 +10,7 @@
 
 import { Resend } from "resend";
 import { SITE_NAME, SITE_URL, SUPPORT_EMAIL, EMAIL_FROM_NAME, SITE_TAGLINE } from "@shared/config";
-import { getNurtureTemplate } from "./Nurture/emailTemplates";p
+import { getNurtureTemplate } from "./Nurture/emailTemplates";
 // ============================================================================
 // RESEND CLIENT INITIALIZATION
 // ============================================================================
